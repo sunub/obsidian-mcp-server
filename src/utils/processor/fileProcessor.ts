@@ -1,24 +1,11 @@
-import { createReadStream } from 'fs';
-import { readdir, stat, writeFile } from 'fs/promises';
 import { join, extname } from 'path';
-import { MatterTransform } from './matterTransform.js'
-import type { MatterTransformData, ProcessedDocument } from './types.js'
+import { createReadStream } from 'fs';
 import { Semaphore } from '../semaphore.js';
+import { readdir, stat } from 'fs/promises';
+import { MatterTransform } from './matterTransform.js'
+import { isMatterTransformData } from '../isMatterTransformData.js';
 
-function isMatterTransformData(obj: unknown): obj is MatterTransformData {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'frontmatter' in obj &&
-    'contentLength' in obj &&
-    'hasContent' in obj &&
-    'content' in obj &&
-    typeof (obj as MatterTransformData).frontmatter === 'object' &&
-    typeof (obj as MatterTransformData).contentLength === 'number' &&
-    typeof (obj as MatterTransformData).hasContent === 'boolean' &&
-    typeof (obj as MatterTransformData).content === 'string'
-  );
-}
+import type { MatterTransformData, ProcessedDocument } from './types.js'
 
 export class FileProcessor {
   public count = 0;
