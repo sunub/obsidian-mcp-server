@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const quietMode = z.boolean().default(true).describe('If true, suppresses non-error output messages. Default is false.');
+
 export const obsidianContentQueryParams = {
   type: 'object',
   properties: {
@@ -58,7 +60,8 @@ export const obsidianContentQueryParamsZod = z.object({
   limit: obsidianContentLimit.optional(),
   includeContent: obsidianContentIncludeContent.optional(),
   includeFrontmatter: obsidianContentIncludeFrontmatter.optional(),
-  excerptLength: obsidianContentExcerptLength.optional()
+  excerptLength: obsidianContentExcerptLength.optional(),
+  quiet: quietMode.optional(),
 });
 
 export type ObsidianContentQueryParams = z.infer<typeof obsidianContentQueryParamsZod>;

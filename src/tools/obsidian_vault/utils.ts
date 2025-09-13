@@ -12,6 +12,19 @@ export async function searchDocuments(
     const searchResults = await documentManager.searchDocuments(params.keyword || '');
     const limitedResults = searchResults.slice(0, params.limit || 10);
     
+    if (params.quiet) {
+        return {
+            isError: false,
+            content: [{
+                type: 'text',
+                text: JSON.stringify({
+                    found: limitedResults.length,
+                    filenames: limitedResults.map(doc => doc.filePath.split('/').pop() || doc.filePath),
+                }),
+            }],
+        };
+    }
+
     if (limitedResults.length === 0) {
       response.content.push({
         type: 'text',
@@ -176,6 +189,19 @@ export async function listAllDocuments(
   
   try {
     const allDocuments = await documentManager.getAllProcessedDocuments();
+     if (params.quiet) {
+        return {
+            isError: false,
+            content: [{
+                type: 'text',
+                text: JSON.stringify({
+                    total_documents: allDocuments.length,
+                    filenames: allDocuments.map(doc => doc.filePath.split('/').pop() || doc.filePath),
+                }),
+            }],
+        };
+    }
+    
     const limitedDocs = allDocuments.slice(0, params.limit || 50);
     
     if (allDocuments.length === 0) {
