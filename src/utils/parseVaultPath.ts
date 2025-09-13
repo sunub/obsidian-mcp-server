@@ -1,4 +1,7 @@
 import os from 'os';
+import dotenv from 'dotenv';
+
+dotenv.config({ debug: false });
 
 export const VAULT_DIR_PATH = process.env.VAULT_DIR_PATH || '';
 
