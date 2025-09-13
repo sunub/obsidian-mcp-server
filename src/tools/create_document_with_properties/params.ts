@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { obsidianPropertyOutputSchema } from '../generate_obsidian_property/params.js';
+import { obsidianPropertyOutputSchema } from '../generate_property/params.js';
 
 // input properties
 const sourcePath = z.string().describe('The path to the source markdown file to read and analyze (e.g., "draft/my-article.md")');

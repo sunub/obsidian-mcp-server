@@ -6,7 +6,7 @@ import {
 } from './params.js';
 import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
 import { DocumentManager } from '../../utils/DocumentManager.js';
-import { execute as writePropertyExecute } from '../write_obsidian_property/index.js';
+import { execute as writePropertyExecute } from '../write_property/index.js';
 
 export const name = 'create_document_with_properties';
 
