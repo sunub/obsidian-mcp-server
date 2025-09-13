@@ -88,28 +88,12 @@ export const execute = async (params: ObsidianPropertyQueryParams): Promise<Call
 
     const documentData = {
       filename: params.filename,
-      content: content,
-      stats: {
-        contentLength: content.length,
-        wordCount: content.split(/\s+/).length,
-        lineCount: content.split('\n').length,
-      },
-      example: {
-        title: 'Serverless 환경에서 I/O 처리 최적화 경험기',
-        date: '2025-04-03',
-        tags: '[serverless, optimization]',
-        summary:
-          'Promise.all, Worker를 벤치마크하며 서버리스 환경에서의 I/O 처리 최적화 경험기를 공유합니다.',
-        slug: 'serverless-io-optimization',
-        category: 'code',
-        completed: 'true',
-      },
+      content_preview: content.substring(0, 300).replace(/\s+/g, ' ') + '...',
       instructions: {
-        purpose: "Generate or update the document's frontmatter properties based on its content",
-        usage:
-          'This tool is used to analyze the content of a Markdown file and automatically generate or update its frontmatter properties to improve organization and metadata accuracy.',
+        purpose: "Generate or update the document's frontmatter properties based on its content.",
+        usage: "Analyze the provided content_preview. If more detail is needed to generate accurate properties, you MUST first call the 'obsidian_vault' tool with the 'read' action to get the full document content.",
         content_type: 'markdown',
-        overwrite: !params.overwrite ? false : true,
+        overwrite: params.overwrite || false,
         output_format: "Return a JSON object with the following structure",
         schema: {
           title: "string - Title representing the core topic",
@@ -118,8 +102,8 @@ export const execute = async (params: ObsidianPropertyQueryParams): Promise<Call
           slug: "string - URL-friendly hyphenated identifier",
           date: "string - ISO 8601 date format",
           completed: "boolean - Whether content is finalized",
-          aliases: "string[] - Alternative names or synonyms (optional)",
-          category: "string - Document category (optional)"
+          aliases: "string[] - (Optional) Alternative names or synonyms",
+          category: "string - (Optional) Document category"
         },
       },
     };
