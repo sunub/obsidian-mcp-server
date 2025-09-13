@@ -33,14 +33,3 @@ export const obsidianPropertyOutputSchema = z.object({
   category: obsidianCategoryProperty.optional(),
   completed: obsidianCompletedProperty.optional(),
 }).describe('Extracted properties from the Obsidian document content');
-
-
-// aliases
-// cssclasses
-// tags
-// title
-// date
-// summary
-// slug
-// cateogry
-// completed
