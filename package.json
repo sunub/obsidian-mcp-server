@@ -10,25 +10,26 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rm -rf ./build && tsc && chmod 755 build/index.js"
+    "test": "vitest",
+    "build": "rm -rf ./build && tsc && chmod 755 build/index.js",
+    "inspector": "npx -y @modelcontextprotocol/inspector node ./build/index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.61.0",
-    "@google/genai": "^1.17.0",
     "@modelcontextprotocol/sdk": "^1.17.5",
     "dotenv": "^17.2.2",
     "gray-matter": "^4.0.3",
-    "ollama": "^0.5.17",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^24.3.1",
+    "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4"
   }
 }
