@@ -6,8 +6,6 @@ import {
 } from './params.js';
 import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
 import { DocumentManager } from '../../utils/DocumentManager.js';
-import { obsidianPropertyOutputSchema } from '../generate_obsidian_property/params.js';
-import { obsidianPropertyParamsSchema } from '../write_obsidian_property/params.js';
 import { execute as writePropertyExecute } from '../write_obsidian_property/index.js';
 
 export const name = 'create_document_with_properties';
@@ -61,6 +59,7 @@ export const execute = async (params: CreateDocumentWithPropertiesParams): Promi
       const writeResult = await writePropertyExecute({
         filePath: targetPath,
         properties: params.aiGeneratedProperties,
+        quiet: params.quiet || false,
       });
 
       return writeResult;
@@ -87,7 +86,7 @@ export const execute = async (params: CreateDocumentWithPropertiesParams): Promi
       
       content_to_analyze: {
         source_path: params.sourcePath,
-        content_preview: sourceContent.substring(0, 4000) + (sourceContent.length > 4000 ? '...' : ''),
+        content_preview: sourceContent.substring(0, 2000) + (sourceContent.length > 2000 ? '...' : ''),
       },
 
       // AI가 다시 호출해야 할 다음 작업에 대한 명확한 명세
@@ -97,7 +96,7 @@ export const execute = async (params: CreateDocumentWithPropertiesParams): Promi
           sourcePath: params.sourcePath,
           outputPath: params.outputPath,
           overwrite: params.overwrite,
-          // AI가 분석한 결과를 이 파라미터에 담아서 돌려달라고 명시
+          quiet: params.quiet,
           aiGeneratedProperties: "<- Insert your generated JSON object here." 
         },
         example_of_next_call: {
@@ -105,11 +104,14 @@ export const execute = async (params: CreateDocumentWithPropertiesParams): Promi
           parameters: {
             sourcePath: params.sourcePath,
             aiGeneratedProperties: {
-              title: "Example Title From Your Analysis",
-              tags: ["tag1", "tag2"],
-              summary: "An example summary you generated."
-              // ... other properties
-            }
+              title: 'Serverless 환경에서 I/O 처리 최적화 경험기',
+              date: '2025-04-03',
+              tags: ['serverless', 'optimization'],
+              summary: 'Promise.all, Worker를 벤치마크하며 서버리스 환경에서의 I/O 처리 최적화 경험기를 공유합니다.',
+              slug: 'serverless-io-optimization',
+              category: 'code',
+              completed: true
+            },
           }
         }
       }
