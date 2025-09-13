@@ -5,7 +5,7 @@ import { DocumentManager } from '../../utils/DocumentManager.js';
 import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
 import { listAllDocuments, readSpecificFile, searchDocuments, statsAllDocuments } from './utils.js';
 
-export const name = 'obsidian_vault';
+export const name = 'vault';
 
 export const annotations: ToolAnnotations = {
   title: 'Obsidian Content Getter',

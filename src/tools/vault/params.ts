@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+export const responseTypeSchema = z.enum(['text', 'audio', 'image', 'resource', 'resouce_link']).describe('The type of content being returned');
 const quietMode = z.boolean().default(true).describe('If true, suppresses non-error output messages. Default is false.');
 
 export const obsidianContentQueryParams = {
@@ -66,4 +67,18 @@ export const obsidianContentQueryParamsZod = z.object({
 
 export type ObsidianContentQueryParams = z.infer<typeof obsidianContentQueryParamsZod>;
 
-// export type ObsidianContentQueryParams = z.infer<typeof obsidianContentQueryParamsZod>;
+export const aiInstructionsSchema = z.object({
+  purpose: z.string().describe('The purpose of providing this content to the AI'),
+  usage: z.string().describe('How the AI should use this content'),
+  content_type: z.string().describe('The format of the content, e.g., markdown')
+}).describe('Instructions for AI on how to process the document content');
+
+export const metadataSchema = z.object({
+  fullPath: z.string().describe('The full path to the file in the vault'),
+  title: z.string().nullable().describe('The title of the document, if available'),
+  tags: z.array(z.string()).describe('List of tags associated with the document'),
+  category: z.string().describe('Category of the document, if available'),
+  date: z.string().nullable().describe('Creation date of the document in ISO 8601 format, if available'),
+  summary: z.string().nullable().describe('Brief summary or abstract of the document, if available'),
+  completed: z.boolean().describe('Indicates whether a task or item is completed')
+}).describe('Metadata extracted from the document frontmatter, if available');
