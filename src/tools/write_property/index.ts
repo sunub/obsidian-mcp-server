@@ -4,10 +4,10 @@ import { obsidianPropertyParamsSchema, ObsidianPropertyParams } from './params.j
 import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
 import { DocumentManager } from '../../utils/DocumentManager.js';
 
-export const name = 'write_obsidian_property';
+export const name = 'write_property';
 
 export const annotations: ToolAnnotations = {
-  title: 'write_obsidian_property',
+  title: 'Write Obsidian Property',
   openWorldHint: true,
 };
 

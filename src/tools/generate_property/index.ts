@@ -7,7 +7,7 @@ import {
 import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
 import { DocumentManager } from '../../utils/DocumentManager.js';
 
-export const name = 'generate_obsidian_properties';
+export const name = 'generate_property';
 
 export const annotations: ToolAnnotations = {
   title: 'Obsidian Property Writer',
