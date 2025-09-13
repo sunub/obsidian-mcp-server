@@ -1,6 +1,6 @@
 import matter from 'gray-matter';
 import { Transform, TransformCallback } from 'stream';
-import { FrontMatterSchema, type MatterTransformData } from './types.js'
+import { FrontMatterSchema, type MatterTransformData } from './types.js';
 
 export class MatterTransform extends Transform {
   private chunks: Buffer[] = [];
@@ -39,7 +39,7 @@ export class MatterTransform extends Transform {
           const frontmatter = FrontMatterSchema.parse(parsed.data);
 
           const transformData: MatterTransformData = {
-            content: parsed.content,
+            content: contentText, // ✅ 수정: 실제 파일 내용을 할당
             frontmatter,
             contentLength: contentText.length,
             hasContent: contentText.length > 0,
@@ -49,7 +49,7 @@ export class MatterTransform extends Transform {
           this.frontmatterProcessed = true;
           this._clearBuffers();
         } catch (error) {
-          console.warn('Frontmatter 파싱 실패:', error);
+          // console.warn('Frontmatter 파싱 실패:', error);
         }
       }
     }
