@@ -30,11 +30,6 @@ export default function createMcpServer(): McpServer {
     }
   );
 
-  const vaultPath = getParsedVaultPath();
-  if (!vaultPath) {
-    console.error('⚠️  VAULT_DIR_PATH is not set. Document-related features will not work.');
-  }
-  
   for (const tool of Object.values(tools)) {
     tool.register(mcpServer);
   }

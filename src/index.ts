@@ -1,8 +1,5 @@
 import createMcpServer from "./server.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 async function main() {
   try {
