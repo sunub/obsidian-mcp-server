@@ -9,6 +9,7 @@ const obsidianSummaryProperty = z.string().describe('Brief summary or abstract o
 const obsidianSlugProperty = z.string().describe('URL-friendly identifier for the document');
 const obsidianCategoryProperty = z.string().describe('Category or classification of the document');
 const obsidianCompletedProperty = z.boolean().describe('Indicates whether a task or item is completed');
+const quiteMode = z.boolean().default(true).describe('If true, suppresses non-error output messages. Default is false.');
 
 const obsidianPropertySchema = z.object({
   cssclasses: obsidianCssClassesProperty.optional(),
@@ -25,6 +26,7 @@ const obsidianPropertySchema = z.object({
 export const obsidianPropertyParamsSchema = z.object({
   filePath: z.string().min(1).describe('Path to the target markdown file within the Obsidian vault'),
   properties: obsidianPropertySchema.describe('Key-value pairs to be written to the file\'s frontmatter'),
+  quiet: quiteMode.optional(),
 }).describe('Parameters for writing properties to an Obsidian markdown file');
 
 export type ObsidianPropertyParams = z.infer<typeof obsidianPropertyParamsSchema>;

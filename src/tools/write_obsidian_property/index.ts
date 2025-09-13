@@ -93,23 +93,32 @@ export const execute = async (params: ObsidianPropertyParams): Promise<CallToolR
 
   try {
     const documentManager = new DocumentManager(vaultDirPath);
-    await documentManager.writeDocumentWithFrontmatter(
-      params.filePath,
-      params.properties
-    );
-    response.content.push({
-      type: 'text',
-      text: JSON.stringify(
+    await documentManager.writeDocumentWithFrontmatter(params.filePath, params.properties);
+
+    if (params.quiet) {
+      return {
+        isError: false,
+        content: [{ type: 'text', text: JSON.stringify({ status: 'success' }) }],
+      };
+    }
+
+    return {
+      isError: false,
+      content: [
         {
-          status: 'success',
-          message: `Successfully updated properties for ${params.filePath}`,
-          properties: params.properties,
+          type: 'text',
+          text: JSON.stringify(
+            {
+              status: 'success',
+              message: `Successfully updated properties for ${params.filePath}`,
+              properties: params.properties,
+            },
+            null,
+            2
+          ),
         },
-        null,
-        2
-      ),
-    });
-    return response;
+      ],
+    };
   } catch (error) {
     response.content.push({
       type: 'text',
