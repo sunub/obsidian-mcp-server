@@ -8,7 +8,10 @@
     "build"
   ],
   "version": "1.0.0",
-  "main": "index.js",
+  "exports": {
+    ".": "./build/index.js"
+  },
+  "module": "src/index.ts",
   "scripts": {
     "test": "vitest",
     "build": "rm -rf ./build && tsc && chmod 755 build/index.js",
@@ -17,7 +20,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "A server for the Obsidian Model Context Protocol.",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
     "dotenv": "^17.2.2",
