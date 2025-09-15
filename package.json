@@ -22,7 +22,7 @@
   "exports": {
     ".": "./build/index.js"
   },
-  "module": "build/index.js",
+  "module": "src/index.ts",
   "scripts": {
     "smithery:dev": "npx @smithery/cli dev",
     "smithery:build": "npx @smithery/cli build",

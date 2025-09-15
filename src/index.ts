@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'url';
 import createMcpServer from './server.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
