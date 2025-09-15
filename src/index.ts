@@ -1,5 +1,11 @@
+import { fileURLToPath } from "url";
 import createMcpServer from "./server.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+export default function smitheryEntryPoint() {
+  const server = createMcpServer();
+  return server.server;
+}
 
 async function main() {
   try {
@@ -13,7 +19,12 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error("Fatal error in main():", error);
-  process.exit(1);
-});
+const currentFilePath = fileURLToPath(import.meta.url);
+const mainScriptPath = process.argv[1];
+
+if (currentFilePath === mainScriptPath) {
+  main().catch((error) => {
+    console.error("main() 함수에서 치명적인 오류가 발생했습니다:", error);
+    process.exit(1);
+  });
+}
