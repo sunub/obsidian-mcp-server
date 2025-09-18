@@ -1,8 +1,8 @@
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { obsidianPropertyParamsSchema, ObsidianPropertyParams } from './params.js';
-import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
-import { DocumentManager } from '../../utils/DocumentManager.js';
+import { getParsedVaultPath } from '@/utils/parseVaultPath.js';
+import { VaultManager } from '@/utils/VaultManager.js';
 
 export const name = 'write_property';
 
@@ -92,8 +92,8 @@ export const execute = async (params: ObsidianPropertyParams): Promise<CallToolR
   }
 
   try {
-    const documentManager = new DocumentManager(vaultDirPath);
-    await documentManager.writeDocumentWithFrontmatter(params.filePath, params.properties);
+    const vaultManager = new VaultManager(vaultDirPath);
+    await vaultManager.writeDocument(params.filePath, params.properties);
 
     if (params.quiet) {
       return {

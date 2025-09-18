@@ -4,8 +4,8 @@ import {
   ObsidianPropertyQueryParams,
   obsidianPropertyQueryParamsSchema,
 } from './params.js';
-import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
-import { DocumentManager } from '../../utils/DocumentManager.js';
+import { getParsedVaultPath } from '@/utils/parseVaultPath.js';
+import { VaultManager } from '@/utils/VaultManager.js';
 
 export const name = 'generate_property';
 
@@ -68,9 +68,9 @@ export const execute = async (params: ObsidianPropertyQueryParams): Promise<Call
 
   const vaultDirPath = getParsedVaultPath();
   try {
-    const documentManager = new DocumentManager(vaultDirPath);
-    const content = await documentManager.getDocumentContent(params.filename!);
-    if (content === null) {
+    const vaultManager = new VaultManager(vaultDirPath);
+    const document = await vaultManager.getDocumentInfo(params.filename!);
+    if (document === null) {
       response.content.push({
         type: 'text',
         text: JSON.stringify(
@@ -88,7 +88,7 @@ export const execute = async (params: ObsidianPropertyQueryParams): Promise<Call
 
     const documentData = {
       filename: params.filename,
-      content_preview: content.substring(0, 300).replace(/\s+/g, ' ') + '...',
+      content_preview: document.content.substring(0, 300).replace(/\s+/g, ' ') + '...',
       instructions: {
         purpose: "Generate or update the document's frontmatter properties based on its content.",
         usage: "Analyze the provided content_preview. If more detail is needed to generate accurate properties, you MUST first call the 'obsidian_vault' tool with the 'read' action to get the full document content.",

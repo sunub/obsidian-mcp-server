@@ -1,7 +1,7 @@
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { obsidianContentQueryParamsZod, type ObsidianContentQueryParams } from './params.js';
 import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { DocumentManager } from '../../utils/DocumentManager.js';
+import { VaultManager } from '../../utils/VaultManager.js'; 
 import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
 import { listAllDocuments, readSpecificFile, searchDocuments, statsAllDocuments } from './utils.js';
 
@@ -59,9 +59,8 @@ export const execute = async (params: ObsidianContentQueryParams): Promise<CallT
   }
 
   try {
-    const documentManager = new DocumentManager(vaultDirPath);
+    const vaultManager = new VaultManager(vaultDirPath);
 
-    // 액션별 파라미터 검증
     switch (params.action) {
       case 'search':
         if (!params.keyword?.trim()) {
@@ -77,7 +76,7 @@ export const execute = async (params: ObsidianContentQueryParams): Promise<CallT
             isError: true
           };
         }
-        return await searchDocuments(documentManager, params);
+        return await searchDocuments(vaultManager, params);
 
       case 'read':
         if (!params.filename?.trim()) {
@@ -93,13 +92,13 @@ export const execute = async (params: ObsidianContentQueryParams): Promise<CallT
             isError: true
           };
         }
-        return await readSpecificFile(documentManager, params);
+        return await readSpecificFile(vaultManager, params);
 
       case 'list_all':
-        return await listAllDocuments(documentManager, params);
+        return await listAllDocuments(vaultManager, params);
 
       case 'stats':
-        return await statsAllDocuments(documentManager);
+        return await statsAllDocuments(vaultManager);
 
       default:
         return {

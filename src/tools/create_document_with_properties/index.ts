@@ -4,8 +4,8 @@ import {
   CreateDocumentWithPropertiesParams,
   createDocumentWithPropertiesParamsSchema,
 } from './params.js';
-import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
-import { DocumentManager } from '../../utils/DocumentManager.js';
+import { getParsedVaultPath } from '@/utils/parseVaultPath.js';
+import { VaultManager } from '@/utils/VaultManager.js';
 import { execute as writePropertyExecute } from '../write_property/index.js';
 
 export const name = 'create_document_with_properties';
@@ -52,7 +52,7 @@ export const execute = async (params: CreateDocumentWithPropertiesParams): Promi
   }
 
   try {
-    const documentManager = new DocumentManager(vaultDirPath);
+    const vaultManager = new VaultManager(vaultDirPath);
     const targetPath = params.outputPath || params.sourcePath;
 
     if (params.aiGeneratedProperties) {
@@ -65,8 +65,8 @@ export const execute = async (params: CreateDocumentWithPropertiesParams): Promi
       return writeResult;
     }
 
-    const sourceContent = await documentManager.getDocumentContent(params.sourcePath);
-    if (sourceContent === null) {
+    const document = await vaultManager.getDocumentInfo(params.sourcePath);
+    if (document === null) {
       return {
         isError: true,
         content: [{
@@ -86,7 +86,7 @@ export const execute = async (params: CreateDocumentWithPropertiesParams): Promi
       
       content_to_analyze: {
         source_path: params.sourcePath,
-        content_preview: sourceContent.substring(0, 2000) + (sourceContent.length > 2000 ? '...' : ''),
+        content_preview: document.content.substring(0, 2000) + (document.content.length > 2000 ? '...' : ''),
       },
 
       // AI가 다시 호출해야 할 다음 작업에 대한 명확한 명세
