@@ -36,7 +36,7 @@ describe('Obsidian MCP Server E2E Tests', () => {
   beforeAll(async () => {
     mcpClient = new Client({ name: 'test-client', version: '1.0.0' });
     transport = new StdioClientTransport({
-      command: 'tsx',
+      command: 'node',
       args: ['build/index.js'],
       env: { VAULT_DIR_PATH: TEST_VAULT_PATH },
     });
