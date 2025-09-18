@@ -1,16 +1,7 @@
+import { FrontMatterSchema } from '@/utils/processor/types.js';
 import { z } from 'zod';
 
-// Schema for document metadata
-const DocumentMetadataSchema = z.object({
-  title: z.string(),
-  tags: z.array(z.string()),
-  category: z.string(),
-  date: z.string().nullable(),
-  summary: z.string().nullable(),
-  completed: z.boolean(),
-});
-
-// Schema for document stats
+const DocumentMetadataSchema = FrontMatterSchema;
 const DocumentStatsSchema = z.object({
   contentLength: z.number(),
   hasContent: z.boolean(),
@@ -30,7 +21,7 @@ const PreviewContentSchema = z.object({
 });
 
 // Schema for a single document
-const DocumentSchema = z.object({
+export const DocumentSchema = z.object({
   filename: z.string(),
   fullPath: z.string(),
   metadata: DocumentMetadataSchema,
@@ -51,7 +42,6 @@ export const SearchSuccessSchema = z.object({
   found: z.number(),
   total_in_vault: z.number(),
   documents: z.array(DocumentSchema),
-  ai_instructions: AiInstructionsSchema,
 });
 
 // Schema for when no documents are found
@@ -89,7 +79,6 @@ export type DocumentStats = z.infer<typeof DocumentStatsSchema>;
 export type FullContent = z.infer<typeof FullContentSchema>;
 export type PreviewContent = z.infer<typeof PreviewContentSchema>;
 export type Document = z.infer<typeof DocumentSchema>;
-export type AiInstructions = z.infer<typeof AiInstructionsSchema>;
 export type SearchSuccess = z.infer<typeof SearchSuccessSchema>;
 export type SearchNotFound = z.infer<typeof SearchNotFoundSchema>;
 export type SearchQuiet = z.infer<typeof SearchQuietSchema>;
