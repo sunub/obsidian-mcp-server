@@ -27,7 +27,8 @@
     "smithery:dev": "npx @smithery/cli dev",
     "smithery:build": "npx @smithery/cli build",
     "test": "vitest",
-    "build": "tsc && chmod 755 build/index.js",
+    "test:watch": "vitest --watch",
+    "build": "tsc && tsc-alias && chmod 755 build/index.js",
     "inspector": "npx -y @modelcontextprotocol/inspector node ./build/index.js"
   },
   "author": "",
@@ -43,6 +44,7 @@
     "@types/node": "^24.3.1",
     "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vite-tsconfig-paths": "^5.1.4",
