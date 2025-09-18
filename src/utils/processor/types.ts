@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
-const PostCategorySchema = z.union([z.literal('web'), z.literal('algorithm'), z.literal('cs'), z.literal('code')]).optional();
+const PostCategorySchema = z
+  .union([z.literal('web'), z.literal('algorithm'), z.literal('cs'), z.literal('code')])
+  .optional();
 
 const DateStringSchema = z.union([z.string(), z.date()]).optional();
 
-const FrontMatterSchema = z.object({
+export const FrontMatterSchema = z.object({
   title: z.string().optional(),
   date: DateStringSchema,
   tags: z.array(z.string()).optional(),
@@ -33,6 +35,7 @@ export interface MatterTransformData {
   frontmatter: FrontMatter;
   contentLength: number;
   hasContent: boolean;
+  imageLinks?: string[];
 }
 
 export const PostFrontMatterSchema = z.object({
@@ -67,7 +70,31 @@ export interface ProcessedDocument {
   content: string;
   contentLength: number;
   hasContent: boolean;
+  imageLinks?: string[];
 }
 
-export { CacheDataSchema, FrontMatterSchema, PostCategorySchema };
+export interface ParsedMatter {
+  frontmatter: FrontMatter;
+  content: string;
+}
+
+export interface DocumentIndex {
+  filePath: string;
+  frontmatter: FrontMatter;
+  contentLength: number;
+  imageLinks: string[];
+  documentLinks: string[];
+}
+
+export const DocumentIndexSchema = z.object({
+  filePath: z.string(),
+  frontmatter: FrontMatterSchema,
+  contentLength: z.number(),
+  imageLinks: z.array(z.string()),
+  documentLinks: z.array(z.string()),
+});
+
+export const DocumentIndexResponseSchema = z.array(DocumentIndexSchema);
+
+export { CacheDataSchema, PostCategorySchema };
 export type { CacheData, FrontMatter, PostCategory };
