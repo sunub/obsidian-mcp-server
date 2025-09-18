@@ -36,7 +36,7 @@ export default [
     "tags": ["test", "initial"],
     "content": {
       "type": "text",
-      "text": "# Test Note\n\nProject Testing Strategy\nEnsuring the reliability, stability, and correctness of the obsidian-mcp-server is a top priority. To achieve this, we have implemented a comprehensive, multi-layered testing strategy. This document outlines our approach to testing, from individual components to the system as a whole."
+      "text": "# Test Note\n\nProject Testing Strategy\nEnsuring the reliability, stability, and correctness of the obsidian-mcp-server is a top priority.\n ![[demo_img.png]]\n To achieve this, we have implemented a comprehensive, multi-layered testing strategy. This document outlines our approach to testing, from individual components to the system as a whole."
     }
   }
 ]
