@@ -2,6 +2,8 @@
 
 `obsidian-mcp-server`는 [Model Context Protocol(MCP)](https://modelcontextprotocol.io/docs/getting-started/intro)을 구현한 서버로, 로컬 Obsidian vault의 문서들을 AI 에이전트나 외부 애플리케이션에서 쉽게 탐색하고 관리할 수 있도록 강력한 도구 API를 제공합니다.
 
+Obsidian Vault를 이용해 AI가 활용 가능한 지식 베이스(Knowledge Base)로 확장하여 사용할 수 있게끔 하고 문서 검색, 요약, 정리와 같은 부가적인 작업을 자동화하여 사용자가 핵심적인 "글쓰기 활동"에만 집중할 수 있는 환경을 구축하고자 제작했습니다.
+
 ## 핵심 아키텍처
 
 본 서버는 `VaultManager`와 `Indexer`를 중심으로 구축되어 대규모 Vault에서도 높은 성능과 메모리 효율성을 보장합니다.
