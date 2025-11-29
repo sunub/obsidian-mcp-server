@@ -6,6 +6,7 @@ import matter from 'gray-matter';
 import { DirectoryWalker } from './DirectoryWalker.js';
 import { Indexer } from './Indexer.js';
 import type { DocumentIndex } from './processor/types.js';
+import { Semaphore } from './semaphore.js';
 
 export interface EnrichedDocument extends DocumentIndex {
   content: string;
@@ -27,11 +28,13 @@ export class VaultManager {
   private isInitialized: boolean = false;
   private walker: DirectoryWalker;
   private indexer: Indexer;
+  private ioSemaphore: Semaphore;
 
-  constructor(vaultPath: string) {
+  constructor(vaultPath: string, maxConcurrentIO: number = 10) {
     this.vaultPath = vaultPath;
     this.walker = new DirectoryWalker(['.md', '.mdx']);
     this.indexer = new Indexer();
+    this.ioSemaphore = new Semaphore(maxConcurrentIO);
   }
 
   async initialize(): Promise<void> {
@@ -89,10 +92,15 @@ export class VaultManager {
   }
 
   public async writeDocument(fullPath: string, frontmatter: Record<string, any>): Promise<void> {
-    const content = (await this.getDocumentContent(fullPath)) || '';
-    const newDocument = matter.stringify(content, frontmatter);
-    await writeFile(fullPath, newDocument, 'utf8');
-    await this.refresh();
+    await this.ioSemaphore.acquire();
+    try {
+      const content = (await this.getDocumentContent(fullPath)) || '';
+      const newDocument = matter.stringify(content, frontmatter);
+      await writeFile(fullPath, newDocument, 'utf8');
+      await this.refresh();
+    } finally {
+      this.ioSemaphore.release();
+    }
   }
 
   public async refresh(): Promise<void> {
@@ -149,12 +157,21 @@ export class VaultManager {
     return '';
   }
 
-  private async getDocumentContent(filePath: string): Promise<string | null> {
+  private async readDocumentContent(filePath: string): Promise<string | null> {
     try {
       return await readFile(filePath, 'utf-8');
     } catch (error) {
       console.error(`파일 내용을 읽는 중 오류 발생: ${filePath}`, error);
       return null;
+    }
+  }
+
+  private async getDocumentContent(filePath: string): Promise<string | null> {
+    await this.ioSemaphore.acquire();
+    try {
+      return await this.readDocumentContent(filePath);
+    } finally {
+      this.ioSemaphore.release();
     }
   }
 
