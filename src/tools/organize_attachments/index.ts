@@ -1,15 +1,21 @@
-import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
-import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { organizeAttachmentsParamsSchema, OrganizeAttachmentsParams } from './params.js';
-import { getParsedVaultPath } from '@/utils/parseVaultPath.js';
-import { VaultManager } from '@/utils/VaultManager.js';
-import { genreateOrganizationTasks } from './utils.js';
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type {
+	CallToolResult,
+	ToolAnnotations,
+} from "@modelcontextprotocol/sdk/types.js";
+import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
+import { getParsedVaultPath } from "@/utils/parseVaultPath.js";
+import {
+	type OrganizeAttachmentsParams,
+	organizeAttachmentsParamsSchema,
+} from "./params.js";
+import { genreateOrganizationTasks } from "./utils.js";
 
-export const name = 'organize_attachments';
+export const name = "organize_attachments";
 
 export const annotations: ToolAnnotations = {
-  title: 'Organize Attachments',
-  openWorldHint: true,
+	title: "Organize Attachments",
+	openWorldHint: true,
 };
 
 export const description = `
@@ -31,71 +37,103 @@ export const description = `
 `;
 
 export const register = (mcpServer: McpServer) => {
-  mcpServer.registerTool(
-    name,
-    {
-      title: annotations.title || name,
-      description: description,
-      inputSchema: organizeAttachmentsParamsSchema.shape,
-      annotations: annotations,
-    },
-    execute
-  );
+	mcpServer.registerTool(
+		name,
+		{
+			title: annotations.title || name,
+			description: description,
+			inputSchema: organizeAttachmentsParamsSchema.shape,
+			annotations: annotations,
+		},
+		execute,
+	);
 };
 
-export const execute = async (params: OrganizeAttachmentsParams): Promise<CallToolResult> => {
-  const vaultDirPath = getParsedVaultPath();
-  if (!vaultDirPath) {
-    return {
-      isError: true,
-      content: [{ type: 'text', text: JSON.stringify({ error: 'VAULT_DIR_PATH is not set' }) }],
-    };
-  }
+export const execute = async (
+	params: OrganizeAttachmentsParams,
+): Promise<CallToolResult> => {
+	const vaultDirPath = getParsedVaultPath();
+	if (!vaultDirPath) {
+		return {
+			isError: true,
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify({ error: "VAULT_DIR_PATH is not set" }),
+				},
+			],
+		};
+	}
 
-  try {
-    const vaultManager = new VaultManager(vaultDirPath);
-    await vaultManager.initialize();
+	let vaultManager = null;
+	try {
+		vaultManager = getGlobalVaultManager();
+	} catch (e) {
+		return {
+			isError: true,
+			content: [
+				{ type: "text", text: JSON.stringify({ error: (e as Error).message }) },
+			],
+		};
+	}
+	try {
+		await vaultManager.initialize();
 
-    const documents = await vaultManager.searchDocuments(params.keyword);
-    if (documents.length === 0) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({ error: `No document found for keyword: ${params.keyword}` }),
-          },
-        ],
-      };
-    }
+		const documents = await vaultManager.searchDocuments(params.keyword);
+		if (documents.length === 0) {
+			return {
+				isError: true,
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify({
+							error: `No document found for keyword: ${params.keyword}`,
+						}),
+					},
+				],
+			};
+		}
 
-    const organizationTasks = genreateOrganizationTasks(documents, vaultDirPath);
-    const results = await Promise.all(organizationTasks.map(task => task()));
-    
-    return {
-      isError: false,
-      content: [{ 
-        type: 'text', 
-        text: JSON.stringify({
-          summary: `Processed ${documents.length} document(s).`,
-          details: results
-        }, null, 2)
-      }],
-    };
+		const organizationTasks = genreateOrganizationTasks(
+			documents,
+			vaultDirPath,
+		);
+		const results = await Promise.all(organizationTasks.map((task) => task()));
 
-  } catch (error) {
-    return {
-      isError: true,
-      content: [{ type: 'text', text: JSON.stringify({ error: (error as Error).message }, null, 2) }]
-    };
-  }
+		return {
+			isError: false,
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify(
+						{
+							summary: `Processed ${documents.length} document(s).`,
+							details: results,
+						},
+						null,
+						2,
+					),
+				},
+			],
+		};
+	} catch (error) {
+		return {
+			isError: true,
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify({ error: (error as Error).message }, null, 2),
+				},
+			],
+		};
+	}
 };
 
 export default {
-  name,
-  description,
-  annotations,
-  inputSchema: organizeAttachmentsParamsSchema.shape,
-  execute,
-  register,
+	name,
+	description,
+	annotations,
+	inputSchema: organizeAttachmentsParamsSchema.shape,
+	execute,
+	register,
 };

@@ -1,15 +1,26 @@
-import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
-import { obsidianContentQueryParamsZod, type ObsidianContentQueryParams } from './params.js';
-import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { VaultManager } from '../../utils/VaultManager.js'; 
-import { getParsedVaultPath } from '../../utils/parseVaultPath.js';
-import { listAllDocuments, readSpecificFile, searchDocuments, statsAllDocuments } from './utils.js';
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type {
+	CallToolResult,
+	ToolAnnotations,
+} from "@modelcontextprotocol/sdk/types.js";
+import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
+import { getParsedVaultPath } from "../../utils/parseVaultPath.js";
+import {
+	type ObsidianContentQueryParams,
+	obsidianContentQueryParamsZod,
+} from "./params.js";
+import {
+	listAllDocuments,
+	readSpecificFile,
+	searchDocuments,
+	statsAllDocuments,
+} from "./utils.js";
 
-export const name = 'vault';
+export const name = "vault";
 
 export const annotations: ToolAnnotations = {
-  title: 'Obsidian Content Getter',
-  openWorldHint: true,
+	title: "Obsidian Content Getter",
+	openWorldHint: true,
 };
 
 export const description = `
@@ -28,114 +39,158 @@ export const description = `
 `;
 
 export const register = (mcpServer: McpServer) => {
-  mcpServer.registerTool(
-    name,
-    {
-      title: annotations.title || name,
-      description: description,
-      inputSchema: obsidianContentQueryParamsZod.shape,
-      annotations: annotations,
-    },
-    execute
-  );
+	mcpServer.registerTool(
+		name,
+		{
+			title: annotations.title || name,
+			description: description,
+			inputSchema: obsidianContentQueryParamsZod.shape,
+			annotations: annotations,
+		},
+		execute,
+	);
 };
 
-export const execute = async (params: ObsidianContentQueryParams): Promise<CallToolResult> => {
-  const vaultDirPath = getParsedVaultPath();
-  
-  // Vault 경로 검증
-  if (!vaultDirPath) {
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          error: "VAULT_DIR_PATH environment variable is not set",
-          action: params.action,
-          solution: "Set VAULT_DIR_PATH to your Obsidian vault directory"
-        }, null, 2)
-      }],
-      isError: true
-    };
-  }
+export const execute = async (
+	params: ObsidianContentQueryParams,
+): Promise<CallToolResult> => {
+	const vaultDirPath = getParsedVaultPath();
 
-  try {
-    const vaultManager = new VaultManager(vaultDirPath);
+	// Vault 경로 검증
+	if (!vaultDirPath) {
+		return {
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify(
+						{
+							error: "VAULT_DIR_PATH environment variable is not set",
+							action: params.action,
+							solution: "Set VAULT_DIR_PATH to your Obsidian vault directory",
+						},
+						null,
+						2,
+					),
+				},
+			],
+			isError: true,
+		};
+	}
 
-    switch (params.action) {
-      case 'search':
-        if (!params.keyword?.trim()) {
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                error: "keyword parameter is required for search action",
-                action: params.action,
-                example: { action: "search", keyword: "project", includeContent: true }
-              }, null, 2)
-            }],
-            isError: true
-          };
-        }
-        return await searchDocuments(vaultManager, params);
+	let vaultManager = null;
+	try {
+		vaultManager = getGlobalVaultManager();
+	} catch (e) {
+		return {
+			isError: true,
+			content: [
+				{ type: "text", text: JSON.stringify({ error: (e as Error).message }) },
+			],
+		};
+	}
 
-      case 'read':
-        if (!params.filename?.trim()) {
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                error: "filename parameter is required for read action",
-                action: params.action,
-                example: { action: "read", filename: "meeting-notes.md" }
-              }, null, 2)
-            }],
-            isError: true
-          };
-        }
-        return await readSpecificFile(vaultManager, params);
+	try {
+		switch (params.action) {
+			case "search":
+				if (!params.keyword?.trim()) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: JSON.stringify(
+									{
+										error: "keyword parameter is required for search action",
+										action: params.action,
+										example: {
+											action: "search",
+											keyword: "project",
+											includeContent: true,
+										},
+									},
+									null,
+									2,
+								),
+							},
+						],
+						isError: true,
+					};
+				}
+				return await searchDocuments(vaultManager, params);
 
-      case 'list_all':
-        return await listAllDocuments(vaultManager, params);
+			case "read":
+				if (!params.filename?.trim()) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: JSON.stringify(
+									{
+										error: "filename parameter is required for read action",
+										action: params.action,
+										example: { action: "read", filename: "meeting-notes.md" },
+									},
+									null,
+									2,
+								),
+							},
+						],
+						isError: true,
+					};
+				}
+				return await readSpecificFile(vaultManager, params);
 
-      case 'stats':
-        return await statsAllDocuments(vaultManager);
+			case "list_all":
+				return await listAllDocuments(vaultManager, params);
 
-      default:
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              error: `Unknown action: ${params.action}`,
-              valid_actions: ['search', 'read', 'list_all', 'stats'],
-              action: params.action
-            }, null, 2)
-          }],
-          isError: true
-        };
-    }
+			case "stats":
+				return await statsAllDocuments(vaultManager);
 
-  } catch (error) {
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          error: `Execution failed: ${error instanceof Error ? error.message : String(error)}`,
-          action: params.action,
-          vault_path: vaultDirPath,
-          timestamp: new Date().toISOString()
-        }, null, 2)
-      }],
-      isError: true
-    };
-  }
+			default:
+				return {
+					content: [
+						{
+							type: "text",
+							text: JSON.stringify(
+								{
+									error: `Unknown action: ${params.action}`,
+									valid_actions: ["search", "read", "list_all", "stats"],
+									action: params.action,
+								},
+								null,
+								2,
+							),
+						},
+					],
+					isError: true,
+				};
+		}
+	} catch (error) {
+		return {
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify(
+						{
+							error: `Execution failed: ${error instanceof Error ? error.message : String(error)}`,
+							action: params.action,
+							vault_path: vaultDirPath,
+							timestamp: new Date().toISOString(),
+						},
+						null,
+						2,
+					),
+				},
+			],
+			isError: true,
+		};
+	}
 };
-
 
 export default {
-  name,
-  description,
-  annotations,
-  inputSchema: obsidianContentQueryParamsZod.shape,
-  execute,
-  register,
+	name,
+	description,
+	annotations,
+	inputSchema: obsidianContentQueryParamsZod.shape,
+	execute,
+	register,
 };

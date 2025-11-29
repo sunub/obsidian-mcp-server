@@ -1,14 +1,20 @@
-import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
-import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { obsidianPropertyParamsSchema, ObsidianPropertyParams } from './params.js';
-import { getParsedVaultPath } from '@/utils/parseVaultPath.js';
-import { VaultManager } from '@/utils/VaultManager.js';
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type {
+	CallToolResult,
+	ToolAnnotations,
+} from "@modelcontextprotocol/sdk/types.js";
+import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
+import { getParsedVaultPath } from "@/utils/parseVaultPath.js";
+import {
+	type ObsidianPropertyParams,
+	obsidianPropertyParamsSchema,
+} from "./params.js";
 
-export const name = 'write_property';
+export const name = "write_property";
 
 export const annotations: ToolAnnotations = {
-  title: 'Write Obsidian Property',
-  openWorldHint: true,
+	title: "Write Obsidian Property",
+	openWorldHint: true,
 };
 
 export const description = `
@@ -58,88 +64,103 @@ export const description = `
 `;
 
 export const register = (mcpServer: McpServer) => {
-  mcpServer.registerTool(
-    name,
-    {
-      title: annotations.title || name,
-      description: description,
-      inputSchema: obsidianPropertyParamsSchema.shape,
-      annotations: annotations,
-    },
-    execute
-  );
+	mcpServer.registerTool(
+		name,
+		{
+			title: annotations.title || name,
+			description: description,
+			inputSchema: obsidianPropertyParamsSchema.shape,
+			annotations: annotations,
+		},
+		execute,
+	);
 };
 
-export const execute = async (params: ObsidianPropertyParams): Promise<CallToolResult> => {
-  const response: CallToolResult = { content: [], isError: false };
+export const execute = async (
+	params: ObsidianPropertyParams,
+): Promise<CallToolResult> => {
+	const response: CallToolResult = { content: [], isError: false };
 
-  const vaultDirPath = getParsedVaultPath();
-  if (!vaultDirPath) {
-    response.content.push({
-      type: 'text',
-      text: JSON.stringify(
-        {
-          error: 'VAULT_DIR_PATH is not set. Cannot write properties to file.',
-          suggestion:
-            'Please set the VAULT_DIR_PATH environment variable to your Obsidian vault path.',
-        },
-        null,
-        2
-      ),
-    });
-    response.isError = true;
-    return response;
-  }
+	const vaultDirPath = getParsedVaultPath();
+	if (!vaultDirPath) {
+		response.content.push({
+			type: "text",
+			text: JSON.stringify(
+				{
+					error: "VAULT_DIR_PATH is not set. Cannot write properties to file.",
+					suggestion:
+						"Please set the VAULT_DIR_PATH environment variable to your Obsidian vault path.",
+				},
+				null,
+				2,
+			),
+		});
+		response.isError = true;
+		return response;
+	}
 
-  try {
-    const vaultManager = new VaultManager(vaultDirPath);
-    await vaultManager.writeDocument(params.filePath, params.properties);
+	let vaultManager = null;
+	try {
+		vaultManager = getGlobalVaultManager();
+	} catch (e) {
+		return {
+			isError: true,
+			content: [
+				{ type: "text", text: JSON.stringify({ error: (e as Error).message }) },
+			],
+		};
+	}
 
-    if (params.quiet) {
-      return {
-        isError: false,
-        content: [{ type: 'text', text: JSON.stringify({ status: 'success' }) }],
-      };
-    }
+	try {
+		await vaultManager.writeDocument(params.filePath, params.properties);
 
-    return {
-      isError: false,
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              status: 'success',
-              message: `Successfully updated properties for ${params.filePath}`,
-              properties: params.properties,
-            },
-            null,
-            2
-          ),
-        },
-      ],
-    };
-  } catch (error) {
-    response.content.push({
-      type: 'text',
-      text: JSON.stringify(
-        {
-          error: (error as Error).message || 'An unknown error occurred.',
-        },
-        null,
-        2
-      ),
-    });
-    response.isError = true;
-    return response;
-  }
+		if (params.quiet) {
+			return {
+				isError: false,
+				content: [
+					{ type: "text", text: JSON.stringify({ status: "success" }) },
+				],
+			};
+		}
+
+		return {
+			isError: false,
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify(
+						{
+							status: "success",
+							message: `Successfully updated properties for ${params.filePath}`,
+							properties: params.properties,
+						},
+						null,
+						2,
+					),
+				},
+			],
+		};
+	} catch (error) {
+		response.content.push({
+			type: "text",
+			text: JSON.stringify(
+				{
+					error: (error as Error).message || "An unknown error occurred.",
+				},
+				null,
+				2,
+			),
+		});
+		response.isError = true;
+		return response;
+	}
 };
 
 export default {
-  name,
-  description,
-  annotations,
-  inputSchema: obsidianPropertyParamsSchema.shape,
-  execute,
-  register,
+	name,
+	description,
+	annotations,
+	inputSchema: obsidianPropertyParamsSchema.shape,
+	execute,
+	register,
 };
