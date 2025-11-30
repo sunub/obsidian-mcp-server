@@ -1,15 +1,15 @@
 {
-	"name": "obsidian-mcp-server",
+	"name": "@sunub/obsidian-mcp-server",
 	"version": "1.0.0",
 	"description": "A server for the Obsidian Model Context Protocol.",
 	"keywords": [
 		"obsidian",
 		"mcp",
-		"model context protocol",
-		"server"
+		"model context protocol"
 	],
 	"type": "module",
 	"bin": "build/index.js",
+  "homepage": "https://github.com/sunub/obsidian-mcp-server",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/sunub/obsidian-mcp-server"
@@ -32,7 +32,7 @@
 		"lint": "npx biome lint --write",
 		"check": "npx biome check --write"
 	},
-	"author": "",
+	"author": "sunub",
 	"license": "ISC",
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.17.5",
