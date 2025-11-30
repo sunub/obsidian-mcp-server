@@ -3,8 +3,8 @@ import type {
 	CallToolResult,
 	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
+import state from "@/config.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
-import { getParsedVaultPath } from "@/utils/parseVaultPath.js";
 import {
 	type ObsidianPropertyParams,
 	obsidianPropertyParamsSchema,
@@ -81,7 +81,7 @@ export const execute = async (
 ): Promise<CallToolResult> => {
 	const response: CallToolResult = { content: [], isError: false };
 
-	const vaultDirPath = getParsedVaultPath();
+	const vaultDirPath = state.vaultPath;
 	if (!vaultDirPath) {
 		response.content.push({
 			type: "text",

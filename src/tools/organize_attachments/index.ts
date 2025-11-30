@@ -3,8 +3,8 @@ import type {
 	CallToolResult,
 	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
+import state from "@/config.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
-import { getParsedVaultPath } from "@/utils/parseVaultPath.js";
 import {
 	type OrganizeAttachmentsParams,
 	organizeAttachmentsParamsSchema,
@@ -52,7 +52,7 @@ export const register = (mcpServer: McpServer) => {
 export const execute = async (
 	params: OrganizeAttachmentsParams,
 ): Promise<CallToolResult> => {
-	const vaultDirPath = getParsedVaultPath();
+	const vaultDirPath = state.vaultPath;
 	if (!vaultDirPath) {
 		return {
 			isError: true,

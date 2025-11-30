@@ -1,4 +1,4 @@
-import { getParsedVaultPath } from "./parseVaultPath.js";
+import state from "@/config.js";
 import { VaultManager } from "./VaultManager.js";
 
 let instance: VaultManager | null = null;
@@ -8,7 +8,7 @@ export function getGlobalVaultManager(): VaultManager {
 		return instance;
 	}
 
-	const vaultPath = getParsedVaultPath();
+	const vaultPath = state.vaultPath;
 	if (!vaultPath) {
 		throw new Error("VAULT_DIR_PATH environment variable is not set");
 	}
