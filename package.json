@@ -1,6 +1,6 @@
 {
 	"name": "@sunub/obsidian-mcp-server",
-	"version": "1.0.0",
+	"version": "0.0.1",
 	"description": "A server for the Obsidian Model Context Protocol.",
 	"keywords": [
 		"obsidian",
@@ -8,8 +8,10 @@
 		"model context protocol"
 	],
 	"type": "module",
-	"bin": "build/index.js",
-  "homepage": "https://github.com/sunub/obsidian-mcp-server",
+	"bin": {
+		"obsidian-mcp-server": "build/index.js"
+	},
+	"homepage": "https://github.com/sunub/obsidian-mcp-server",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/sunub/obsidian-mcp-server"
