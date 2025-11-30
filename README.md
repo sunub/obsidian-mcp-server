@@ -49,45 +49,117 @@ Vault 내 문서를 탐색하고 분석하는 핵심 도구입니다. `action` �
 
 키워드로 문서를 찾아 해당 문서에 연결된 모든 첨부 파일을 `images/{문서 제목}` 폴더로 이동시키고, 문서 내의 링크를 자동으로 업데이트합니다.
 
-## 시작하기
+## 설치 및 사용
 
-1.  **저장소 복제 및 의존성 설치**:
+### MCP 클라이언트 설정
 
-    ```bash
-    git clone https://github.com/sunub/obsidian-mcp-server.git
-    cd obsidian-mcp-server
-    npm install
-    ```
+MCP를 지원하는 AI 도구(Claude Desktop, Gemini 등)의 설정 파일에 다음 구성을 추가하세요.
 
-2.  **환경 변수 설정**:
-    프로젝트 루트에 `.env` 파일을 생성하고 Obsidian vault의 절대 경로를 지정합니다.
+#### Claude Desktop
 
-    ```
-    VAULT_DIR_PATH=/path/to/your/obsidian/vault
-    ```
+`claude_desktop_config.json` 파일에 추가해야할 내용:
 
-3.  **프로젝트 빌드**:
+```json
+{
+  "mcpServers": {
+    "obsidian-mcp-server": {
+      "command": "npx",
+      "args": ["-y", "@sunub/obsidian-mcp-server"],
+      "env": {
+        "VAULT_DIR_PATH": "/absolute/path/to/your/obsidian/vault"
+      }
+    }
+  }
+}
+```
 
-    ```bash
-    npm run build
-    ```
+#### Gemini
 
-4.  **서버 실행**:
-    ```bash
-    node build/index.js
-    ```
-    이제 MCP 클라이언트에서 서버에 연결하여 도구를 사용할 수 있습니다.
+`gemini_config.json` 파일에 추가해야할 내용:
 
-## 개발
+```json
+{
+  "mcpServers": {
+    "obsidian-mcp-server": {
+      "command": "npx",
+      "args": ["-y", "@sunub/obsidian-mcp-server"],
+      "env": {
+        "VAULT_DIR_PATH": "/absolute/path/to/your/obsidian/vault"
+      }
+    }
+  }
+}
+```
 
-### 테스트 실행
+### 설정 확인사항
 
-`vitest`를 사용하여 End-to-End 테스트를 실행할 수 있습니다.
+1. **Vault 경로**: `VAULT_DIR_PATH`에는 반드시 **절대 경로**를 입력해야 합니다.
+
+   ```json
+   // ✅ 올바른 예시
+   "VAULT_DIR_PATH": "/Users/username/Documents/MyVault"
+   "VAULT_DIR_PATH": "C:\\Users\\username\\Documents\\MyVault"  // Windows
+   "VAULT_DIR_PATH": "/mnt/c/Users/username/Documents/MyVault"  // WSL
+   
+   // ❌ 잘못된 예시
+   "VAULT_DIR_PATH": "~/Documents/MyVault"  // 상대 경로 사용 불가
+   "VAULT_DIR_PATH": "./vault"              // 상대 경로 사용 불가
+   ```
+
+2. **Node.js 요구사항**: Node.js 22 이상이 설치되어 있어야 합니다.
+
+   ```bash
+   node --version  # v22.0.0 이상 확인
+   ```
+
+3. **설정 적용**: 설정 파일 저장 후 AI 도구를 재시작하면 MCP 서버가 자동으로 연결됩니다.
+
+### 수동 실행 (테스트용)
+
+터미널에서 직접 서버를 실행하여 테스트할 수도 있습니다:
 
 ```bash
+# 환경 변수 설정 후 실행
+VAULT_DIR_PATH=/path/to/vault npx -y @sunub/obsidian-mcp-server
+
+# 또는 명령줄 인자로 경로 지정
+npx -y @sunub/obsidian-mcp-server --vault-path /path/to/vault
+```
+
+### 테스트
+
+`vitest`를 사용한 End-to-End 테스트:
+
+```bash
+# 테스트 실행
 npm test
+
+# Watch 모드
+npm run test:watch
+```
+
+### 코드 품질
+
+```bash
+# 포맷팅
+npm run format
+
+# 린팅
+npm run lint
+
+# 전체 체크 (포맷팅 + 린팅)
+npm run check
 ```
 
 ### CI/CD
 
-이 프로젝트는 GitHub Actions를 사용하여 CI/CD 파이프라인을 구축했습니다. `main` 브랜치에 push 또는 pull request가 발생하면 자동으로 빌드와 테스트가 수행됩니다.
+이 프로젝트는 GitHub Actions를 사용하여 CI/CD 파이프라인을 구축했습니다:
+
+- **빌드**: TypeScript 컴파일 및 빌드 검증
+- **린트**: Biome를 사용한 코드 품질 검사
+- **테스트**: Vitest를 통한 E2E 테스트
+- **배포**: 태그 푸시 시 자동으로 npm에 배포
+
+## 라이선스
+
+ISC License

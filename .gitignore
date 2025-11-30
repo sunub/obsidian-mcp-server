@@ -4,3 +4,7 @@ build
 .env
 .DS_Store
 .vscode
+package-lock.json
+
+.github/agents/*
+.github/prompts/*
