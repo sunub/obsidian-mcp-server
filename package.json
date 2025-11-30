@@ -28,6 +28,7 @@
 		"smithery:build": "npx @smithery/cli build",
 		"test": "vitest",
 		"test:watch": "vitest --watch",
+		"prepare": "npm run format && npm run build",
 		"build": "tsc && tsc-alias && chmod 755 build/index.js",
 		"inspector": "npx -y @modelcontextprotocol/inspector node ./build/index.js",
 		"format": "npx biome format --write",
