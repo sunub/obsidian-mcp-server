@@ -22,14 +22,14 @@
 	"exports": {
 		".": "./build/index.js"
 	},
-	"module": "src/index.ts",
+	"module": "build/index.ts",
 	"scripts": {
 		"smithery:dev": "npx @smithery/cli dev",
 		"smithery:build": "npx @smithery/cli build",
 		"test": "vitest",
 		"test:watch": "vitest --watch",
 		"prepare": "npm run format && npm run build",
-		"build": "tsc && tsc-alias && chmod 755 build/index.js",
+		"build": "tsc && tsc-alias && shx chmod +x build/index.js",
 		"inspector": "npx -y @modelcontextprotocol/inspector node ./build/index.js",
 		"format": "npx biome format --write",
 		"lint": "npx biome lint --write",
@@ -50,6 +50,7 @@
 		"@types/node": "^24.3.1",
 		"jsdom": "^27.0.0",
 		"prettier": "^3.6.2",
+		"shx": "^0.4.0",
 		"tsc-alias": "^1.8.16",
 		"tsx": "^4.20.5",
 		"typescript": "^5.9.2",
