@@ -3,8 +3,8 @@ import type {
 	CallToolResult,
 	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
+import state from "@/config.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
-import { getParsedVaultPath } from "@/utils/parseVaultPath.js";
 import { execute as writePropertyExecute } from "../write_property/index.js";
 import {
 	type CreateDocumentWithPropertiesParams,
@@ -42,7 +42,7 @@ export const register = (mcpServer: McpServer) => {
 export const execute = async (
 	params: CreateDocumentWithPropertiesParams,
 ): Promise<CallToolResult> => {
-	const vaultDirPath = getParsedVaultPath();
+	const vaultDirPath = state.vaultPath;
 	if (!vaultDirPath) {
 		return {
 			isError: true,

@@ -1,6 +1,6 @@
 {
 	"name": "@sunub/obsidian-mcp-server",
-	"version": "0.0.1",
+	"version": "0.0.4",
 	"description": "A server for the Obsidian Model Context Protocol.",
 	"keywords": [
 		"obsidian",
@@ -39,6 +39,7 @@
 	"license": "ISC",
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.17.5",
+		"commander": "^14.0.2",
 		"dotenv": "^17.2.2",
 		"gray-matter": "^4.0.3",
 		"zod": "^3.25.76"

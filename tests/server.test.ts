@@ -50,11 +50,17 @@ describe("Obsidian MCP Server E2E Tests", () => {
 	let transport: StdioClientTransport;
 
 	beforeAll(async () => {
+		await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
+
 		mcpClient = new Client({ name: "test-client", version: "1.0.0" });
 		transport = new StdioClientTransport({
 			command: "node",
 			args: ["build/index.js"],
-			env: { VAULT_DIR_PATH: TEST_VAULT_PATH },
+			env: {
+				...process.env,
+				VAULT_DIR_PATH: TEST_VAULT_PATH,
+				NODE_ENV: "test",
+			},
 		});
 		await mcpClient.connect(transport);
 	});
@@ -63,10 +69,20 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		if (mcpClient) {
 			await mcpClient.close();
 		}
+		await fs.rm(TEST_VAULT_PATH, { recursive: true, force: true });
 	});
 
 	beforeEach(async () => {
-		await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
+		const files = await fs.readdir(TEST_VAULT_PATH);
+		await Promise.all(
+			files.map((file) =>
+				fs.rm(path.join(TEST_VAULT_PATH, file), {
+					recursive: true,
+					force: true,
+				}),
+			),
+		);
+
 		for (const { title, tags, content } of demo_data) {
 			const { text } = content;
 			const tagsYaml = tags.map((tag) => `  - ${tag}`).join("\n");
@@ -77,9 +93,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		}
 	});
 
-	afterEach(async () => {
-		await fs.rm(TEST_VAULT_PATH, { recursive: true, force: true });
-	});
+	afterEach(async () => {});
 
 	test("서버에 등록된 모든 도구 목록을 가져올 수 있다", async () => {
 		const toolsResult = await mcpClient.listTools();
