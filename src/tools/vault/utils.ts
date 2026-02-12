@@ -52,7 +52,6 @@ function formatDocument(
 			};
 		}
 	};
-	console.log(doc);
 
 	return {
 		filename: doc.filePath.split("/").pop() || doc.filePath,
