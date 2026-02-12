@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { createToolError } from "@/utils/createToolError.js";
 import type { DocumentIndex } from "../../utils/processor/types.js";
 import type {
 	EnrichedDocument,
@@ -148,19 +149,10 @@ export async function readSpecificFile(
 	});
 
 	if (!doc) {
-		return {
-			isError: true,
-			content: [
-				{
-					type: "text",
-					text: JSON.stringify(
-						{ error: `Document not found: ${params.filename}` },
-						null,
-						2,
-					),
-				},
-			],
-		};
+		return createToolError(
+			`Document not found: ${params.filename}`,
+			"Check the filename and try again. Use the vault tool with 'list_all' action to see available documents.",
+		);
 	}
 
 	return {
