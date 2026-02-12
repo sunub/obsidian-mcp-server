@@ -47,8 +47,6 @@ jobs:
 
       - name: Publish NPM Package
         run: npm publish --no-git-checks --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Greate Github Release
         uses: softprops/action-gh-release@v2
