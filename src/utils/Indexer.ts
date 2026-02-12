@@ -32,12 +32,35 @@ export class Indexer {
 			return [];
 		}
 
-		const matchingFilePaths = this.invertedIndex.get(lowerKeyword);
-		if (!matchingFilePaths) {
+		const tokens = lowerKeyword.split(/\s+/).filter((t) => t.length > 0);
+
+		if (tokens.length === 0) {
 			return [];
 		}
 
-		return Array.from(matchingFilePaths)
+		// 첫 번째 토큰의 매칭 결과를 기준 집합으로 잡고,
+		// 나머지 토큰의 결과와 교집합(AND)을 구한다.
+		const firstMatch = this.invertedIndex.get(tokens[0]);
+		if (!firstMatch || firstMatch.size === 0) {
+			return [];
+		}
+
+		let resultPaths = new Set(firstMatch);
+
+		for (let i = 1; i < tokens.length; i++) {
+			const tokenMatch = this.invertedIndex.get(tokens[i]);
+			if (!tokenMatch || tokenMatch.size === 0) {
+				return [];
+			}
+			resultPaths = new Set(
+				[...resultPaths].filter((path) => tokenMatch.has(path)),
+			);
+			if (resultPaths.size === 0) {
+				return [];
+			}
+		}
+
+		return Array.from(resultPaths)
 			.map((filePath) => this.documentMap.get(filePath))
 			.filter((documentIndex) => documentIndex !== undefined);
 	}
