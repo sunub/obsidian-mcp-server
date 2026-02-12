@@ -1,6 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	test,
+} from "vitest";
 import { VaultManager } from "../../src/utils/VaultManager";
 
 const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault-links");
@@ -101,7 +108,10 @@ describe("VaultManager Link Integration Tests", () => {
 	test("다양한 링크 형식이 섞여 있어도 모두 백링크로 수집되어야 한다", async () => {
 		// Given: 하나의 타겟을 가리키는 다양한 형식의 파일들
 		await fs.writeFile(path.join(TEST_VAULT_PATH, "Center.md"), "Center Node");
-		await fs.writeFile(path.join(TEST_VAULT_PATH, "Link1.md"), "[[Center]]");
+		await fs.writeFile(
+			path.join(TEST_VAULT_PATH, "Link1.md"),
+			"[[Center]]",
+		);
 		await fs.writeFile(
 			path.join(TEST_VAULT_PATH, "Link2.md"),
 			"[[Center|Alias]]",
