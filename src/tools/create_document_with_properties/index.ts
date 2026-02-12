@@ -4,6 +4,7 @@ import type {
 	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
 import state from "@/config.js";
+import { createToolError } from "@/utils/createToolError.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
 import { execute as writePropertyExecute } from "../write_property/index.js";
 import {
@@ -44,34 +45,17 @@ export const execute = async (
 ): Promise<CallToolResult> => {
 	const vaultDirPath = state.vaultPath;
 	if (!vaultDirPath) {
-		return {
-			isError: true,
-			content: [
-				{
-					type: "text",
-					text: JSON.stringify(
-						{
-							error: "VAULT_DIR_PATH environment variable is not set",
-							solution: "Set VAULT_DIR_PATH to your Obsidian vault directory",
-						},
-						null,
-						2,
-					),
-				},
-			],
-		};
+		return createToolError(
+			"VAULT_DIR_PATH environment variable is not set",
+			"Set VAULT_DIR_PATH to your Obsidian vault directory",
+		);
 	}
 
 	let vaultManager = null;
 	try {
 		vaultManager = getGlobalVaultManager();
 	} catch (e) {
-		return {
-			isError: true,
-			content: [
-				{ type: "text", text: JSON.stringify({ error: (e as Error).message }) },
-			],
-		};
+		return createToolError((e as Error).message);
 	}
 
 	try {
@@ -89,23 +73,10 @@ export const execute = async (
 
 		const document = await vaultManager.getDocumentInfo(params.sourcePath);
 		if (document === null) {
-			return {
-				isError: true,
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(
-							{
-								error: `Source document not found: ${params.sourcePath}`,
-								suggestion:
-									"Verify the file path and ensure the file exists. You can use the 'obsidian_vault' tool with the 'list_all' action to see all available files.",
-							},
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return createToolError(
+				`Source document not found: ${params.sourcePath}`,
+				"Verify the file path and ensure the file exists. Use the vault tool with 'list_all' action to see all available files.",
+			);
 		}
 
 		const instructionForAI = {
@@ -161,22 +132,9 @@ export const execute = async (
 			],
 		};
 	} catch (error) {
-		return {
-			isError: true,
-			content: [
-				{
-					type: "text",
-					text: JSON.stringify(
-						{
-							error: `Failed to create workflow instruction: ${error instanceof Error ? error.message : String(error)}`,
-							params: params,
-						},
-						null,
-						2,
-					),
-				},
-			],
-		};
+		return createToolError(
+			`Failed to create workflow instruction: ${error instanceof Error ? error.message : String(error)}`,
+		);
 	}
 };
 

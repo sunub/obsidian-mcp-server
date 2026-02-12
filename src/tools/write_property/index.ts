@@ -4,6 +4,7 @@ import type {
 	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
 import state from "@/config.js";
+import { createToolError } from "@/utils/createToolError.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
 import {
 	type ObsidianPropertyParams,
@@ -79,36 +80,19 @@ export const register = (mcpServer: McpServer) => {
 export const execute = async (
 	params: ObsidianPropertyParams,
 ): Promise<CallToolResult> => {
-	const response: CallToolResult = { content: [], isError: false };
-
 	const vaultDirPath = state.vaultPath;
 	if (!vaultDirPath) {
-		response.content.push({
-			type: "text",
-			text: JSON.stringify(
-				{
-					error: "VAULT_DIR_PATH is not set. Cannot write properties to file.",
-					suggestion:
-						"Please set the VAULT_DIR_PATH environment variable to your Obsidian vault path.",
-				},
-				null,
-				2,
-			),
-		});
-		response.isError = true;
-		return response;
+		return createToolError(
+			"VAULT_DIR_PATH is not set. Cannot write properties to file.",
+			"Set the VAULT_DIR_PATH environment variable to your Obsidian vault path.",
+		);
 	}
 
 	let vaultManager = null;
 	try {
 		vaultManager = getGlobalVaultManager();
 	} catch (e) {
-		return {
-			isError: true,
-			content: [
-				{ type: "text", text: JSON.stringify({ error: (e as Error).message }) },
-			],
-		};
+		return createToolError((e as Error).message);
 	}
 
 	try {
@@ -141,18 +125,9 @@ export const execute = async (
 			],
 		};
 	} catch (error) {
-		response.content.push({
-			type: "text",
-			text: JSON.stringify(
-				{
-					error: (error as Error).message || "An unknown error occurred.",
-				},
-				null,
-				2,
-			),
-		});
-		response.isError = true;
-		return response;
+		return createToolError(
+			(error as Error).message || "An unknown error occurred.",
+		);
 	}
 };
 

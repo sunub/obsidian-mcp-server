@@ -4,6 +4,7 @@ import type {
 	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
 import state from "@/config.js";
+import { createToolError } from "@/utils/createToolError.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
 import {
 	type OrganizeAttachmentsParams,
@@ -54,44 +55,27 @@ export const execute = async (
 ): Promise<CallToolResult> => {
 	const vaultDirPath = state.vaultPath;
 	if (!vaultDirPath) {
-		return {
-			isError: true,
-			content: [
-				{
-					type: "text",
-					text: JSON.stringify({ error: "VAULT_DIR_PATH is not set" }),
-				},
-			],
-		};
+		return createToolError(
+			"VAULT_DIR_PATH is not set",
+			"Set the VAULT_DIR_PATH environment variable to your Obsidian vault path.",
+		);
 	}
 
 	let vaultManager = null;
 	try {
 		vaultManager = getGlobalVaultManager();
 	} catch (e) {
-		return {
-			isError: true,
-			content: [
-				{ type: "text", text: JSON.stringify({ error: (e as Error).message }) },
-			],
-		};
+		return createToolError((e as Error).message);
 	}
 	try {
 		await vaultManager.initialize();
 
 		const documents = await vaultManager.searchDocuments(params.keyword);
 		if (documents.length === 0) {
-			return {
-				isError: true,
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify({
-							error: `No document found for keyword: ${params.keyword}`,
-						}),
-					},
-				],
-			};
+			return createToolError(
+				`No document found for keyword: ${params.keyword}`,
+				"Try a different keyword or use the vault tool with 'list_all' action to see available documents.",
+			);
 		}
 
 		const organizationTasks = genreateOrganizationTasks(
@@ -117,15 +101,7 @@ export const execute = async (
 			],
 		};
 	} catch (error) {
-		return {
-			isError: true,
-			content: [
-				{
-					type: "text",
-					text: JSON.stringify({ error: (error as Error).message }, null, 2),
-				},
-			],
-		};
+		return createToolError((error as Error).message);
 	}
 };
 
