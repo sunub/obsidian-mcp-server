@@ -3,6 +3,7 @@ import type {
 	CallToolResult,
 	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
+import { createToolError } from "@/utils/createToolError.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
 import {
 	type ObsidianPropertyQueryParams,
@@ -74,29 +75,15 @@ export const execute = async (
 	try {
 		vaultManager = getGlobalVaultManager();
 	} catch (e) {
-		return {
-			isError: true,
-			content: [
-				{ type: "text", text: JSON.stringify({ error: (e as Error).message }) },
-			],
-		};
+		return createToolError((e as Error).message);
 	}
 	try {
 		const document = await vaultManager.getDocumentInfo(params.filename);
 		if (document === null) {
-			response.content.push({
-				type: "text",
-				text: JSON.stringify(
-					{
-						error: `Document not found: ${params.filename}`,
-						suggestion: "Use 'list_all' action to see available documents",
-						searched_filename: params.filename,
-					},
-					null,
-					2,
-				),
-			});
-			return response;
+			return createToolError(
+				`Document not found: ${params.filename}`,
+				"Use 'list_all' action to see available documents",
+			);
 		}
 
 		const documentData = {
@@ -128,20 +115,10 @@ export const execute = async (
 			text: JSON.stringify(documentData, null, 2),
 		});
 	} catch (error) {
-		response.isError = true;
-		response.content.push({
-			type: "text",
-			text: JSON.stringify(
-				{
-					error: (error as Error).message,
-					action: params,
-					solution:
-						"Ensure the VAULT_DIR_PATH environment variable is set to your Obsidian vault directory and the filename is correct.",
-				},
-				null,
-				2,
-			),
-		});
+		return createToolError(
+			(error as Error).message,
+			"Ensure the VAULT_DIR_PATH environment variable is set to your Obsidian vault directory and the filename is correct.",
+		);
 	}
 	return response;
 };

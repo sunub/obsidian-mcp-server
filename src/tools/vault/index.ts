@@ -4,6 +4,7 @@ import type {
 	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
 import state from "@/config.js";
+import { createToolError } from "@/utils/createToolError.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
 import {
 	type ObsidianContentQueryParams,
@@ -58,84 +59,36 @@ export const execute = async (
 
 	// Vault 경로 검증
 	if (!vaultDirPath) {
-		return {
-			content: [
-				{
-					type: "text",
-					text: JSON.stringify(
-						{
-							error: "VAULT_DIR_PATH environment variable is not set",
-							action: params.action,
-							solution: "Set VAULT_DIR_PATH to your Obsidian vault directory",
-						},
-						null,
-						2,
-					),
-				},
-			],
-			isError: true,
-		};
+		return createToolError(
+			"VAULT_DIR_PATH environment variable is not set",
+			"Set VAULT_DIR_PATH to your Obsidian vault directory",
+		);
 	}
 
 	let vaultManager = null;
 	try {
 		vaultManager = getGlobalVaultManager();
 	} catch (e) {
-		return {
-			isError: true,
-			content: [
-				{ type: "text", text: JSON.stringify({ error: (e as Error).message }) },
-			],
-		};
+		return createToolError((e as Error).message);
 	}
 
 	try {
 		switch (params.action) {
 			case "search":
 				if (!params.keyword?.trim()) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: JSON.stringify(
-									{
-										error: "keyword parameter is required for search action",
-										action: params.action,
-										example: {
-											action: "search",
-											keyword: "project",
-											includeContent: true,
-										},
-									},
-									null,
-									2,
-								),
-							},
-						],
-						isError: true,
-					};
+					return createToolError(
+						"keyword parameter is required for search action",
+						'Provide a keyword, e.g. { action: "search", keyword: "project" }',
+					);
 				}
 				return await searchDocuments(vaultManager, params);
 
 			case "read":
 				if (!params.filename?.trim()) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: JSON.stringify(
-									{
-										error: "filename parameter is required for read action",
-										action: params.action,
-										example: { action: "read", filename: "meeting-notes.md" },
-									},
-									null,
-									2,
-								),
-							},
-						],
-						isError: true,
-					};
+					return createToolError(
+						"filename parameter is required for read action",
+						'Provide a filename, e.g. { action: "read", filename: "meeting-notes.md" }',
+					);
 				}
 				return await readSpecificFile(vaultManager, params);
 
@@ -146,43 +99,15 @@ export const execute = async (
 				return await statsAllDocuments(vaultManager);
 
 			default:
-				return {
-					content: [
-						{
-							type: "text",
-							text: JSON.stringify(
-								{
-									error: `Unknown action: ${params.action}`,
-									valid_actions: ["search", "read", "list_all", "stats"],
-									action: params.action,
-								},
-								null,
-								2,
-							),
-						},
-					],
-					isError: true,
-				};
+				return createToolError(
+					`Unknown action: ${params.action}`,
+					"Valid actions are: search, read, list_all, stats",
+				);
 		}
 	} catch (error) {
-		return {
-			content: [
-				{
-					type: "text",
-					text: JSON.stringify(
-						{
-							error: `Execution failed: ${error instanceof Error ? error.message : String(error)}`,
-							action: params.action,
-							vault_path: vaultDirPath,
-							timestamp: new Date().toISOString(),
-						},
-						null,
-						2,
-					),
-				},
-			],
-			isError: true,
-		};
+		return createToolError(
+			`Execution failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
 	}
 };
 

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import path, { basename, isAbsolute, join } from "node:path";
+import path, { basename, isAbsolute, join, resolve } from "node:path";
 import matter from "gray-matter";
 
 import { DirectoryWalker } from "./DirectoryWalker.js";
@@ -126,25 +126,34 @@ export class VaultManager {
 	}
 
 	private parseFilenameToFullPath(filename: string): string {
-		if (isAbsolute(filename) && existsSync(filename)) {
-			return filename;
+		// 절대 경로인 경우, vault 경로 내부인지 검증
+		if (isAbsolute(filename)) {
+			const resolved = resolve(filename);
+			if (resolved.startsWith(this.vaultPath) && existsSync(resolved)) {
+				return resolved;
+			}
+			return "";
 		}
 
-		const exactPath = path.join(this.vaultPath, filename);
+		// 상대 경로를 resolve하고 Path Traversal 방어
+		const exactPath = resolve(this.vaultPath, filename);
+		if (!exactPath.startsWith(this.vaultPath)) {
+			return "";
+		}
 		if (existsSync(exactPath)) {
 			return exactPath;
 		}
 
 		const candidates = [];
 		if (/\.mdx?$/.test(filename)) {
-			candidates.push(path.join(this.vaultPath, filename));
+			candidates.push(resolve(this.vaultPath, filename));
 		} else {
-			candidates.push(path.join(this.vaultPath, `${filename}.md`));
-			candidates.push(path.join(this.vaultPath, `${filename}.mdx`));
+			candidates.push(resolve(this.vaultPath, `${filename}.md`));
+			candidates.push(resolve(this.vaultPath, `${filename}.mdx`));
 		}
 
 		for (const candidate of candidates) {
-			if (existsSync(candidate)) {
+			if (candidate.startsWith(this.vaultPath) && existsSync(candidate)) {
 				return candidate;
 			}
 		}

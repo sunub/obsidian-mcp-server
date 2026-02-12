@@ -17,11 +17,12 @@ export class Semaphore {
 		});
 	}
 
-	async release() {
+	release(): void {
 		const next = this.waitingQueue.shift();
 		if (next) {
-			this.permits++;
 			next();
+		} else {
+			this.permits++;
 		}
 	}
 }
