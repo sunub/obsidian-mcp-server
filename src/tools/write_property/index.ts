@@ -6,7 +6,7 @@ import type {
 import state from "@/config.js";
 import { createToolError } from "@/utils/createToolError.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
-import { VaultPathError } from "@/utils/VaultManager.js";
+import { VaultPathError } from "@/utils/VaultManger/VaultPathError.js"; 
 import {
 	type ObsidianPropertyParams,
 	obsidianPropertyParamsSchema,

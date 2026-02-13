@@ -2,9 +2,9 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { createToolError } from "@/utils/createToolError.js";
 import type { DocumentIndex } from "../../utils/processor/types.js";
 import type {
-	EnrichedDocument,
 	VaultManager,
-} from "../../utils/VaultManager.js";
+} from "../../utils/VaultManger/VaultManager.js";
+import type { EnrichedDocument } from "../../utils/VaultManger/types.js";
 import type { ObsidianContentQueryParams } from "./params.js";
 
 async function getDocumentContent(
