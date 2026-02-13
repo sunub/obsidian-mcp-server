@@ -1,14 +1,23 @@
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
-import { basename, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import {
+	basename,
+	dirname,
+	extname,
+	isAbsolute,
+	join,
+	relative,
+	resolve,
+} from "node:path";
 import matter from "gray-matter";
 
 import { DirectoryWalker } from "../DirectoryWalker.js";
 import { Indexer } from "../Indexer.js";
 import type { DocumentIndex } from "../processor/types.js";
 import { Semaphore } from "../semaphore.js";
-import { VaultPathError } from "./VaultPathError.js";
 import type { EnrichedDocument } from "./types.js";
+import { VaultPathError } from "./VaultPathError.js";
 
 export class VaultManager {
 	private vaultPath: string;
@@ -52,6 +61,7 @@ export class VaultManager {
 			includeStats?: boolean;
 			includeBacklinks?: boolean;
 			maxContentPreview?: number;
+			includeContentHash?: boolean;
 		} = {},
 	): Promise<EnrichedDocument | null> {
 		await this.initialize();
@@ -72,6 +82,12 @@ export class VaultManager {
 				? content.substring(0, options.maxContentPreview)
 				: content,
 		};
+
+		if (options.includeContentHash) {
+			enrichedDoc.contentHash = createHash("sha256")
+				.update(content, "utf8")
+				.digest("hex");
+		}
 
 		if (options.includeStats) {
 			this.addStats(enrichedDoc, content);
@@ -98,6 +114,23 @@ export class VaultManager {
 		} finally {
 			this.ioSemaphore.release();
 		}
+		await this.refresh();
+	}
+
+	public async writeRawDocument(
+		fullPath: string,
+		content: string,
+	): Promise<void> {
+		const resolvedPath = this.resolvePathForWrite(fullPath);
+
+		await this.ioSemaphore.acquire();
+		try {
+			await mkdir(dirname(resolvedPath), { recursive: true });
+			await writeFile(resolvedPath, content, "utf8");
+		} finally {
+			this.ioSemaphore.release();
+		}
+
 		await this.refresh();
 	}
 
