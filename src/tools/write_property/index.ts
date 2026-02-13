@@ -6,6 +6,7 @@ import type {
 import state from "@/config.js";
 import { createToolError } from "@/utils/createToolError.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
+import { VaultPathError } from "@/utils/VaultManager.js";
 import {
 	type ObsidianPropertyParams,
 	obsidianPropertyParamsSchema,
@@ -125,6 +126,13 @@ export const execute = async (
 			],
 		};
 	} catch (error) {
+		if (error instanceof VaultPathError) {
+			return createToolError(
+				"filePath is outside VAULT_DIR_PATH. Writing outside the vault is blocked.",
+				`Use a filePath inside VAULT_DIR_PATH ("${error.vaultPath}"). Received filePath: "${error.inputPath}"`,
+			);
+		}
+
 		return createToolError(
 			(error as Error).message || "An unknown error occurred.",
 		);
