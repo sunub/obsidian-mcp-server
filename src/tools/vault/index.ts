@@ -6,12 +6,15 @@ import type {
 import state from "@/config.js";
 import { createToolError } from "@/utils/createToolError.js";
 import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
+import { recordVaultResponseMetric } from "./metrics.js";
 import {
 	type ObsidianContentQueryParams,
 	obsidianContentQueryParamsZod,
 } from "./params.js";
 import {
+	collectContext,
 	listAllDocuments,
+	loadMemory,
 	readSpecificFile,
 	searchDocuments,
 	statsAllDocuments,
@@ -73,6 +76,7 @@ export const execute = async (
 	}
 
 	try {
+		let result: CallToolResult;
 		switch (params.action) {
 			case "search":
 				if (!params.keyword?.trim()) {
@@ -81,7 +85,8 @@ export const execute = async (
 						'Provide a keyword, e.g. { action: "search", keyword: "project" }',
 					);
 				}
-				return await searchDocuments(vaultManager, params);
+				result = await searchDocuments(vaultManager, params);
+				break;
 
 			case "read":
 				if (!params.filename?.trim()) {
@@ -90,20 +95,34 @@ export const execute = async (
 						'Provide a filename, e.g. { action: "read", filename: "meeting-notes.md" }',
 					);
 				}
-				return await readSpecificFile(vaultManager, params);
+				result = await readSpecificFile(vaultManager, params);
+				break;
 
 			case "list_all":
-				return await listAllDocuments(vaultManager, params);
+				result = await listAllDocuments(vaultManager, params);
+				break;
 
 			case "stats":
-				return await statsAllDocuments(vaultManager);
+				result = await statsAllDocuments(vaultManager);
+				break;
+
+			case "collect_context":
+				result = await collectContext(vaultManager, params);
+				break;
+
+			case "load_memory":
+				result = await loadMemory(vaultManager, params);
+				break;
 
 			default:
 				return createToolError(
 					`Unknown action: ${params.action}`,
-					"Valid actions are: search, read, list_all, stats",
+					"Valid actions are: search, read, list_all, stats, collect_context, load_memory",
 				);
 		}
+
+		await recordVaultResponseMetric(params.action, result);
+		return result;
 	} catch (error) {
 		return createToolError(
 			`Execution failed: ${error instanceof Error ? error.message : String(error)}`,
