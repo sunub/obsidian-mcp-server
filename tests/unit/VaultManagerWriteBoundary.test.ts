@@ -55,4 +55,30 @@ describe("VaultManager write boundary", () => {
 
 		await expect(fs.access(OUTSIDE_FILE_PATH)).rejects.toBeDefined();
 	});
+
+	test("vault 내부 경로는 writeRawDocument로 쓸 수 있다", async () => {
+		const vaultManager = new VaultManager(TEST_VAULT_PATH);
+		await vaultManager.writeRawDocument(
+			"memory/resume_context.v1.md",
+			"# memory",
+		);
+
+		const updated = await fs.readFile(
+			path.join(TEST_VAULT_PATH, "memory", "resume_context.v1.md"),
+			"utf-8",
+		);
+		expect(updated).toContain("# memory");
+	});
+
+	test("vault 외부 경로는 writeRawDocument에서 차단된다", async () => {
+		const vaultManager = new VaultManager(TEST_VAULT_PATH);
+
+		await expect(
+			vaultManager.writeRawDocument("../outside-write-boundary.md", "blocked"),
+		).rejects.toBeInstanceOf(VaultPathError);
+
+		await expect(
+			vaultManager.writeRawDocument(OUTSIDE_FILE_PATH, "blocked"),
+		).rejects.toBeInstanceOf(VaultPathError);
+	});
 });
