@@ -2,6 +2,7 @@ import fs, { copyFile } from "node:fs/promises";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CompatibilityCallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
 	afterAll,
@@ -13,7 +14,10 @@ import {
 	test,
 } from "vitest";
 import { type ZodSchema, z } from "zod";
+import state from "../src/config";
+import createMcpServer from "../src/server";
 import { OrganizeAttachmentsResultSchema } from "../src/tools/organize_attachments/params";
+import { collectContextResponseDataSchema } from "../src/tools/vault/types/collect_context";
 import {
 	type ListAllDocumentsData,
 	listAllDocumentsDataSchema,
@@ -47,13 +51,15 @@ async function parseAndValidateResponse<T extends ZodSchema>(
 
 describe("Obsidian MCP Server E2E Tests", () => {
 	let mcpClient: Client;
-	let transport: StdioClientTransport;
+	let _transport: StdioClientTransport | InMemoryTransport;
+	let embeddedServer: ReturnType<typeof createMcpServer> | null = null;
+	let transportMode: "stdio" | "in_memory" = "stdio";
 
 	beforeAll(async () => {
 		await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
 
 		mcpClient = new Client({ name: "test-client", version: "1.0.0" });
-		transport = new StdioClientTransport({
+		const stdioTransport = new StdioClientTransport({
 			command: "node",
 			args: ["build/index.js"],
 			env: {
@@ -62,12 +68,29 @@ describe("Obsidian MCP Server E2E Tests", () => {
 				NODE_ENV: "test",
 			},
 		});
-		await mcpClient.connect(transport);
+
+		try {
+			await mcpClient.connect(stdioTransport);
+			_transport = stdioTransport;
+			transportMode = "stdio";
+		} catch {
+			const [clientTransport, serverTransport] =
+				InMemoryTransport.createLinkedPair();
+			state.vaultPath = TEST_VAULT_PATH;
+			embeddedServer = createMcpServer();
+			await embeddedServer.connect(serverTransport);
+			await mcpClient.connect(clientTransport);
+			_transport = clientTransport;
+			transportMode = "in_memory";
+		}
 	});
 
 	afterAll(async () => {
 		if (mcpClient) {
 			await mcpClient.close();
+		}
+		if (embeddedServer) {
+			await embeddedServer.close();
 		}
 		await fs.rm(TEST_VAULT_PATH, { recursive: true, force: true });
 	});
@@ -109,6 +132,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 		expect(toolNames).toEqual(expect.arrayContaining(expectedTools));
 		expect(toolNames.length).toBe(expectedTools.length);
+		expect(["stdio", "in_memory"]).toContain(transportMode);
 	});
 
 	test("vault의 read 액션은 적절하게 문서를 읽어올 수 있는가?", async () => {
@@ -175,6 +199,31 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			expect(sortedDocuments[i].metadata.title).toBe(demo.title);
 			expect(sortedDocuments[i].metadata.tags).toEqual(demo.tags);
 		}
+	});
+
+	test("vault의 collect_context 액션은 배치 메모리 패킷을 반환한다", async () => {
+		const response = await mcpClient.callTool({
+			name: "vault",
+			arguments: {
+				action: "collect_context",
+				scope: "all",
+				maxDocs: 2,
+				maxCharsPerDoc: 350,
+			},
+		});
+
+		const data = await parseAndValidateResponse(
+			response,
+			collectContextResponseDataSchema,
+		);
+
+		expect(data.action).toBe("collect_context");
+		expect(data.scope).toBe("all");
+		expect(data.documents.length).toBeGreaterThan(0);
+		expect(data.batch.processed_docs).toBe(data.documents.length);
+		expect(data.batch.has_more).toBe(true);
+		expect(typeof data.batch.continuation_token).toBe("string");
+		expect(data.memory_packet.keyFacts.length).toBeGreaterThan(0);
 	});
 
 	test('search 도구는 "Test Note" 키워드를 기반으로 문서를 찾을 수 있다', async () => {

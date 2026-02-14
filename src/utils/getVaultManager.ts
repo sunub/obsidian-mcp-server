@@ -1,5 +1,5 @@
 import state from "@/config.js";
-import { VaultManager } from "./VaultManager.js";
+import { VaultManager } from "./VaultManger/VaultManager.js";
 
 let instance: VaultManager | null = null;
 

@@ -13,44 +13,20 @@ import {
 export const name = "generate_property";
 
 export const annotations: ToolAnnotations = {
-	title: "Obsidian Property Writer",
+	title: "Generate Obsidian Property",
 	openWorldHint: true,
 };
 
 export const description = `
-  Analyzes the content of a specified Obsidian Markdown file to automatically generate the most suitable properties (frontmatter) and updates the file directly.
+  Reads a target markdown document and returns an AI-facing payload for generating frontmatter properties.
+
+  This tool does not write to disk. It returns content_preview and a target output schema so an AI can produce a valid property object.
 
   Use Cases:
-  
-  - After Completing a Draft: Use when the body of the text is complete, and you want to generate all properties at once.
-  - Updating Information: Use when you want to update existing properties with more accurate information reflecting the latest content.
-  - Completing Missing Info: Use when you want to automatically add missing properties like tags or a summary to a document that only has a title.
-  
-  Parameters:
-  
-  filename: The name or path of the file to analyze and add properties to (e.g., "my-first-post.md").
-  overwrite: If set to true, existing properties will be overwritten by the AI-generated content. Default: false.
-  
-  Generated Properties:
-  
-  The AI analyzes the context of the content to generate the following properties:
-  
-  - aliases: An array of alternative names or synonyms based on the content.
-  - title: A title that best represents the core topic of the document.
-  - tags: An array of tags extracted from the core keywords of the content (e.g., [AI, Obsidian, productivity]).
-  - summary: A one to two-sentence summary of the entire document.
-  - slug: A hyphenated-string suitable for URLs, containing the core keywords from the content.
-  - date: The event date or creation date inferred from the content (in ISO 8601 format).
-  - completed: A boolean (true or false) indicating whether the content is considered a final version.
-  
-  Return Value:
-  
-  Upon success, returns a JSON object containing a success message that includes the modified filename.
-  { "status": "success", "message": "Successfully updated properties for my-first-post.md" }
-  
-  Requirements:
-  
-  The user's absolute path to the Obsidian vault must be correctly set in an environment variable.
+  - After completing a draft, when you need property suggestions from content.
+  - When missing frontmatter fields (title, tags, summary, slug, date, category, completed) should be generated.
+
+  To apply generated properties to a file, call 'write_property' with the resulting JSON.
 `;
 
 export const register = (mcpServer: McpServer) => {
@@ -93,7 +69,7 @@ export const execute = async (
 				purpose:
 					"Generate or update the document's frontmatter properties based on its content.",
 				usage:
-					"Analyze the provided content_preview. If more detail is needed to generate accurate properties, you MUST first call the 'obsidian_vault' tool with the 'read' action to get the full document content.",
+					"Analyze the provided content_preview. If more detail is needed to generate accurate properties, you MUST call the 'vault' tool with action='read' to get the full document content.",
 				content_type: "markdown",
 				overwrite: params.overwrite || false,
 				output_format: "Return a JSON object with the following structure",
