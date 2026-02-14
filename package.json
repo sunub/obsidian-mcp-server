@@ -22,10 +22,10 @@
 	"exports": {
 		".": "./build/index.js"
 	},
-	"module": "build/index.ts",
+	"module": "build/smithery.js",
 	"scripts": {
-		"smithery:dev": "npx @smithery/cli dev",
-		"smithery:build": "npx @smithery/cli build",
+		"smithery:dev": "npx @smithery/cli dev src/smithery.ts",
+		"smithery:build": "npx @smithery/cli build src/smithery.ts",
 		"test": "vitest",
 		"test:watch": "vitest --watch",
 		"metrics:report": "node scripts/vault-metrics-report.mjs",

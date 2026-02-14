@@ -1,6 +1,7 @@
 node_modules
 dist
 build
+.smithery
 .env
 .DS_Store
 .vscode
