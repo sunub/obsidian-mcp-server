@@ -18,8 +18,8 @@ import {
 	collectContextTokenV1Schema,
 } from "../../types/collect_context.js";
 import {
-	RESUME_CONTEXT_MEMORY_NOTE_PATH,
-	RESUME_CONTEXT_SCHEMA_VERSION,
+	CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
+	CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 } from "../constants.js";
 import {
 	ACTION_DEFAULT_MAX_OUTPUT_CHARS,
@@ -388,7 +388,7 @@ function buildCollectContextCacheKey(params: {
 		scope: params.scope,
 		topic: params.topic,
 		doc_hash: params.docHash,
-		schema_version: RESUME_CONTEXT_SCHEMA_VERSION,
+		schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 		mode: params.mode,
 		start_cursor: params.startCursor,
 		max_docs: params.maxDocs,
@@ -457,7 +457,7 @@ function buildCollectContextSourceHash(
 		.digest("hex");
 }
 
-function buildResumeContextMarkdown(params: {
+function buildContextMemorySnapshotMarkdown(params: {
 	payload: CollectContextPayload;
 	generatedAt: string;
 	sourceHash: string;
@@ -466,7 +466,7 @@ function buildResumeContextMarkdown(params: {
 	const { payload, generatedAt, sourceHash, notePath } = params;
 
 	const canonical = {
-		schema_version: RESUME_CONTEXT_SCHEMA_VERSION,
+		schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 		generated_at: generatedAt,
 		source_hash: sourceHash,
 		note_path: notePath,
@@ -511,11 +511,11 @@ function buildResumeContextMarkdown(params: {
 			: "- None";
 
 	return [
-		"# Resume Context v1",
+		"# Context Memory Snapshot v1",
 		"",
 		`- generated_at: ${generatedAt}`,
 		`- source_hash: ${sourceHash}`,
-		`- schema_version: ${RESUME_CONTEXT_SCHEMA_VERSION}`,
+		`- schema_version: ${CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION}`,
 		`- topic: ${payload.topic ?? "null"}`,
 		`- scope: ${payload.scope}`,
 		`- matched_total: ${payload.matched_total}`,
@@ -547,25 +547,25 @@ function buildResumeContextMarkdown(params: {
 	].join("\n");
 }
 
-async function writeResumeContextMemoryNote(
+async function writeContextMemorySnapshotNote(
 	vaultManager: VaultManager,
 	payload: CollectContextPayload,
 ): Promise<CollectContextPayload["memory_write"]> {
 	const generatedAt = new Date().toISOString();
 	const sourceHash = buildCollectContextSourceHash(payload);
-	const markdown = buildResumeContextMarkdown({
+	const markdown = buildContextMemorySnapshotMarkdown({
 		payload,
 		generatedAt,
 		sourceHash,
-		notePath: RESUME_CONTEXT_MEMORY_NOTE_PATH,
+		notePath: CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
 	});
 
 	try {
-		await vaultManager.writeRawDocument(RESUME_CONTEXT_MEMORY_NOTE_PATH, markdown);
+		await vaultManager.writeRawDocument(CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH, markdown);
 		return {
 			requested: true,
 			status: "written",
-			note_path: RESUME_CONTEXT_MEMORY_NOTE_PATH,
+			note_path: CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
 			generated_at: generatedAt,
 			source_hash: sourceHash,
 		};
@@ -573,7 +573,7 @@ async function writeResumeContextMemoryNote(
 		return {
 			requested: true,
 			status: "failed",
-			note_path: RESUME_CONTEXT_MEMORY_NOTE_PATH,
+			note_path: CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
 			generated_at: generatedAt,
 			source_hash: sourceHash,
 			reason: error instanceof Error ? error.message : String(error),
@@ -782,7 +782,7 @@ export async function collectContext(
 					cache: {
 						key: emptyCacheKey,
 						hit: false,
-						schema_version: RESUME_CONTEXT_SCHEMA_VERSION,
+						schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 						topic,
 						doc_hash: emptyDocHash,
 						mode: memoryMode,
@@ -808,7 +808,7 @@ export async function collectContext(
 		}
 
 		if (memoryMode !== "response_only") {
-			const memoryWrite = await writeResumeContextMemoryNote(
+			const memoryWrite = await writeContextMemorySnapshotNote(
 				vaultManager,
 				emptyPayload,
 			);
@@ -970,7 +970,7 @@ export async function collectContext(
 				cache: {
 					key: cacheKey,
 					hit: false,
-					schema_version: RESUME_CONTEXT_SCHEMA_VERSION,
+					schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 					topic,
 					doc_hash: docHash,
 					mode: memoryMode,
@@ -996,7 +996,7 @@ export async function collectContext(
 					: {
 							key: cacheKey,
 							hit: true,
-							schema_version: RESUME_CONTEXT_SCHEMA_VERSION,
+							schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 							topic,
 							doc_hash: docHash,
 							mode: memoryMode,
@@ -1005,7 +1005,7 @@ export async function collectContext(
 		: basePayload;
 
 	if (memoryMode !== "response_only") {
-		const memoryWrite = await writeResumeContextMemoryNote(vaultManager, basePayload);
+		const memoryWrite = await writeContextMemorySnapshotNote(vaultManager, basePayload);
 		payloadForCompression = collectContextPayloadSchema.parse({
 			...basePayload,
 			memory_mode: memoryMode,

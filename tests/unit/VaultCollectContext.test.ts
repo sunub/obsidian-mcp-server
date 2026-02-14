@@ -3,8 +3,8 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { collectContextResponseDataSchema } from "../../src/tools/vault/types/collect_context.js";
 import { collectContext } from "../../src/tools/vault/utils.js";
 import {
-	RESUME_CONTEXT_MEMORY_NOTE_PATH,
-	RESUME_CONTEXT_SCHEMA_VERSION,
+	CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
+	CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 } from "../../src/tools/vault/utils/constants.js";
 import type { DocumentIndex } from "../../src/utils/processor/types.js";
 import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
@@ -192,11 +192,11 @@ describe("Vault collect_context orchestration", () => {
 
 		expect(writeRawDocument).toHaveBeenCalledTimes(1);
 		expect(writeRawDocument).toHaveBeenCalledWith(
-			RESUME_CONTEXT_MEMORY_NOTE_PATH,
-			expect.stringContaining("# Resume Context v1"),
+			CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
+			expect.stringContaining("# Context Memory Snapshot v1"),
 		);
 		expect(writeRawDocument.mock.calls[0][1]).toContain(
-			`"schema_version": "${RESUME_CONTEXT_SCHEMA_VERSION}"`,
+			`"schema_version": "${CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION}"`,
 		);
 		expect(payload.memory_write.status).toBe("written");
 		expect(payload.memory_write.generated_at).toBeDefined();

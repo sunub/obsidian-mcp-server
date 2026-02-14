@@ -9,8 +9,8 @@ import {
 	collectContextScopeSchema,
 } from "../../types/collect_context.js";
 import {
-	RESUME_CONTEXT_MEMORY_NOTE_PATH,
-	RESUME_CONTEXT_SCHEMA_VERSION,
+	CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
+	CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 } from "../constants.js";
 import {
 	ACTION_DEFAULT_MAX_OUTPUT_CHARS,
@@ -185,7 +185,7 @@ export async function loadMemory(
 	await vaultManager.initialize();
 	const mode = resolveCompressionMode(params);
 	const memoryPath =
-		params.memoryPath?.trim() || RESUME_CONTEXT_MEMORY_NOTE_PATH;
+		params.memoryPath?.trim() || CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH;
 
 	const memoryNote = await vaultManager.getDocumentInfo(memoryPath, {
 		includeStats: true,
@@ -227,7 +227,7 @@ export async function loadMemory(
 						topic: quietPayload.topic,
 						scope: quietPayload.scope,
 						schema_version:
-							quietPayload.schema_version ?? RESUME_CONTEXT_SCHEMA_VERSION,
+							quietPayload.schema_version ?? CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 					}),
 				},
 			],

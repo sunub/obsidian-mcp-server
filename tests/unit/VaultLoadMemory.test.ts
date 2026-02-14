@@ -3,8 +3,8 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { loadMemory } from "../../src/tools/vault/utils.js";
 import {
-	RESUME_CONTEXT_MEMORY_NOTE_PATH,
-	RESUME_CONTEXT_SCHEMA_VERSION,
+	CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
+	CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 } from "../../src/tools/vault/utils/constants.js";
 import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
 import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
@@ -47,21 +47,21 @@ const errorPayloadSchema = z.object({
 	error: z.string(),
 });
 
-const VAULT_MEMORY_NOTE_PATH = `/vault/${RESUME_CONTEXT_MEMORY_NOTE_PATH}`;
+const VAULT_MEMORY_NOTE_PATH = `/vault/${CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH}`;
 
 function createMemoryNote(): EnrichedDocument {
 	return {
 		filePath: VAULT_MEMORY_NOTE_PATH,
-		frontmatter: { title: "Resume Context v1" },
+		frontmatter: { title: "Context Memory Snapshot v1" },
 		contentLength: 1200,
 		imageLinks: [],
 		documentLinks: [],
 		content: [
-			"# Resume Context v1",
+			"# Context Memory Snapshot v1",
 			"",
 			"- generated_at: 2026-02-13T00:00:00.000Z",
 			"- source_hash: 6f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f",
-			`- schema_version: ${RESUME_CONTEXT_SCHEMA_VERSION}`,
+			`- schema_version: ${CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION}`,
 			"",
 			"## Topic Summary",
 			"Built and optimized Next.js production workflows.",
@@ -69,7 +69,7 @@ function createMemoryNote(): EnrichedDocument {
 			"## Canonical JSON",
 			"```json",
 			"{",
-			`  "schema_version": "${RESUME_CONTEXT_SCHEMA_VERSION}",`,
+			`  "schema_version": "${CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION}",`,
 			'  "generated_at": "2026-02-13T00:00:00.000Z",',
 			'  "source_hash": "6f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f",',
 			'  "scope": "topic",',
@@ -109,21 +109,21 @@ function createMemoryNote(): EnrichedDocument {
 function createStaleMemoryNote(): EnrichedDocument {
 	return {
 		filePath: VAULT_MEMORY_NOTE_PATH,
-		frontmatter: { title: "Resume Context v0" },
+		frontmatter: { title: "Context Memory Snapshot v0" },
 		contentLength: 900,
 		imageLinks: [],
 		documentLinks: [],
 		content: [
-			"# Resume Context v0",
+			"# Context Memory Snapshot v0",
 			"",
 			"- generated_at: 2026-01-01T00:00:00.000Z",
 			"- source_hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			"- schema_version: resume_context.v0",
+			"- schema_version: context_memory_snapshot.v0",
 			"",
 			"## Canonical JSON",
 			"```json",
 			"{",
-			'  "schema_version": "resume_context.v0",',
+			'  "schema_version": "context_memory_snapshot.v0",',
 			'  "generated_at": "2026-01-01T00:00:00.000Z",',
 			'  "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",',
 			'  "scope": "topic",',
@@ -165,7 +165,7 @@ function createMockVaultManager(memoryNote: EnrichedDocument | null) {
 					return null;
 				}
 				if (
-					filename === RESUME_CONTEXT_MEMORY_NOTE_PATH ||
+					filename === CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH ||
 					filename === memoryNote.filePath
 				) {
 					return memoryNote;
@@ -192,7 +192,7 @@ describe("Vault load_memory action", () => {
 
 		expect(payload.action).toBe("load_memory");
 		expect(payload.has_canonical_json).toBe(true);
-		expect(payload.schema_version).toBe(RESUME_CONTEXT_SCHEMA_VERSION);
+		expect(payload.schema_version).toBe(CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION);
 		expect(payload.topic).toBe("next.js");
 		expect(payload.scope).toBe("topic");
 		expect(payload.documents_count).toBe(1);
@@ -215,7 +215,7 @@ describe("Vault load_memory action", () => {
 		expect(payload.found).toBe(true);
 		expect(payload.topic).toBe("next.js");
 		expect(payload.scope).toBe("topic");
-		expect(payload.schema_version).toBe(RESUME_CONTEXT_SCHEMA_VERSION);
+		expect(payload.schema_version).toBe(CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION);
 	});
 
 	test("returns error when memory note does not exist", async () => {
@@ -242,9 +242,9 @@ describe("Vault load_memory action", () => {
 			JSON.parse(firstText(result)),
 		);
 		expect(payload.has_canonical_json).toBe(true);
-		expect(payload.schema_version).toBe("resume_context.v0");
+		expect(payload.schema_version).toBe("context_memory_snapshot.v0");
 		expect(payload.memory_packet).toBeNull();
 		expect(payload.documents_count).toBe(1);
-		expect(payload.preview).toContain("Resume Context v0");
+		expect(payload.preview).toContain("Context Memory Snapshot v0");
 	});
 });
