@@ -1,16 +1,17 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import {
-	afterAll,
-	afterEach,
-	beforeAll,
-	describe,
-	expect,
-	test,
-} from "vitest";
-import { VaultManager } from "../../src/utils/VaultManger";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
+import { VaultManager } from "../../src/utils/VaultManger/index.js";
+import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
 
 const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault-links");
+
+function expectDocument(
+	doc: Awaited<ReturnType<VaultManager["getDocumentInfo"]>>,
+): EnrichedDocument {
+	expect(doc).not.toBeNull();
+	return doc as EnrichedDocument;
+}
 
 describe("VaultManager Link Integration Tests", () => {
 	let vaultManager: VaultManager;
@@ -49,9 +50,9 @@ describe("VaultManager Link Integration Tests", () => {
 			includeBacklinks: true,
 		});
 
-		expect(targetDocInfo).not.toBeNull();
-		expect(targetDocInfo?.backlinks).toBeDefined();
-		expect(targetDocInfo?.backlinks).toEqual(
+		const targetDoc = expectDocument(targetDocInfo);
+		expect(targetDoc.backlinks).toBeDefined();
+		expect(targetDoc.backlinks).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					filePath: expect.stringContaining("Source.md"),
@@ -77,8 +78,9 @@ describe("VaultManager Link Integration Tests", () => {
 		});
 
 		// Then: Referrer가 NoteA의 백링크로 잡혀야 함
-		expect(noteAInfo?.backlinks).toHaveLength(1);
-		expect(noteAInfo?.backlinks?.[0].filePath).toContain("Referrer.md");
+		const noteA = expectDocument(noteAInfo);
+		expect(noteA.backlinks).toHaveLength(1);
+		expect(noteA.backlinks?.[0].filePath).toContain("Referrer.md");
 	});
 
 	test("헤더 앵커(#)가 포함된 링크([[File#Header]])도 원본 파일명으로 연결되어야 한다", async () => {
@@ -101,17 +103,15 @@ describe("VaultManager Link Integration Tests", () => {
 		});
 
 		// Then: Linker가 MainDoc의 백링크로 잡혀야 함
-		expect(mainDocInfo?.backlinks).toHaveLength(1);
-		expect(mainDocInfo?.backlinks?.[0].filePath).toContain("Linker.md");
+		const mainDoc = expectDocument(mainDocInfo);
+		expect(mainDoc.backlinks).toHaveLength(1);
+		expect(mainDoc.backlinks?.[0].filePath).toContain("Linker.md");
 	});
 
 	test("다양한 링크 형식이 섞여 있어도 모두 백링크로 수집되어야 한다", async () => {
 		// Given: 하나의 타겟을 가리키는 다양한 형식의 파일들
 		await fs.writeFile(path.join(TEST_VAULT_PATH, "Center.md"), "Center Node");
-		await fs.writeFile(
-			path.join(TEST_VAULT_PATH, "Link1.md"),
-			"[[Center]]",
-		);
+		await fs.writeFile(path.join(TEST_VAULT_PATH, "Link1.md"), "[[Center]]");
 		await fs.writeFile(
 			path.join(TEST_VAULT_PATH, "Link2.md"),
 			"[[Center|Alias]]",
@@ -130,8 +130,11 @@ describe("VaultManager Link Integration Tests", () => {
 		});
 
 		// Then: 3개의 파일이 모두 백링크로 잡혀야 함
-		expect(centerInfo?.backlinks).toHaveLength(3);
-		const backlinkPaths = centerInfo?.backlinks?.map((b) => b.filePath);
+		const centerDoc = expectDocument(centerInfo);
+		expect(centerDoc.backlinks).toHaveLength(3);
+		const backlinkPaths = centerDoc.backlinks?.map(
+			(backlink: { filePath: string }) => backlink.filePath,
+		);
 		expect(backlinkPaths).toEqual(
 			expect.arrayContaining([
 				expect.stringContaining("Link1.md"),
