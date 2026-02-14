@@ -8,7 +8,7 @@ import {
 	expect,
 	test,
 } from "vitest";
-import { VaultManager } from "../../src/utils/VaultManager";
+import { VaultManager } from "../../src/utils/VaultManger";
 
 const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault-links");
 

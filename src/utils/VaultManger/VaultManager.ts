@@ -1,27 +1,23 @@
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
-import path, { basename, isAbsolute, join, resolve } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import {
+	basename,
+	dirname,
+	extname,
+	isAbsolute,
+	join,
+	relative,
+	resolve,
+} from "node:path";
 import matter from "gray-matter";
 
-import { DirectoryWalker } from "./DirectoryWalker.js";
-import { Indexer } from "./Indexer.js";
-import type { DocumentIndex } from "./processor/types.js";
-import { Semaphore } from "./semaphore.js";
-
-export interface EnrichedDocument extends DocumentIndex {
-	content: string;
-	stats?: {
-		wordCount: number;
-		lineCount: number;
-		characterCount: number;
-		contentLength: number;
-		hasContent: boolean;
-	};
-	backlinks?: {
-		filePath: string;
-		title: string;
-	}[];
-}
+import { DirectoryWalker } from "../DirectoryWalker.js";
+import { Indexer } from "../Indexer.js";
+import type { DocumentIndex } from "../processor/types.js";
+import { Semaphore } from "../semaphore.js";
+import type { EnrichedDocument } from "./types.js";
+import { VaultPathError } from "./VaultPathError.js";
 
 export class VaultManager {
 	private vaultPath: string;
@@ -31,7 +27,7 @@ export class VaultManager {
 	private ioSemaphore: Semaphore;
 
 	constructor(vaultPath: string, maxConcurrentIO: number = 10) {
-		this.vaultPath = vaultPath;
+		this.vaultPath = resolve(vaultPath);
 		this.walker = new DirectoryWalker([".md", ".mdx"]);
 		this.indexer = new Indexer();
 		this.ioSemaphore = new Semaphore(maxConcurrentIO);
@@ -65,6 +61,7 @@ export class VaultManager {
 			includeStats?: boolean;
 			includeBacklinks?: boolean;
 			maxContentPreview?: number;
+			includeContentHash?: boolean;
 		} = {},
 	): Promise<EnrichedDocument | null> {
 		await this.initialize();
@@ -86,6 +83,12 @@ export class VaultManager {
 				: content,
 		};
 
+		if (options.includeContentHash) {
+			enrichedDoc.contentHash = createHash("sha256")
+				.update(content, "utf8")
+				.digest("hex");
+		}
+
 		if (options.includeStats) {
 			this.addStats(enrichedDoc, content);
 		}
@@ -101,14 +104,33 @@ export class VaultManager {
 		fullPath: string,
 		frontmatter: Record<string, unknown>,
 	): Promise<void> {
+		const resolvedPath = this.resolvePathForWrite(fullPath);
+
 		await this.ioSemaphore.acquire();
 		try {
-			const content = (await this.readDocumentContent(fullPath)) || "";
+			const content = (await this.readDocumentContent(resolvedPath)) || "";
 			const newDocument = matter.stringify(content, frontmatter);
-			await writeFile(fullPath, newDocument, "utf8");
+			await writeFile(resolvedPath, newDocument, "utf8");
 		} finally {
 			this.ioSemaphore.release();
 		}
+		await this.refresh();
+	}
+
+	public async writeRawDocument(
+		fullPath: string,
+		content: string,
+	): Promise<void> {
+		const resolvedPath = this.resolvePathForWrite(fullPath);
+
+		await this.ioSemaphore.acquire();
+		try {
+			await mkdir(dirname(resolvedPath), { recursive: true });
+			await writeFile(resolvedPath, content, "utf8");
+		} finally {
+			this.ioSemaphore.release();
+		}
+
 		await this.refresh();
 	}
 
@@ -129,7 +151,7 @@ export class VaultManager {
 		// 절대 경로인 경우, vault 경로 내부인지 검증
 		if (isAbsolute(filename)) {
 			const resolved = resolve(filename);
-			if (resolved.startsWith(this.vaultPath) && existsSync(resolved)) {
+			if (this.isPathInsideVault(resolved) && existsSync(resolved)) {
 				return resolved;
 			}
 			return "";
@@ -137,7 +159,7 @@ export class VaultManager {
 
 		// 상대 경로를 resolve하고 Path Traversal 방어
 		const exactPath = resolve(this.vaultPath, filename);
-		if (!exactPath.startsWith(this.vaultPath)) {
+		if (!this.isPathInsideVault(exactPath)) {
 			return "";
 		}
 		if (existsSync(exactPath)) {
@@ -153,14 +175,14 @@ export class VaultManager {
 		}
 
 		for (const candidate of candidates) {
-			if (candidate.startsWith(this.vaultPath) && existsSync(candidate)) {
+			if (this.isPathInsideVault(candidate) && existsSync(candidate)) {
 				return candidate;
 			}
 		}
 
 		const searchTerms = [
 			filename.replace(/\.mdx?$/, ""),
-			basename(filename, path.extname(filename)),
+			basename(filename, extname(filename)),
 		];
 
 		for (const term of searchTerms) {
@@ -171,6 +193,26 @@ export class VaultManager {
 			}
 		}
 		return "";
+	}
+
+	private resolvePathForWrite(inputPath: string): string {
+		const resolvedPath = isAbsolute(inputPath)
+			? resolve(inputPath)
+			: resolve(this.vaultPath, inputPath);
+
+		if (!this.isPathInsideVault(resolvedPath)) {
+			throw new VaultPathError(inputPath, resolvedPath, this.vaultPath);
+		}
+
+		return resolvedPath;
+	}
+
+	private isPathInsideVault(candidatePath: string): boolean {
+		const relativePath = relative(this.vaultPath, candidatePath);
+		return (
+			relativePath === "" ||
+			(!relativePath.startsWith("..") && !isAbsolute(relativePath))
+		);
 	}
 
 	private async readDocumentContent(filePath: string): Promise<string | null> {

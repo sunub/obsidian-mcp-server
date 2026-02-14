@@ -20,11 +20,12 @@ export const annotations: ToolAnnotations = {
 };
 
 export const description = `
-  Initiates an integrated workflow to read a document, guide an AI to generate properties, and then write those properties to a file.
+  Starts and completes a two-step workflow for AI-generated frontmatter properties.
 
-  This tool acts as a workflow manager for an AI agent. It reads the content of a specified document and returns a structured, multi-step plan. The AI agent must follow this plan by first calling the 'generate_obsidian_property' tool to get the document's content for analysis, and then, after generating the properties, calling the 'write_obsidian_property' tool to save them.
+  Step 1: Call this tool with sourcePath (and optional outputPath). It returns a structured instruction payload and a content preview for AI analysis.
+  Step 2: Call this same tool again with aiGeneratedProperties. The tool then writes those properties by executing the same write logic used by the 'write_property' tool.
 
-  Use this tool to start the end-to-end process of enriching a document with AI-generated metadata.
+  Use this tool when an AI agent should orchestrate analysis and write in a consistent workflow.
 `;
 
 export const register = (mcpServer: McpServer) => {
