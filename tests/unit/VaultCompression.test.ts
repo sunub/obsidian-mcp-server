@@ -1,8 +1,51 @@
 import { describe, expect, test, vi } from "vitest";
-import type { VaultManager } from "../../src/utils/VaultManger/VaultManager";
-import type { EnrichedDocument } from "../../src/utils/VaultManger/types";
-import type { DocumentIndex } from "../../src/utils/processor/types";
-import { readSpecificFile, searchDocuments } from "../../src/tools/vault/utils";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
+import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
+import type { DocumentIndex } from "../../src/utils/processor/types.js";
+import { readSpecificFile, searchDocuments } from "../../src/tools/vault/utils.js";
+import {
+	READ_DEFAULT_BACKLINK_LIMIT,
+	SEARCH_DEFAULT_EXCERPT,
+} from "../../src/tools/vault/utils/shared.js";
+
+function firstText(result: CallToolResult): string {
+	const first = result.content?.[0];
+	if (!first || first.type !== "text") {
+		throw new Error("Expected text content in tool result");
+	}
+	return first.text;
+}
+
+const searchPayloadSchema = z.object({
+	compression: z.object({
+		mode: z.enum(["aggressive", "balanced", "none"]),
+		truncated: z.boolean(),
+	}),
+	documents: z.array(
+		z.object({
+			content_is_truncated: z.boolean(),
+			content: z.object({
+				full: z.string(),
+			}),
+		}),
+	),
+});
+
+const readPayloadSchema = z.object({
+	compression: z.object({
+		mode: z.enum(["aggressive", "balanced", "none"]),
+		truncated: z.boolean(),
+	}),
+	content: z.string(),
+	backlinks: z.array(
+		z.object({
+			filePath: z.string(),
+			title: z.string(),
+		}),
+	),
+});
 
 function createMockVaultManager() {
 	const indexedDoc: DocumentIndex = {
@@ -29,14 +72,17 @@ function createMockVaultManager() {
 		})),
 	};
 
-	const manager = {
+	const manager: Pick<
+		VaultManager,
+		"initialize" | "searchDocuments" | "getAllDocuments" | "getDocumentInfo"
+	> = {
 		initialize: vi.fn(async () => {}),
 		searchDocuments: vi.fn(async () => [indexedDoc]),
 		getAllDocuments: vi.fn(async () => [indexedDoc]),
 		getDocumentInfo: vi.fn(
 			async (
 				filename: string,
-				options?: { maxContentPreview?: number },
+				options?: Parameters<VaultManager["getDocumentInfo"]>[1],
 			): Promise<EnrichedDocument | null> => {
 				if (filename !== "/vault/alpha.md" && filename !== "alpha.md") {
 					return null;
@@ -73,13 +119,17 @@ describe("Vault compression policy", () => {
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = JSON.parse(String(result.content?.[0].text));
+		const payload = searchPayloadSchema.parse(
+			JSON.parse(firstText(result)),
+		);
 
 		expect(payload.compression.mode).toBe("balanced");
 		expect(payload.compression.truncated).toBe(true);
 		expect(payload.documents).toHaveLength(1);
 		expect(payload.documents[0].content_is_truncated).toBe(true);
-		expect(payload.documents[0].content.full.length).toBeLessThanOrEqual(503);
+		expect(payload.documents[0].content.full.length).toBeLessThanOrEqual(
+			SEARCH_DEFAULT_EXCERPT.balanced + 3,
+		);
 	});
 
 	test("read action keeps full content when compressionMode is none", async () => {
@@ -92,7 +142,9 @@ describe("Vault compression policy", () => {
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = JSON.parse(String(result.content?.[0].text));
+		const payload = readPayloadSchema.parse(
+			JSON.parse(firstText(result)),
+		);
 
 		expect(payload.compression.mode).toBe("none");
 		expect(payload.compression.truncated).toBe(false);
@@ -110,11 +162,15 @@ describe("Vault compression policy", () => {
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = JSON.parse(String(result.content?.[0].text));
+		const payload = readPayloadSchema.parse(
+			JSON.parse(firstText(result)),
+		);
 
 		expect(payload.compression.mode).toBe("aggressive");
 		expect(payload.compression.truncated).toBe(true);
 		expect(payload.content.length).toBeLessThan(4000);
-		expect(payload.backlinks.length).toBeLessThanOrEqual(5);
+		expect(payload.backlinks.length).toBeLessThanOrEqual(
+			READ_DEFAULT_BACKLINK_LIMIT.aggressive,
+		);
 	});
 });

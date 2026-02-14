@@ -1,11 +1,57 @@
 import { describe, expect, test, vi } from "vitest";
-import { loadMemory } from "../../src/tools/vault/utils";
-import type { EnrichedDocument } from "../../src/utils/VaultManger/types";
-import type { VaultManager } from "../../src/utils/VaultManger/VaultManager";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { loadMemory } from "../../src/tools/vault/utils.js";
+import {
+	RESUME_CONTEXT_MEMORY_NOTE_PATH,
+	RESUME_CONTEXT_SCHEMA_VERSION,
+} from "../../src/tools/vault/utils/constants.js";
+import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
+import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
+
+function firstText(result: CallToolResult): string {
+	const first = result.content?.[0];
+	if (!first || first.type !== "text") {
+		throw new Error("Expected text content in tool result");
+	}
+	return first.text;
+}
+
+const loadMemoryPayloadSchema = z.object({
+	action: z.literal("load_memory"),
+	found: z.boolean(),
+	has_canonical_json: z.boolean(),
+	schema_version: z.string().nullable(),
+	topic: z.string().nullable(),
+	scope: z.enum(["topic", "all"]).nullable(),
+	documents_count: z.number(),
+	memory_packet: z
+		.object({
+			topicSummary: z.string(),
+		})
+		.nullable(),
+	preview: z.string(),
+	compression: z.object({
+		estimated_tokens: z.number(),
+	}),
+});
+
+const loadMemoryQuietPayloadSchema = z.object({
+	found: z.boolean(),
+	topic: z.string().nullable(),
+	scope: z.enum(["topic", "all"]).nullable(),
+	schema_version: z.string().nullable(),
+});
+
+const errorPayloadSchema = z.object({
+	error: z.string(),
+});
+
+const VAULT_MEMORY_NOTE_PATH = `/vault/${RESUME_CONTEXT_MEMORY_NOTE_PATH}`;
 
 function createMemoryNote(): EnrichedDocument {
 	return {
-		filePath: "/vault/memory/resume_context.v1.md",
+		filePath: VAULT_MEMORY_NOTE_PATH,
 		frontmatter: { title: "Resume Context v1" },
 		contentLength: 1200,
 		imageLinks: [],
@@ -15,7 +61,7 @@ function createMemoryNote(): EnrichedDocument {
 			"",
 			"- generated_at: 2026-02-13T00:00:00.000Z",
 			"- source_hash: 6f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f",
-			"- schema_version: resume_context.v1",
+			`- schema_version: ${RESUME_CONTEXT_SCHEMA_VERSION}`,
 			"",
 			"## Topic Summary",
 			"Built and optimized Next.js production workflows.",
@@ -23,7 +69,7 @@ function createMemoryNote(): EnrichedDocument {
 			"## Canonical JSON",
 			"```json",
 			"{",
-			'  "schema_version": "resume_context.v1",',
+			`  "schema_version": "${RESUME_CONTEXT_SCHEMA_VERSION}",`,
 			'  "generated_at": "2026-02-13T00:00:00.000Z",',
 			'  "source_hash": "6f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f",',
 			'  "scope": "topic",',
@@ -62,7 +108,7 @@ function createMemoryNote(): EnrichedDocument {
 
 function createStaleMemoryNote(): EnrichedDocument {
 	return {
-		filePath: "/vault/memory/resume_context.v1.md",
+		filePath: VAULT_MEMORY_NOTE_PATH,
 		frontmatter: { title: "Resume Context v0" },
 		contentLength: 900,
 		imageLinks: [],
@@ -108,15 +154,18 @@ function createStaleMemoryNote(): EnrichedDocument {
 }
 
 function createMockVaultManager(memoryNote: EnrichedDocument | null) {
-	const manager = {
+	const manager: Pick<VaultManager, "initialize" | "getDocumentInfo"> = {
 		initialize: vi.fn(async () => {}),
 		getDocumentInfo: vi.fn(
-			async (filename: string): Promise<EnrichedDocument | null> => {
+			async (
+				filename: string,
+				_options?: Parameters<VaultManager["getDocumentInfo"]>[1],
+			): Promise<EnrichedDocument | null> => {
 				if (!memoryNote) {
 					return null;
 				}
 				if (
-					filename === "memory/resume_context.v1.md" ||
+					filename === RESUME_CONTEXT_MEMORY_NOTE_PATH ||
 					filename === memoryNote.filePath
 				) {
 					return memoryNote;
@@ -137,15 +186,18 @@ describe("Vault load_memory action", () => {
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = JSON.parse(String(result.content?.[0].text));
+		const payload = loadMemoryPayloadSchema.parse(
+			JSON.parse(firstText(result)),
+		);
 
 		expect(payload.action).toBe("load_memory");
 		expect(payload.has_canonical_json).toBe(true);
-		expect(payload.schema_version).toBe("resume_context.v1");
+		expect(payload.schema_version).toBe(RESUME_CONTEXT_SCHEMA_VERSION);
 		expect(payload.topic).toBe("next.js");
 		expect(payload.scope).toBe("topic");
 		expect(payload.documents_count).toBe(1);
-		expect(payload.memory_packet.topicSummary).toContain("Next.js");
+		expect(payload.memory_packet).not.toBeNull();
+		expect(payload.memory_packet?.topicSummary).toContain("Next.js");
 		expect(payload.compression.estimated_tokens).toBeGreaterThan(0);
 	});
 
@@ -157,11 +209,13 @@ describe("Vault load_memory action", () => {
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = JSON.parse(String(result.content?.[0].text));
+		const payload = loadMemoryQuietPayloadSchema.parse(
+			JSON.parse(firstText(result)),
+		);
 		expect(payload.found).toBe(true);
 		expect(payload.topic).toBe("next.js");
 		expect(payload.scope).toBe("topic");
-		expect(payload.schema_version).toBe("resume_context.v1");
+		expect(payload.schema_version).toBe(RESUME_CONTEXT_SCHEMA_VERSION);
 	});
 
 	test("returns error when memory note does not exist", async () => {
@@ -171,7 +225,9 @@ describe("Vault load_memory action", () => {
 		});
 
 		expect(result.isError).toBe(true);
-		const payload = JSON.parse(String(result.content?.[0].text));
+		const payload = errorPayloadSchema.parse(
+			JSON.parse(firstText(result)),
+		);
 		expect(payload.error).toContain("Memory note not found");
 	});
 
@@ -182,7 +238,9 @@ describe("Vault load_memory action", () => {
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = JSON.parse(String(result.content?.[0].text));
+		const payload = loadMemoryPayloadSchema.parse(
+			JSON.parse(firstText(result)),
+		);
 		expect(payload.has_canonical_json).toBe(true);
 		expect(payload.schema_version).toBe("resume_context.v0");
 		expect(payload.memory_packet).toBeNull();
