@@ -1,2 +1,2 @@
-export const RESUME_CONTEXT_MEMORY_NOTE_PATH = "memory/resume_context.v1.md";
-export const RESUME_CONTEXT_SCHEMA_VERSION = "resume_context.v1";
+export const CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH = "memory/context_memory_snapshot.v1.md";
+export const CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION = "context_memory_snapshot.v1";

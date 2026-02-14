@@ -15,7 +15,7 @@ Obsidian Vault를 이용해 AI가 활용 가능한 지식 베이스(Knowledge Ba
 
 - **고급 문서 탐색**: `vault` 도구를 통해 키워드 검색, 전체 목록 조회, 특정 문서 읽기, 통계 분석 등 다양한 탐색 기능을 제공합니다.
 - **컨텍스트 수집/기억 패킷 생성**: `vault collect_context`로 문서 배치 수집, 압축, continuation 토큰 발급, 메모리 패킷(JSON canonical)을 생성합니다.
-- **저장된 메모리 재호출**: `vault load_memory`로 `memory/resume_context.v1.md`를 빠르게 로드해 다음 턴 컨텍스트로 재사용할 수 있습니다.
+- **저장된 메모리 재호출**: `vault load_memory`로 `memory/context_memory_snapshot.v1.md`를 빠르게 로드해 다음 턴 컨텍스트로 재사용할 수 있습니다.
 - **AI 기반 속성 생성**: `generate_property` 도구는 문서 본문을 분석하여 `title`, `tags`, `summary` 등 적절한 frontmatter 속성을 자동으로 생성합니다.
 - **안전한 속성 업데이트**: `write_property` 도구를 사용하여 생성된 속성을 기존 frontmatter와 병합하여 파일에 안전하게 기록합니다.
 - **첨부 파일 자동 정리**: `organize_attachments` 도구는 문서와 연결된 첨부 파일(예: 이미지)을 자동으로 감지하여 문서 제목에 맞는 폴더로 이동시키고 링크를 업데이트합니다.
@@ -34,7 +34,7 @@ Vault 내 문서를 탐색하고 분석하는 핵심 도구입니다. `action` �
 - **`search`**: 키워드를 기반으로 문서 제목, 내용, 태그를 검색합니다.
 - **`read`**: 특정 파일의 내용을 읽고 frontmatter와 본문을 반환합니다.
 - **`stats`**: Vault 내 모든 문서의 통계(단어, 글자 수 등)를 제공합니다.
-- **`collect_context`**: 문서를 배치 처리하여 메모리 패킷을 생성하고, 필요 시 `memory/resume_context.v1.md`에 저장합니다.
+- **`collect_context`**: 문서를 배치 처리하여 메모리 패킷을 생성하고, 필요 시 `memory/context_memory_snapshot.v1.md`에 저장합니다.
 - **`load_memory`**: 저장된 메모리 노트의 canonical JSON 블록을 파싱하여 빠른 재주입용 payload를 반환합니다.
 
 ### `generate_property`
@@ -64,17 +64,17 @@ Vault 내 문서를 탐색하고 분석하는 핵심 도구입니다. `action` �
 
 ### 메모리 산출물 포맷
 
-- 기본 저장 경로: `memory/resume_context.v1.md`
+- 기본 저장 경로: `memory/context_memory_snapshot.v1.md`
 - 구성: 사람이 읽는 Markdown 요약 + AI 파싱용 canonical JSON code block
 - 스키마 키: `schema_version`, `generated_at`, `source_hash`, `documents[].doc_hash`, `memory_packet`
 
 ## collect_context 추천 프리셋
 
-| 목적 | 주요 파라미터 | 권장 값 |
-| --- | --- | --- |
-| 빠른 토픽 스캔 | `scope`, `maxDocs`, `maxCharsPerDoc`, `compressionMode` | `topic`, `8`, `700`, `aggressive` |
+| 목적                 | 주요 파라미터                                                         | 권장 값                                 |
+| -------------------- | --------------------------------------------------------------------- | --------------------------------------- |
+| 빠른 토픽 스캔       | `scope`, `maxDocs`, `maxCharsPerDoc`, `compressionMode`               | `topic`, `8`, `700`, `aggressive`       |
 | 이력서 컨텍스트 구축 | `scope`, `maxDocs`, `maxCharsPerDoc`, `memoryMode`, `compressionMode` | `all`, `20`, `1200`, `both`, `balanced` |
-| 장문 Vault 단계 처리 | `maxDocs`, `maxCharsPerDoc`, `maxOutputChars` | `10`, `900`, `2800` |
+| 장문 Vault 단계 처리 | `maxDocs`, `maxCharsPerDoc`, `maxOutputChars`                         | `10`, `900`, `2800`                     |
 
 가드레일은 출력 상한 초과 시 다음 순서로 축소됩니다: `backlinks -> per-doc chars -> doc count -> continuation`.
 
@@ -110,7 +110,7 @@ Vault 내 문서를 탐색하고 분석하는 핵심 도구입니다. `action` �
 ```json
 {
   "action": "load_memory",
-  "memoryPath": "memory/resume_context.v1.md",
+  "memoryPath": "memory/context_memory_snapshot.v1.md",
   "quiet": true
 }
 ```
@@ -168,7 +168,7 @@ MCP를 지원하는 AI 도구(Claude Desktop, Gemini 등)의 설정 파일에 �
    "VAULT_DIR_PATH": "/Users/username/Documents/MyVault"
    "VAULT_DIR_PATH": "C:\\Users\\username\\Documents\\MyVault"  // Windows
    "VAULT_DIR_PATH": "/mnt/c/Users/username/Documents/MyVault"  // WSL
-   
+
    // ❌ 잘못된 예시
    "VAULT_DIR_PATH": "~/Documents/MyVault"  // 상대 경로 사용 불가
    "VAULT_DIR_PATH": "./vault"              // 상대 경로 사용 불가
