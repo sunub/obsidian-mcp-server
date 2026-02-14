@@ -1,9 +1,22 @@
 import { describe, expect, test, vi } from "vitest";
-import { collectContextResponseDataSchema } from "../../src/tools/vault/types/collect_context";
-import { collectContext } from "../../src/tools/vault/utils";
-import type { DocumentIndex } from "../../src/utils/processor/types";
-import type { EnrichedDocument } from "../../src/utils/VaultManger/types";
-import type { VaultManager } from "../../src/utils/VaultManger/VaultManager";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { collectContextResponseDataSchema } from "../../src/tools/vault/types/collect_context.js";
+import { collectContext } from "../../src/tools/vault/utils.js";
+import {
+	RESUME_CONTEXT_MEMORY_NOTE_PATH,
+	RESUME_CONTEXT_SCHEMA_VERSION,
+} from "../../src/tools/vault/utils/constants.js";
+import type { DocumentIndex } from "../../src/utils/processor/types.js";
+import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
+import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
+
+function firstText(result: CallToolResult): string {
+	const first = result.content?.[0];
+	if (!first || first.type !== "text") {
+		throw new Error("Expected text content in tool result");
+	}
+	return first.text;
+}
 
 function createMockVaultManager(variant = "v1") {
 	const docs: DocumentIndex[] = [
@@ -56,7 +69,7 @@ function createMockVaultManager(variant = "v1") {
 		},
 	};
 
-	const writeRawDocument = vi.fn(async () => {});
+	const writeRawDocument = vi.fn(async (_path: string, _content: string) => {});
 
 	const manager = {
 		initialize: vi.fn(async () => {}),
@@ -107,7 +120,7 @@ describe("Vault collect_context orchestration", () => {
 
 		expect(result.isError).toBe(false);
 		const payload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(result.content?.[0].text)),
+			JSON.parse(firstText(result)),
 		);
 
 		expect(payload.action).toBe("collect_context");
@@ -116,7 +129,7 @@ describe("Vault collect_context orchestration", () => {
 		expect(typeof payload.batch.continuation_token).toBe("string");
 		expect(payload.memory_packet.keyFacts.length).toBeGreaterThan(0);
 		expect(payload.compression.estimated_tokens).toBeGreaterThan(0);
-		expect(payload.cache.hit).toBe(false);
+		expect(payload.cache?.hit).toBe(false);
 	});
 
 	test("can resume collect_context with continuationToken", async () => {
@@ -130,7 +143,7 @@ describe("Vault collect_context orchestration", () => {
 			maxCharsPerDoc: 300,
 		});
 		const firstPayload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(first.content?.[0].text)),
+			JSON.parse(firstText(first)),
 		);
 		const token = firstPayload.batch.continuation_token as string;
 
@@ -139,7 +152,7 @@ describe("Vault collect_context orchestration", () => {
 			continuationToken: token,
 		});
 		const secondPayload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(second.content?.[0].text)),
+			JSON.parse(firstText(second)),
 		);
 
 		expect(second.isError).toBe(false);
@@ -174,16 +187,16 @@ describe("Vault collect_context orchestration", () => {
 
 		expect(result.isError).toBe(false);
 		const payload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(result.content?.[0].text)),
+			JSON.parse(firstText(result)),
 		);
 
 		expect(writeRawDocument).toHaveBeenCalledTimes(1);
 		expect(writeRawDocument).toHaveBeenCalledWith(
-			"memory/resume_context.v1.md",
+			RESUME_CONTEXT_MEMORY_NOTE_PATH,
 			expect.stringContaining("# Resume Context v1"),
 		);
 		expect(writeRawDocument.mock.calls[0][1]).toContain(
-			'"schema_version": "resume_context.v1"',
+			`"schema_version": "${RESUME_CONTEXT_SCHEMA_VERSION}"`,
 		);
 		expect(payload.memory_write.status).toBe("written");
 		expect(payload.memory_write.generated_at).toBeDefined();
@@ -201,7 +214,7 @@ describe("Vault collect_context orchestration", () => {
 			maxCharsPerDoc: 300,
 		});
 		const firstPayload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(first.content?.[0].text)),
+			JSON.parse(firstText(first)),
 		);
 
 		const second = await collectContext(vaultManager, {
@@ -212,7 +225,7 @@ describe("Vault collect_context orchestration", () => {
 			maxCharsPerDoc: 300,
 		});
 		const secondPayload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(second.content?.[0].text)),
+			JSON.parse(firstText(second)),
 		);
 
 		expect(firstPayload.cache?.hit).toBe(false);
@@ -231,7 +244,7 @@ describe("Vault collect_context orchestration", () => {
 			maxCharsPerDoc: 300,
 		});
 		const initialPayload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(initial.content?.[0].text)),
+			JSON.parse(firstText(initial)),
 		);
 
 		const { vaultManager: changedManager } =
@@ -244,7 +257,7 @@ describe("Vault collect_context orchestration", () => {
 			maxCharsPerDoc: 300,
 		});
 		const changedPayload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(changed.content?.[0].text)),
+			JSON.parse(firstText(changed)),
 		);
 
 		expect(changedPayload.cache?.hit).toBe(false);
@@ -264,7 +277,7 @@ describe("Vault collect_context orchestration", () => {
 			maxCharsPerDoc: 300,
 		});
 		const firstPayload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(first.content?.[0].text)),
+			JSON.parse(firstText(first)),
 		);
 
 		const second = await collectContext(vaultManager, {
@@ -275,7 +288,7 @@ describe("Vault collect_context orchestration", () => {
 			maxCharsPerDoc: 300,
 		});
 		const secondPayload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(second.content?.[0].text)),
+			JSON.parse(firstText(second)),
 		);
 
 		expect(first.isError).toBe(false);
@@ -303,7 +316,7 @@ describe("Vault collect_context orchestration", () => {
 
 		expect(result.isError).toBe(false);
 		const payload = collectContextResponseDataSchema.parse(
-			JSON.parse(String(result.content?.[0].text)),
+			JSON.parse(firstText(result)),
 		);
 
 		expect(payload.compression.truncated).toBe(true);

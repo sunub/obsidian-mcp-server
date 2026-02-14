@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test } from "vitest";
-import { buildVaultResponseMetric } from "../../src/tools/vault/metrics";
+import { buildVaultResponseMetric } from "../../src/tools/vault/metrics.js";
 
 function createTextResult(payload: unknown, isError = false): CallToolResult {
 	return {
