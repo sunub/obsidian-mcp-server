@@ -111,7 +111,7 @@ export const obsidianContentContinuationToken = z
 export const obsidianContentMemoryPath = z
 	.string()
 	.describe(
-		"Path to a stored memory note for load_memory (default: memory/resume_context.v1.md)",
+		"Path to a stored memory note for load_memory (default: memory/context_memory_snapshot.v1.md)",
 	);
 
 // input schema
