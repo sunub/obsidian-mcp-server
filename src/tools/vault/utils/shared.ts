@@ -2,7 +2,10 @@ import type { ObsidianContentQueryParams } from "../params.js";
 
 export type CompressionMode = "aggressive" | "balanced" | "none";
 
-export const SEARCH_DEFAULT_LIMIT: Record<Exclude<CompressionMode, "none">, number> = {
+export const SEARCH_DEFAULT_LIMIT: Record<
+	Exclude<CompressionMode, "none">,
+	number
+> = {
 	aggressive: 3,
 	balanced: 5,
 };
@@ -63,7 +66,9 @@ function estimateTokensByChars(chars: number): number {
 	return Math.ceil(chars / 3);
 }
 
-export function finalizePayloadWithCompression<T extends Record<string, unknown>>(
+export function finalizePayloadWithCompression<
+	T extends Record<string, unknown>,
+>(
 	payload: T,
 	compression: {
 		mode: CompressionMode;

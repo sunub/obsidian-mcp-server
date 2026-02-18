@@ -31,7 +31,11 @@ export async function listAllDocuments(
 	const documentsOverview = await Promise.all(
 		limitedDocs.map(async (doc) => {
 			if (params.includeContent) {
-				const fullDoc = await getDocumentContent(vaultManager, doc.filePath, 200);
+				const fullDoc = await getDocumentContent(
+					vaultManager,
+					doc.filePath,
+					200,
+				);
 				return formatDocument({ ...doc, ...fullDoc }, true, 200);
 			}
 			return formatDocument(doc, false);
