@@ -214,7 +214,11 @@ export async function loadMemory(
 	const previewTruncated = preview.length < previewSource.length;
 
 	if (params.quiet) {
-		const quietPayload = buildLoadMemoryPayload(memoryNote.filePath, noteBody, "");
+		const quietPayload = buildLoadMemoryPayload(
+			memoryNote.filePath,
+			noteBody,
+			"",
+		);
 		return {
 			isError: false,
 			content: [
@@ -227,7 +231,8 @@ export async function loadMemory(
 						topic: quietPayload.topic,
 						scope: quietPayload.scope,
 						schema_version:
-							quietPayload.schema_version ?? CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
+							quietPayload.schema_version ??
+							CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 					}),
 				},
 			],
@@ -241,7 +246,11 @@ export async function loadMemory(
 			? null
 			: ACTION_DEFAULT_MAX_OUTPUT_CHARS.load_memory[mode]);
 
-	const basePayload = buildLoadMemoryPayload(memoryNote.filePath, noteBody, preview);
+	const basePayload = buildLoadMemoryPayload(
+		memoryNote.filePath,
+		noteBody,
+		preview,
+	);
 	let payloadForCompression = basePayload;
 	let outputCapClamped = false;
 	if (typeof maxOutputChars === "number") {

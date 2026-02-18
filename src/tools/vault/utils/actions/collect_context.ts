@@ -62,7 +62,9 @@ function pickEvidenceSnippets(content: string, maxSnippets: number): string[] {
 		normalizeWhitespace(line.replace(/^#{1,6}\s+/, "").replace(/^[-*]\s+/, "")),
 	);
 
-	return unique.slice(0, maxSnippets).map((line) => trimWithEllipsis(line, 220));
+	return unique
+		.slice(0, maxSnippets)
+		.map((line) => trimWithEllipsis(line, 220));
 }
 
 function inferCollectContextRelevance(
@@ -204,9 +206,10 @@ function buildCollectContextMemoryPacket(
 			? 0.25
 			: Math.min(0.9, 0.45 + documents.length * 0.08);
 	const confidence = Number(
-		Math.max(0.1, Math.min(0.95, baseConfidence - truncationRatio * 0.2)).toFixed(
-			2,
-		),
+		Math.max(
+			0.1,
+			Math.min(0.95, baseConfidence - truncationRatio * 0.2),
+		).toFixed(2),
 	);
 
 	return collectContextMemoryPacketSchema.parse({
@@ -361,7 +364,9 @@ function reduceCollectContextPerDocCharsForBudget(
 	return changed;
 }
 
-function buildCollectContextDocHash(documents: CollectContextDocument[]): string {
+function buildCollectContextDocHash(
+	documents: CollectContextDocument[],
+): string {
 	return createHash("sha256")
 		.update(
 			JSON.stringify(
@@ -561,7 +566,10 @@ async function writeContextMemorySnapshotNote(
 	});
 
 	try {
-		await vaultManager.writeRawDocument(CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH, markdown);
+		await vaultManager.writeRawDocument(
+			CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
+			markdown,
+		);
 		return {
 			requested: true,
 			status: "written",
@@ -764,7 +772,10 @@ export async function collectContext(
 		maxCharsPerDoc,
 	});
 
-	if (orderedCandidates.length === 0 || startCursor >= orderedCandidates.length) {
+	if (
+		orderedCandidates.length === 0 ||
+		startCursor >= orderedCandidates.length
+	) {
 		const cachedEmptyPayload = getCollectContextCache(emptyCacheKey);
 		const emptyCacheHit = cachedEmptyPayload !== null;
 		let emptyPayload =
@@ -853,7 +864,10 @@ export async function collectContext(
 	let outputCapClamped = false;
 	let scannedIndex = startCursor;
 
-	while (scannedIndex < orderedCandidates.length && documents.length < maxDocs) {
+	while (
+		scannedIndex < orderedCandidates.length &&
+		documents.length < maxDocs
+	) {
 		const candidate = orderedCandidates[scannedIndex];
 		scannedIndex++;
 		consumedCandidates++;
@@ -1005,7 +1019,10 @@ export async function collectContext(
 		: basePayload;
 
 	if (memoryMode !== "response_only") {
-		const memoryWrite = await writeContextMemorySnapshotNote(vaultManager, basePayload);
+		const memoryWrite = await writeContextMemorySnapshotNote(
+			vaultManager,
+			basePayload,
+		);
 		payloadForCompression = collectContextPayloadSchema.parse({
 			...basePayload,
 			memory_mode: memoryMode,
