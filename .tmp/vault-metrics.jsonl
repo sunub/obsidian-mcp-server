@@ -1,3 +1,0 @@
-{"timestamp":"2026-02-13T16:13:01.577Z","action":"search","mode":"balanced","latency_ms":464,"estimated_tokens":682,"truncated":true,"doc_count":1,"output_chars":2044,"source_chars":275051,"max_output_chars":2500,"keyword":"좋은 코드"}
-{"timestamp":"2026-02-13T16:13:10.425Z","action":"search","mode":"none","latency_ms":0,"estimated_tokens":28,"truncated":false,"doc_count":0,"output_chars":82,"source_chars":0,"max_output_chars":null,"keyword":"좋은 코드/"}
-{"timestamp":"2026-02-13T16:13:26.851Z","action":"search","mode":"none","latency_ms":1,"estimated_tokens":366,"truncated":false,"doc_count":3,"output_chars":1097,"source_chars":34882,"max_output_chars":null,"keyword":"좋은 코드를 작성"}
