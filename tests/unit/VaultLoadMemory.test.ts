@@ -225,9 +225,7 @@ describe("Vault load_memory action", () => {
 		});
 
 		expect(result.isError).toBe(true);
-		const payload = errorPayloadSchema.parse(
-			JSON.parse(firstText(result)),
-		);
+		const payload = errorPayloadSchema.parse(JSON.parse(firstText(result)));
 		expect(payload.error).toContain("Memory note not found");
 	});
 

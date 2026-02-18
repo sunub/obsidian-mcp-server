@@ -4,7 +4,10 @@ import { z } from "zod";
 import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
 import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
 import type { DocumentIndex } from "../../src/utils/processor/types.js";
-import { readSpecificFile, searchDocuments } from "../../src/tools/vault/utils.js";
+import {
+	readSpecificFile,
+	searchDocuments,
+} from "../../src/tools/vault/utils.js";
 import {
 	READ_DEFAULT_BACKLINK_LIMIT,
 	SEARCH_DEFAULT_EXCERPT,
@@ -119,9 +122,7 @@ describe("Vault compression policy", () => {
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = searchPayloadSchema.parse(
-			JSON.parse(firstText(result)),
-		);
+		const payload = searchPayloadSchema.parse(JSON.parse(firstText(result)));
 
 		expect(payload.compression.mode).toBe("balanced");
 		expect(payload.compression.truncated).toBe(true);
@@ -142,9 +143,7 @@ describe("Vault compression policy", () => {
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = readPayloadSchema.parse(
-			JSON.parse(firstText(result)),
-		);
+		const payload = readPayloadSchema.parse(JSON.parse(firstText(result)));
 
 		expect(payload.compression.mode).toBe("none");
 		expect(payload.compression.truncated).toBe(false);
@@ -162,9 +161,7 @@ describe("Vault compression policy", () => {
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = readPayloadSchema.parse(
-			JSON.parse(firstText(result)),
-		);
+		const payload = readPayloadSchema.parse(JSON.parse(firstText(result)));
 
 		expect(payload.compression.mode).toBe("aggressive");
 		expect(payload.compression.truncated).toBe(true);
