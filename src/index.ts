@@ -3,11 +3,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { getOptions } from "./config.js";
 import createMcpServer from "./server.js";
 
-export default function smitheryEntryPoint() {
-	const server = createMcpServer();
-	return server.server;
-}
-
 async function main() {
 	const options = getOptions();
 	if (!options) {
