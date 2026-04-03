@@ -270,6 +270,13 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
 
 MCP를 어떻게 호출하는지보다 “무슨 동작을 하려고 하는지”가 더 중요합니다.  
 
+마크다운 문서에 작성되어 있는 첨부파일을 정리하는 동작 예시 :
+
+https://github.com/user-attachments/assets/eb74ec05-09f7-4632-a22c-666b7e844147
+
+- 특정 문서를 대상으로 문서에 작성되더 있는 이미지 첨부 파일을 정리해달라고 요구할 경우 해당  `images` 폴더 내부에 해당 파일의 이름으로 폴더를 생성하여 정리합니다.
+- 정리된 문서는 기존의 작성되어 있던 문서의 연결이 깨지지 않도록 `images` 폴더를 기준으로 연결을 업데이트 합니다.
+
 직접 실행용 질문 예시:
 
 - `README.md`에서 `시작하기 (빠른 설정)`의 `MCP Client configuration` 부분만 찾아줘.
