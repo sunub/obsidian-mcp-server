@@ -11,7 +11,7 @@ export function parse(text: string): ParsedMatter {
 			content: parsed.content,
 		};
 	} catch {
-		console.warn(
+		console.error(
 			"Frontmatter 파싱에 실패했습니다. 전체를 내용으로 간주합니다.",
 		);
 		return {
