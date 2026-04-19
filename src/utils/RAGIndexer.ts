@@ -9,9 +9,36 @@ import { Semaphore } from "./semaphore.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
 import { encodingForModel } from "js-tiktoken";
 
+type HeadingEntry = { heading: string; pos: number; depth: number };
+
+function extractHeadingsWithPositions(body: string): HeadingEntry[] {
+  const headingRegex = /^(#{1,3})\s+(.+)$/gm;
+  const results: HeadingEntry[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = headingRegex.exec(body)) !== null) {
+    results.push({ heading: match[2].trim(), pos: match.index, depth: match[1].length });
+  }
+  return results;
+}
+
+function findSectionForChunk(
+  body: string,
+  chunk: string,
+  headings: HeadingEntry[],
+): string | null {
+  if (headings.length === 0) return null;
+  const pos = body.indexOf(chunk.slice(0, 60));
+  if (pos === -1) return null;
+  let section: string | null = null;
+  for (const h of headings) {
+    if (h.pos <= pos) section = h.heading;
+  }
+  return section;
+}
+
 export class RAGIndexer {
   private splitter: RecursiveCharacterTextSplitter;
-  private llmSemaphore: Semaphore;
+  private embeddingSemaphore: Semaphore;
   private ioSemaphore: Semaphore;
   private spinner: Ora | null = null;
   private totalFiles = 0;
@@ -27,7 +54,7 @@ export class RAGIndexer {
       },
     });
 
-    this.llmSemaphore = new Semaphore(1);
+    this.embeddingSemaphore = new Semaphore(3);
     this.ioSemaphore = new Semaphore(10);
   }
 
@@ -63,9 +90,25 @@ export class RAGIndexer {
       fileContent,
     );
     const fileName = path.basename(filePath);
-    const safeSummary = frontmatter.summary
-      ? frontmatter.summary.slice(0, 80)
-      : "";
+
+    // Rule-based context: extract heading structure (no LLM call)
+    const headings = extractHeadingsWithPositions(body);
+    const titleFromBody = headings.find((h) => h.depth === 1)?.heading ?? null;
+    const docTitle = frontmatter.title || titleFromBody || fileName;
+    const docStructure = headings
+      .filter((h) => h.depth <= 2)
+      .slice(0, 8)
+      .map((h) => h.heading);
+
+    const metadataPrefix = [
+      `Title: ${docTitle}`,
+      frontmatter.tags?.length
+        ? `Tags: ${frontmatter.tags.slice(0, 3).join(", ")}`
+        : "",
+      frontmatter.summary ? `Summary: ${frontmatter.summary.slice(0, 80)}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const chunks = await this.splitter.splitText(body);
     const records: VectorRecord[] = [];
@@ -73,75 +116,64 @@ export class RAGIndexer {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
 
-      await this.llmSemaphore.acquire();
+      const sectionHeading = findSectionForChunk(body, chunk, headings);
+      const context = [
+        sectionHeading ? `Section: ${sectionHeading}` : "",
+        docStructure.length > 1
+          ? `Outline: ${docStructure.slice(0, 5).join(" > ")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const combined = [metadataPrefix, context, chunk]
+        .filter(Boolean)
+        .join("\n\n");
+
+      // 임베딩 모델 입력 한도(512토큰) 초과 방지: 토큰 비율로 문자 수 추정 후 트런케이션
+      const MAX_EMBED_TOKENS = 480;
+      const combinedTokenCount = this.enc.encode(combined).length;
+      const safeText =
+        combinedTokenCount > MAX_EMBED_TOKENS
+          ? combined.slice(
+              0,
+              Math.floor(
+                combined.length * (MAX_EMBED_TOKENS / combinedTokenCount),
+              ),
+            )
+          : combined;
+
+      await this.embeddingSemaphore.acquire();
+      let vector: number[];
       try {
-        const metadataPrefix = [
-          frontmatter.title || fileName,
-          frontmatter.tags?.length
-            ? `Tags: ${frontmatter.tags.slice(0, 3).join(", ")}`
-            : "",
-          safeSummary,
-        ]
-          .filter(Boolean)
-          .join("\n");
-
-        const context = await llmClient.generateContext(
-          [
-            frontmatter.title ? `Title: ${frontmatter.title}` : `File: ${fileName}`,
-            frontmatter.summary ? `Summary: ${frontmatter.summary}` : "",
-            frontmatter.tags?.length
-              ? `Tags: ${frontmatter.tags.slice(0, 5).join(", ")}`
-              : "",
-            body.slice(0, 400),
-          ]
-            .filter(Boolean)
-            .join("\n"),
-          chunk,
-        );
-        const combined = [metadataPrefix, context, chunk]
-          .filter(Boolean)
-          .join("\n\n");
-
-        // 임베딩 모델 입력 한도(512토큰) 초과 방지: 토큰 비율로 문자 수 추정 후 트런케이션
-        const MAX_EMBED_TOKENS = 480;
-        const combinedTokenCount = this.enc.encode(combined).length;
-        const safeText =
-          combinedTokenCount > MAX_EMBED_TOKENS
-            ? combined.slice(
-                0,
-                Math.floor(
-                  combined.length * (MAX_EMBED_TOKENS / combinedTokenCount),
-                ),
-              )
-            : combined;
-        const vector = await llmClient.generateEmbedding(
+        vector = await llmClient.generateEmbedding(
           `search_document: ${safeText}`,
         );
-
-        records.push({
-          id: `${filePath}_chunk_${i}`,
-          filePath,
-          fileName,
-          chunkIndex: i,
-          content: chunk,
-          context,
-          vector,
-          metadata: {
-            title: frontmatter.title || fileName,
-            date:
-              frontmatter.date instanceof Date
-                ? frontmatter.date.toISOString()
-                : frontmatter.date || fileStat.birthtime.toISOString(),
-            tags: frontmatter.tags?.join(", ") ?? "",
-            summary: frontmatter.summary || "",
-            slug: frontmatter.slug || "",
-            category: frontmatter.category || "any",
-            completed: frontmatter.completed ?? false,
-          },
-        });
       } finally {
-        this.llmSemaphore.release();
+        this.embeddingSemaphore.release();
       }
+
+      records.push({
+        id: `${filePath}_chunk_${i}`,
+        filePath,
+        fileName,
+        chunkIndex: i,
+        content: chunk,
+        context,
+        vector,
+        metadata: {
+          title: docTitle,
+          date:
+            frontmatter.date instanceof Date
+              ? frontmatter.date.toISOString()
+              : frontmatter.date || fileStat.birthtime.toISOString(),
+          tags: frontmatter.tags?.join(", ") ?? "",
+          summary: frontmatter.summary || "",
+          slug: frontmatter.slug || "",
+          category: frontmatter.category || "any",
+          completed: frontmatter.completed ?? false,
+        },
+      });
     }
 
     return { records, mtime: fileStat.mtime.toISOString() };
@@ -186,14 +218,22 @@ export class RAGIndexer {
 
     const allRecords: VectorRecord[] = [];
     const allMeta: { filePath: string; mtime: string }[] = [];
+    const fileSemaphore = new Semaphore(8);
 
-    for (const filePath of markdownFiles) {
-      const result = await this.processFileInMemory(filePath);
-      if (result && result.records.length > 0) {
-        allRecords.push(...result.records);
-        allMeta.push({ filePath, mtime: result.mtime });
-      }
-    }
+    await Promise.all(
+      markdownFiles.map(async (filePath) => {
+        await fileSemaphore.acquire();
+        try {
+          const result = await this.processFileInMemory(filePath);
+          if (result && result.records.length > 0) {
+            allRecords.push(...result.records);
+            allMeta.push({ filePath, mtime: result.mtime });
+          }
+        } finally {
+          fileSemaphore.release();
+        }
+      }),
+    );
 
     if (allRecords.length > 0) {
       await vectorDB.upsertChunks(allRecords);
