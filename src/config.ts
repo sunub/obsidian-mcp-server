@@ -7,73 +7,106 @@ import { z } from "zod/v4";
 dotenv.config({ debug: false, quiet: true });
 
 const vaultPathSchema = z
-	.string()
-	.min(1, "Vault path는 비어 있을 수 없습니다.")
-	.trim()
-	.transform((val) => resolve(val)) // 입력받은 경로를 절대 경로로 변환
-	.refine((val) => existsSync(val), {
-		message: "파일 시스템에 해당 경로가 존재하지 않습니다.",
-	})
-	.refine(
-		(val) => {
-			try {
-				return statSync(val).isDirectory();
-			} catch {
-				return false;
-			}
-		},
-		{
-			message: "지정된 경로가 디렉토리가 아닙니다.",
-		},
-	);
+  .string()
+  .min(1, "Vault path는 비어 있을 수 없습니다.")
+  .trim()
+  .transform((val) => resolve(val)) // 입력받은 경로를 절대 경로로 변환
+  .refine((val) => existsSync(val), {
+    message: "파일 시스템에 해당 경로가 존재하지 않습니다.",
+  })
+  .refine(
+    (val) => {
+      try {
+        return statSync(val).isDirectory();
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: "지정된 경로가 디렉토리가 아닙니다.",
+    },
+  );
 
 export const configSchema = z.object({
-	vaultPath: vaultPathSchema,
-	loggingLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  vaultPath: vaultPathSchema,
+  loggingLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  llmApiUrl: z.string().url().default("http://127.0.0.1:8080"),
+  llmEmbeddingApiUrl: z.string().url().default("http://127.0.0.1:8081"),
+  llmEmbeddingModel: z.string().default("nomic-embed-text"),
+  llmChatModel: z.string().default("llama3"),
 });
 
 export type ObsidianMcpConfig = z.infer<typeof configSchema>;
 
 const state: ObsidianMcpConfig = {
-	vaultPath: process.env.VAULT_DIR_PATH || "",
-	loggingLevel: "info",
+  vaultPath: process.env["VAULT_DIR_PATH"] || "",
+  loggingLevel: "info",
+  llmApiUrl: process.env["LLM_API_URL"] || "http://127.0.0.1:8080",
+  llmEmbeddingApiUrl:
+    process.env["LLM_EMBEDDING_API_URL"] || "http://127.0.0.1:8081",
+  llmEmbeddingModel: process.env["LLM_EMBEDDING_MODEL"] || "nomic-embed-text",
+  llmChatModel: process.env["LLM_CHAT_MODEL"] || "llama3",
 };
 
 export function getOptions(): ObsidianMcpConfig | false {
-	const program = new Command()
-		.name("obsidian-mcp-server")
-		.description("MCP Server for Obsidian Vault")
-		.option(
-			"--vault-path <path>",
-			"Path to the Obsidian vault directory",
-			process.env.VAULT_DIR_PATH ?? "",
-		)
-		.option(
-			"--logging-level <level>",
-			"Logging level (debug, info, warn, error)",
-			process.env.LOGGING_LEVEL ?? "info",
-		)
-		.allowUnknownOption()
-		.parse(process.argv);
-	const options = program.opts();
-	const parseResult = configSchema.safeParse(options);
+  const program = new Command()
+    .name("obsidian-mcp-server")
+    .description("MCP Server for Obsidian Vault")
+    .option(
+      "--vault-path <path>",
+      "Path to the Obsidian vault directory",
+      process.env["VAULT_DIR_PATH"] ?? "",
+    )
+    .option(
+      "--logging-level <level>",
+      "Logging level (debug, info, warn, error)",
+      process.env["LOGGING_LEVEL"] ?? "info",
+    )
+    .option(
+      "--llm-api-url <url>",
+      "LLM Chat API URL",
+      process.env["LLM_API_URL"] ?? "http://127.0.0.1:8080",
+    )
+    .option(
+      "--llm-embedding-api-url <url>",
+      "LLM Embedding API URL",
+      process.env["LLM_EMBEDDING_API_URL"] ?? "http://127.0.0.1:8081",
+    )
+    .option(
+      "--llm-embedding-model <model>",
+      "LLM Embedding Model",
+      process.env["LLM_EMBEDDING_MODEL"] ?? "nomic-embed-text",
+    )
+    .option(
+      "--llm-chat-model <model>",
+      "LLM Chat Model",
+      process.env["LLM_CHAT_MODEL"] ?? "llama3",
+    )
+    .allowUnknownOption()
+    .parse(process.argv);
+  const options = program.opts();
+  const parseResult = configSchema.safeParse(options);
 
-	if (!parseResult.success) {
-		console.error("Configuration Error:");
-		parseResult.error.issues.forEach((issue) => {
-			console.error(` - ${issue.path.join(".")}: ${issue.message}`);
-		});
+  if (!parseResult.success) {
+    console.error("Configuration Error:");
+    parseResult.error.issues.forEach((issue) => {
+      console.error(` - ${issue.path.join(".")}: ${issue.message}`);
+    });
 
-		console.info(
-			"\n사용 방법: Environment variables 에 VAULT_DIR_PATH 설정 또는 명령줄 인수 --vault-path <path>를 통해 올바른 구성을 제공하세요.",
-		);
-		return false;
-	}
+    console.error(
+      "\n사용 방법: Environment variables 에 VAULT_DIR_PATH 설정 또는 명령줄 인수 --vault-path <path>를 통해 올바른 구성을 제공하세요.",
+    );
+    return false;
+  }
 
-	state.vaultPath = parseResult.data.vaultPath;
-	state.loggingLevel = parseResult.data.loggingLevel;
+  state.vaultPath = parseResult.data.vaultPath;
+  state.loggingLevel = parseResult.data.loggingLevel;
+  state.llmApiUrl = parseResult.data.llmApiUrl;
+  state.llmEmbeddingApiUrl = parseResult.data.llmEmbeddingApiUrl;
+  state.llmEmbeddingModel = parseResult.data.llmEmbeddingModel;
+  state.llmChatModel = parseResult.data.llmChatModel;
 
-	return state;
+  return state;
 }
 
 export default state;
