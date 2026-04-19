@@ -47,8 +47,8 @@ export class RAGIndexer {
 
   constructor() {
     this.splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 350,
-      chunkOverlap: 35,
+      chunkSize: 200,
+      chunkOverlap: 20,
       lengthFunction: (text: string) => {
         return this.enc.encode(text).length;
       },
@@ -130,18 +130,20 @@ export class RAGIndexer {
         .filter(Boolean)
         .join("\n\n");
 
-      // 임베딩 모델 입력 한도(512토큰) 초과 방지: 토큰 비율로 문자 수 추정 후 트런케이션
-      const MAX_EMBED_TOKENS = 480;
+      // 임베딩 모델 입력 한도 초과 방지
+      // js-tiktoken(cl100k)과 nomic-embed-text 토크나이저 불일치로 인해
+      // 한국어의 경우 nomic이 cl100k 대비 최대 1.9배 토큰을 생성함
+      // 안전 상한: 512 / 1.9 ≈ 270 (cl100k), 문자 기반 하드 캡 추가
+      const MAX_EMBED_TOKENS = 260;
+      const MAX_EMBED_CHARS = 900;
       const combinedTokenCount = this.enc.encode(combined).length;
-      const safeText =
-        combinedTokenCount > MAX_EMBED_TOKENS
-          ? combined.slice(
-              0,
-              Math.floor(
-                combined.length * (MAX_EMBED_TOKENS / combinedTokenCount),
-              ),
-            )
-          : combined;
+      const safeText = (() => {
+        if (combinedTokenCount > MAX_EMBED_TOKENS) {
+          const ratio = MAX_EMBED_TOKENS / combinedTokenCount;
+          return combined.slice(0, Math.floor(combined.length * ratio));
+        }
+        return combined;
+      })().slice(0, MAX_EMBED_CHARS);
 
       await this.embeddingSemaphore.acquire();
       let vector: number[];
