@@ -49,18 +49,15 @@ export class LLMClient {
     documentContext: string,
     chunkContent: string,
   ): Promise<string> {
-    const prompt = `
-      <document_context>
-      ${documentContext}
-      </document_context>
-      
-      Below is a specific chunk from this document. Please provide a very brief (1-2 sentences) context that explains how this chunk relates to the overall document.
-      
-      <chunk>
-      ${chunkContent}
-      </chunk>
-      
-      Contextual Summary:`;
+    const prompt = `<document>
+${documentContext}
+</document>
+
+Summarize in 1-2 sentences how this chunk fits the above document:
+
+<chunk>
+${chunkContent}
+</chunk>`;
 
     const url = `${this.apiUrl}/v1/chat/completions`;
     try {
@@ -69,12 +66,9 @@ export class LLMClient {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: this.chatModel,
-          messages: [
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 80,
+          temperature: 0,
           stream: false,
         }),
       });

@@ -20,14 +20,14 @@ export class RAGIndexer {
 
   constructor() {
     this.splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 500,
-      chunkOverlap: 50,
+      chunkSize: 350,
+      chunkOverlap: 35,
       lengthFunction: (text: string) => {
         return this.enc.encode(text).length;
       },
     });
 
-    this.llmSemaphore = new Semaphore(3);
+    this.llmSemaphore = new Semaphore(1);
     this.ioSemaphore = new Semaphore(10);
   }
 
@@ -85,12 +85,37 @@ export class RAGIndexer {
           .filter(Boolean)
           .join("\n");
 
-        const context = await llmClient.generateContext(body, chunk);
-        const textToEmbed = [metadataPrefix, context, chunk]
+        const context = await llmClient.generateContext(
+          [
+            frontmatter.title ? `Title: ${frontmatter.title}` : `File: ${fileName}`,
+            frontmatter.summary ? `Summary: ${frontmatter.summary}` : "",
+            frontmatter.tags?.length
+              ? `Tags: ${frontmatter.tags.slice(0, 5).join(", ")}`
+              : "",
+            body.slice(0, 400),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          chunk,
+        );
+        const combined = [metadataPrefix, context, chunk]
           .filter(Boolean)
           .join("\n\n");
+
+        // 임베딩 모델 입력 한도(512토큰) 초과 방지: 토큰 비율로 문자 수 추정 후 트런케이션
+        const MAX_EMBED_TOKENS = 480;
+        const combinedTokenCount = this.enc.encode(combined).length;
+        const safeText =
+          combinedTokenCount > MAX_EMBED_TOKENS
+            ? combined.slice(
+                0,
+                Math.floor(
+                  combined.length * (MAX_EMBED_TOKENS / combinedTokenCount),
+                ),
+              )
+            : combined;
         const vector = await llmClient.generateEmbedding(
-          `search_document: ${textToEmbed}`,
+          `search_document: ${safeText}`,
         );
 
         records.push({
