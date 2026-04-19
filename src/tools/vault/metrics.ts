@@ -8,7 +8,9 @@ type VaultAction =
 	| "list_all"
 	| "stats"
 	| "collect_context"
-	| "load_memory";
+	| "load_memory"
+	| "search_vault_by_semantic"
+	| "index_vault_to_vectordb";
 
 type CompressionSummary = {
 	mode: "aggressive" | "balanced" | "none";
@@ -69,12 +71,12 @@ function parseCompression(compression: unknown): CompressionSummary | null {
 		return null;
 	}
 
-	const mode = compression.mode;
-	const estimatedTokens = compression.estimated_tokens;
-	const truncated = compression.truncated;
-	const outputChars = compression.output_chars;
-	const sourceChars = compression.source_chars;
-	const maxOutputChars = compression.max_output_chars;
+	const mode = compression["mode"];
+	const estimatedTokens = compression["estimated_tokens"];
+	const truncated = compression["truncated"];
+	const outputChars = compression["output_chars"];
+	const sourceChars = compression["source_chars"];
+	const maxOutputChars = compression["max_output_chars"];
 
 	if (
 		(mode !== "aggressive" && mode !== "balanced" && mode !== "none") ||
@@ -99,23 +101,23 @@ function parseCompression(compression: unknown): CompressionSummary | null {
 }
 
 function inferDocCount(action: VaultAction, payload: JsonObject): number {
-	if (Array.isArray(payload.documents)) {
-		return payload.documents.length;
+	if (Array.isArray(payload["documents"])) {
+		return payload["documents"].length;
 	}
 
-	if (typeof payload.documents_count === "number") {
-		return Math.max(0, Math.floor(payload.documents_count));
+	if (typeof payload["documents_count"] === "number") {
+		return Math.max(0, Math.floor(payload["documents_count"]));
 	}
 
-	if (action === "search" && typeof payload.found === "number") {
-		return Math.max(0, Math.floor(payload.found));
+	if (action === "search" && typeof payload["found"] === "number") {
+		return Math.max(0, Math.floor(payload["found"]));
 	}
 
 	if (
 		action === "read" &&
-		(typeof payload.filename === "string" ||
-			typeof payload.fullPath === "string" ||
-			typeof payload.filePath === "string")
+		(typeof payload["filename"] === "string" ||
+			typeof payload["fullPath"] === "string" ||
+			typeof payload["filePath"] === "string")
 	) {
 		return 1;
 	}
@@ -124,13 +126,13 @@ function inferDocCount(action: VaultAction, payload: JsonObject): number {
 }
 
 function parseCacheHit(payload: JsonObject): boolean | undefined {
-	if (!isJsonObject(payload.cache)) {
+	if (!isJsonObject(payload["cache"])) {
 		return undefined;
 	}
-	if (typeof payload.cache.hit !== "boolean") {
+	if (typeof payload["cache"]["hit"] !== "boolean") {
 		return undefined;
 	}
-	return payload.cache.hit;
+	return payload["cache"]["hit"];
 }
 
 export function buildVaultResponseMetric(
@@ -146,7 +148,7 @@ export function buildVaultResponseMetric(
 		return null;
 	}
 
-	const compression = parseCompression(payload.compression);
+	const compression = parseCompression(payload["compression"]);
 	if (!compression) {
 		return null;
 	}
@@ -169,7 +171,7 @@ export async function recordVaultResponseMetric(
 	action: VaultAction,
 	result: CallToolResult,
 ): Promise<void> {
-	const logPath = process.env.VAULT_METRICS_LOG_PATH?.trim();
+	const logPath = process.env["VAULT_METRICS_LOG_PATH"]?.trim();
 	if (!logPath) {
 		return;
 	}

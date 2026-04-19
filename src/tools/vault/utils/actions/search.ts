@@ -4,11 +4,11 @@ import type { ObsidianContentQueryParams } from "../../params.js";
 import { formatDocument, getDocumentContent } from "../document.js";
 import {
 	ACTION_DEFAULT_MAX_OUTPUT_CHARS,
-	SEARCH_DEFAULT_EXCERPT,
-	SEARCH_DEFAULT_LIMIT,
 	finalizePayloadWithCompression,
 	jsonCharLength,
 	resolveCompressionMode,
+	SEARCH_DEFAULT_EXCERPT,
+	SEARCH_DEFAULT_LIMIT,
 } from "../shared.js";
 
 function clampSearchPayloadByOutputChars<
