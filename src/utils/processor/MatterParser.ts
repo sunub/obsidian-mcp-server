@@ -1,22 +1,32 @@
 import matter from "gray-matter";
 import type { ParsedMatter } from "./types.js";
 import { FrontMatterSchema } from "./types.js";
+import { basename } from "node:path";
 
-export function parse(text: string): ParsedMatter {
-	try {
-		const parsed = matter(text);
-		const frontmatter = FrontMatterSchema.parse(parsed.data);
-		return {
-			frontmatter,
-			content: parsed.content,
-		};
-	} catch {
-		console.error(
-			"Frontmatter 파싱에 실패했습니다. 전체를 내용으로 간주합니다.",
-		);
-		return {
-			frontmatter: FrontMatterSchema.parse({}),
-			content: text,
-		};
-	}
+export function parse(
+  filePath: string,
+  birthTime: string,
+  text: string,
+): ParsedMatter {
+  try {
+    const parsed = matter(text);
+    const frontmatter = FrontMatterSchema.parse(parsed.data);
+    return {
+      frontmatter,
+      content: parsed.content,
+    };
+  } catch {
+    return {
+      frontmatter: FrontMatterSchema.parse({
+        title: basename(filePath, ".md"),
+        date: birthTime,
+        category: "any",
+        tags: [""],
+        summary: text.slice(0, 200).replace(/\n/g, " "),
+        slug: basename(filePath, ".md").toLowerCase().replace(/\s+/g, "-"),
+        completed: false,
+      }),
+      content: text,
+    };
+  }
 }

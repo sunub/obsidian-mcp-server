@@ -1,103 +1,184 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import ora, { type Ora } from "ora";
 import { DirectoryWalker } from "./DirectoryWalker.js";
-import { ollamaClient } from "./OllamaClient.js";
+import { llmClient } from "./LLMClient.js";
 import { parse as parseMatter } from "./processor/MatterParser.js";
 import { Semaphore } from "./semaphore.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
+import { encodingForModel } from "js-tiktoken";
 
 export class RAGIndexer {
-	private splitter: RecursiveCharacterTextSplitter;
-	private ollamaSemaphore: Semaphore;
-	private ioSemaphore: Semaphore;
+  private splitter: RecursiveCharacterTextSplitter;
+  private llmSemaphore: Semaphore;
+  private ioSemaphore: Semaphore;
+  private spinner: Ora | null = null;
+  private totalFiles = 0;
+  private processedFiles = 0;
+  private enc = encodingForModel("gpt-3.5-turbo");
 
-	constructor() {
-		this.splitter = new RecursiveCharacterTextSplitter({
-			chunkSize: 1000,
-			chunkOverlap: 200,
-		});
-		// Ollama API 부하 조절 (동시 호출 제한)
-		this.ollamaSemaphore = new Semaphore(3);
-		// 파일 I/O 제한
-		this.ioSemaphore = new Semaphore(10);
-	}
+  constructor() {
+    this.splitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 500,
+      chunkOverlap: 50,
+      lengthFunction: (text: string) => {
+        return this.enc.encode(text).length;
+      },
+    });
 
-	async processFile(filePath: string, content?: string): Promise<void> {
-		try {
-			const fileContent = content ?? (await fs.readFile(filePath, "utf-8"));
-			const { frontmatter, content: body } = parseMatter(fileContent);
-			const fileName = path.basename(filePath);
+    this.llmSemaphore = new Semaphore(3);
+    this.ioSemaphore = new Semaphore(10);
+  }
 
-			// 문서 전체의 요약이나 핵심 정보를 Contextualization을 위한 힌트로 사용
-			const docSummary = `Title: ${fileName}\nTags: ${frontmatter.tags?.join(", ") ?? ""}\nSummary: ${frontmatter.summary ?? ""}`;
+  public setSpinner(total: number) {
+    this.totalFiles = total;
+    this.processedFiles = 0;
+    this.spinner = ora({
+      text: `Initializing RAG indexing (0/${total})...`,
+      stream: process.stderr,
+    }).start();
+  }
 
-			const chunks = await this.splitter.splitText(body);
-			const records: VectorRecord[] = [];
+  private updateProgress(filePath: string) {
+    this.processedFiles++;
+    if (this.spinner) {
+      this.spinner.text = `[${this.processedFiles}/${this.totalFiles}] Indexing: ${path.basename(filePath)}`;
+    }
+    if (this.processedFiles >= this.totalFiles && this.spinner) {
+      this.spinner.succeed(`Successfully indexed ${this.totalFiles} files.`);
+      this.spinner = null;
+    }
+  }
 
-			for (let i = 0; i < chunks.length; i++) {
-				const chunk = chunks[i];
+  private async buildFileRecords(
+    filePath: string,
+    content?: string,
+  ): Promise<{ records: VectorRecord[]; mtime: string }> {
+    const fileStat = await fs.stat(filePath);
+    const fileContent = content ?? (await fs.readFile(filePath, "utf-8"));
+    const { frontmatter, content: body } = parseMatter(
+      filePath,
+      fileStat.birthtime.toISOString(),
+      fileContent,
+    );
+    const fileName = path.basename(filePath);
+    const safeSummary = frontmatter.summary
+      ? frontmatter.summary.slice(0, 80)
+      : "";
 
-				await this.ollamaSemaphore.acquire();
-				try {
-					// 1. Contextualize the chunk
-					const context = await ollamaClient.generateContext(docSummary, chunk);
+    const chunks = await this.splitter.splitText(body);
+    const records: VectorRecord[] = [];
 
-					// 2. Generate embedding for (Title + Tags + Context + Chunk)
-					// Frontmatter는 body에서 strip되므로 title/tags를 명시적으로 포함하여
-					// 제목 기반 검색에서도 매칭되도록 합니다.
-					const metadataPrefix = [
-						frontmatter.title ?? fileName,
-						frontmatter.tags?.length ? `Tags: ${frontmatter.tags.join(", ")}` : "",
-						frontmatter.summary ?? "",
-					].filter(Boolean).join("\n");
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
 
-					const textToEmbed = [
-						metadataPrefix,
-						context || "",
-						chunk,
-					].filter(Boolean).join("\n\n");
+      await this.llmSemaphore.acquire();
+      try {
+        const metadataPrefix = [
+          frontmatter.title || fileName,
+          frontmatter.tags?.length
+            ? `Tags: ${frontmatter.tags.slice(0, 3).join(", ")}`
+            : "",
+          safeSummary,
+        ]
+          .filter(Boolean)
+          .join("\n");
 
-					const vector = await ollamaClient.generateEmbedding(textToEmbed);
+        const context = await llmClient.generateContext(body, chunk);
+        const textToEmbed = [metadataPrefix, context, chunk]
+          .filter(Boolean)
+          .join("\n\n");
+        const vector = await llmClient.generateEmbedding(
+          `search_document: ${textToEmbed}`,
+        );
 
-					records.push({
-						filePath,
-						fileName,
-						chunkIndex: i,
-						content: chunk,
-						context,
-						vector,
-					});
-				} finally {
-					this.ollamaSemaphore.release();
-				}
-			}
+        records.push({
+          id: `${filePath}_chunk_${i}`,
+          filePath,
+          fileName,
+          chunkIndex: i,
+          content: chunk,
+          context,
+          vector,
+          metadata: {
+            title: frontmatter.title || fileName,
+            date:
+              frontmatter.date instanceof Date
+                ? frontmatter.date.toISOString()
+                : frontmatter.date || fileStat.birthtime.toISOString(),
+            tags: frontmatter.tags?.join(", ") ?? "",
+            summary: frontmatter.summary || "",
+            slug: frontmatter.slug || "",
+            category: frontmatter.category || "any",
+            completed: frontmatter.completed ?? false,
+          },
+        });
+      } finally {
+        this.llmSemaphore.release();
+      }
+    }
 
-			if (records.length > 0) {
-				await vectorDB.upsertChunks(records);
-			}
-		} catch (error) {
-			console.error(`Error processing file for RAG: ${filePath}`, error);
-		}
-	}
+    return { records, mtime: fileStat.mtime.toISOString() };
+  }
 
-	async indexAll(vaultPath: string): Promise<void> {
-		const walker = new DirectoryWalker();
-		const filePaths = await walker.walk(vaultPath, this.ioSemaphore);
+  async processFile(filePath: string, content?: string): Promise<void> {
+    try {
+      const { records, mtime } = await this.buildFileRecords(filePath, content);
+      if (records.length > 0) {
+        await vectorDB.upsertChunks(records);
+        await vectorDB.updateFileMeta(filePath, mtime);
+      }
+    } catch (error) {
+      console.error(`\nError processing file for RAG: ${filePath}`, error);
+    } finally {
+      this.updateProgress(filePath);
+    }
+  }
 
-		console.error(`Starting indexing for ${filePaths.length} files...`);
+  async processFileInMemory(
+    filePath: string,
+    content?: string,
+  ): Promise<{ records: VectorRecord[]; mtime: string } | null> {
+    try {
+      return await this.buildFileRecords(filePath, content);
+    } catch (error) {
+      console.error(`\nError processing file for RAG: ${filePath}`, error);
+      return null;
+    } finally {
+      this.updateProgress(filePath);
+    }
+  }
 
-		// 순차적으로 또는 소규모 병렬로 처리하여 리소스 관리
-		for (const filePath of filePaths) {
-			await this.processFile(filePath);
-		}
+  async indexAll(vaultPath: string): Promise<void> {
+    const walker = new DirectoryWalker();
+    const filePaths = await walker.walk(vaultPath, this.ioSemaphore);
+    const markdownFiles = filePaths.filter(
+      (f) => f.endsWith(".md") || f.endsWith(".mdx"),
+    );
 
-		console.error("Full indexing completed.");
-	}
+    this.setSpinner(markdownFiles.length);
 
-	async deleteFile(filePath: string): Promise<void> {
-		await vectorDB.deleteByFilePath(filePath);
-	}
+    const allRecords: VectorRecord[] = [];
+    const allMeta: { filePath: string; mtime: string }[] = [];
+
+    for (const filePath of markdownFiles) {
+      const result = await this.processFileInMemory(filePath);
+      if (result && result.records.length > 0) {
+        allRecords.push(...result.records);
+        allMeta.push({ filePath, mtime: result.mtime });
+      }
+    }
+
+    if (allRecords.length > 0) {
+      await vectorDB.upsertChunks(allRecords);
+      await vectorDB.updateFileMetaBatch(allMeta);
+    }
+  }
+
+  async deleteFile(filePath: string): Promise<void> {
+    await vectorDB.deleteByFilePath(filePath);
+  }
 }
 
 export const ragIndexer = new RAGIndexer();
