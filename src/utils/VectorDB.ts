@@ -6,7 +6,7 @@ import * as arrow from "apache-arrow";
 import state from "../config.js";
 import { debugLogger } from "../cli/utils/debugLogger.js";
 
-export const INDEX_VERSION = 4; // chunkSize reduced to 200 for nomic tokenizer compatibility
+export const INDEX_VERSION = 5; // chunkSize 120, MAX_EMBED_TOKENS 200 for Korean tokenizer safety
 
 const VECTOR_DIM = 768;
 

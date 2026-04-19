@@ -47,8 +47,8 @@ export class RAGIndexer {
 
   constructor() {
     this.splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 200,
-      chunkOverlap: 20,
+      chunkSize: 120,
+      chunkOverlap: 12,
       lengthFunction: (text: string) => {
         return this.enc.encode(text).length;
       },
@@ -97,15 +97,15 @@ export class RAGIndexer {
     const docTitle = frontmatter.title || titleFromBody || fileName;
     const docStructure = headings
       .filter((h) => h.depth <= 2)
-      .slice(0, 8)
-      .map((h) => h.heading);
+      .slice(0, 4)
+      .map((h) => h.heading.slice(0, 25)); // 각 헤딩 25자 제한
 
     const metadataPrefix = [
-      `Title: ${docTitle}`,
+      `Title: ${docTitle.slice(0, 50)}`,
       frontmatter.tags?.length
         ? `Tags: ${frontmatter.tags.slice(0, 3).join(", ")}`
         : "",
-      frontmatter.summary ? `Summary: ${frontmatter.summary.slice(0, 80)}` : "",
+      frontmatter.summary ? `Summary: ${frontmatter.summary.slice(0, 60)}` : "",
     ]
       .filter(Boolean)
       .join("\n");
@@ -118,9 +118,9 @@ export class RAGIndexer {
 
       const sectionHeading = findSectionForChunk(body, chunk, headings);
       const context = [
-        sectionHeading ? `Section: ${sectionHeading}` : "",
+        sectionHeading ? `Section: ${sectionHeading.slice(0, 30)}` : "",
         docStructure.length > 1
-          ? `Outline: ${docStructure.slice(0, 5).join(" > ")}`
+          ? `Outline: ${docStructure.slice(0, 3).join(" > ")}`
           : "",
       ]
         .filter(Boolean)
@@ -131,19 +131,18 @@ export class RAGIndexer {
         .join("\n\n");
 
       // 임베딩 모델 입력 한도 초과 방지
-      // js-tiktoken(cl100k)과 nomic-embed-text 토크나이저 불일치로 인해
-      // 한국어의 경우 nomic이 cl100k 대비 최대 1.9배 토큰을 생성함
-      // 안전 상한: 512 / 1.9 ≈ 270 (cl100k), 문자 기반 하드 캡 추가
-      const MAX_EMBED_TOKENS = 260;
-      const MAX_EMBED_CHARS = 900;
+      // cl100k(gpt-3.5)과 nomic-embed-text 토크나이저 불일치:
+      // 한국어는 nomic이 cl100k 대비 최대 2.2배 토큰 생성 (실측값)
+      // 안전 상한: 512 / 2.2 = 233 → 200으로 보수적 설정
+      const MAX_EMBED_TOKENS = 200;
       const combinedTokenCount = this.enc.encode(combined).length;
-      const safeText = (() => {
-        if (combinedTokenCount > MAX_EMBED_TOKENS) {
-          const ratio = MAX_EMBED_TOKENS / combinedTokenCount;
-          return combined.slice(0, Math.floor(combined.length * ratio));
-        }
-        return combined;
-      })().slice(0, MAX_EMBED_CHARS);
+      const safeText =
+        combinedTokenCount > MAX_EMBED_TOKENS
+          ? combined.slice(
+              0,
+              Math.floor(combined.length * (MAX_EMBED_TOKENS / combinedTokenCount)),
+            )
+          : combined;
 
       await this.embeddingSemaphore.acquire();
       let vector: number[];
