@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { parse } from "../../src/utils/processor/MatterParser";
 
+const DUMMY_FILE = "/vault/test-note.md";
+const DUMMY_BIRTH = "2025-01-01T00:00:00.000Z";
+
 describe("MatterParser", () => {
 	test("정상적인 frontmatter를 파싱한다", () => {
 		const text = `---
@@ -17,7 +20,7 @@ completed: true
 
 # Body content here
 `;
-		const result = parse(text);
+		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
 		expect(result.frontmatter.title).toBe("My Note");
 		expect(result.frontmatter.tags).toEqual(["typescript", "mcp"]);
@@ -28,24 +31,26 @@ completed: true
 		expect(result.content).toContain("# Body content here");
 	});
 
-	test("frontmatter가 없는 문서는 전체를 content로 반환한다", () => {
+	test("frontmatter가 없는 문서는 fallback으로 처리된다", () => {
 		const text = "# Just a heading\n\nSome paragraph text.";
-		const result = parse(text);
+		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
-		expect(result.frontmatter.title).toBeUndefined();
-		expect(result.frontmatter.tags).toBeUndefined();
+		// title이 필수 필드이므로 catch 블록의 fallback이 실행됩니다.
+		expect(result.frontmatter.title).toBe("test-note");
+		expect(result.frontmatter.tags).toEqual([""]);
 		expect(result.content).toBe(text);
 	});
 
-	test("빈 frontmatter(--- 만 있는 경우)를 처리한다", () => {
+	test("빈 frontmatter(--- 만 있는 경우)를 fallback으로 처리한다", () => {
 		const text = `---
 ---
 
 Content after empty frontmatter.`;
-		const result = parse(text);
+		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
-		expect(result.frontmatter.title).toBeUndefined();
-		expect(result.frontmatter.tags).toBeUndefined();
+		// title 누락으로 catch 블록 fallback이 실행됩니다.
+		expect(result.frontmatter.title).toBe("test-note");
+		expect(result.frontmatter.tags).toEqual([""]);
 		expect(result.content).toContain("Content after empty frontmatter.");
 	});
 
@@ -55,7 +60,7 @@ title: Only Title
 ---
 
 Rest of the content.`;
-		const result = parse(text);
+		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
 		expect(result.frontmatter.title).toBe("Only Title");
 		expect(result.frontmatter.tags).toBeUndefined();
@@ -71,7 +76,7 @@ anotherRandom: 42
 ---
 
 Content`;
-		const result = parse(text);
+		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
 		expect(result.frontmatter.title).toBe("Test");
 		expect(result.frontmatter).not.toHaveProperty("unknownField");
@@ -79,9 +84,10 @@ Content`;
 	});
 
 	test("빈 문자열을 처리한다", () => {
-		const result = parse("");
+		const result = parse(DUMMY_FILE, DUMMY_BIRTH, "");
 
-		expect(result.frontmatter.title).toBeUndefined();
+		// title 누락으로 catch 블록 fallback이 실행됩니다.
+		expect(result.frontmatter.title).toBe("test-note");
 		expect(result.content).toBe("");
 	});
 
@@ -92,7 +98,7 @@ tags: []
 ---
 
 Content`;
-		const result = parse(text);
+		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
 		expect(result.frontmatter.title).toBe("Empty Tags");
 		expect(result.frontmatter.tags).toEqual([]);
@@ -100,11 +106,12 @@ Content`;
 
 	test("date 필드가 문자열과 Date 객체 모두 수용된다", () => {
 		const text = `---
+title: Date Test
 date: 2025-06-15
 ---
 
 Content`;
-		const result = parse(text);
+		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
 		// gray-matter가 Date 객체로 파싱할 수 있으므로, 둘 다 허용
 		expect(result.frontmatter.date).toBeDefined();
@@ -113,29 +120,29 @@ Content`;
 	test("category 필드의 유효한 값을 검증한다", () => {
 		const validCategories = ["web", "algorithm", "cs", "code"];
 		for (const cat of validCategories) {
-			const text = `---\ncategory: ${cat}\n---\nContent`;
-			const result = parse(text);
+			const text = `---\ntitle: Test\ncategory: ${cat}\n---\nContent`;
+			const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 			expect(result.frontmatter.category).toBe(cat);
 		}
 	});
 
-	test("잘못된 category 값은 FrontMatterSchema.parse에서 에러가 발생하여 content fallback된다", () => {
+	test("잘못된 category 값은 content가 반환된다", () => {
 		const text = `---
+title: Test
 category: invalid_category
 ---
 
 Content`;
-		const result = parse(text);
-		// MatterParser.parse 내부에서 FrontMatterSchema.parse 실패 시 catch로 빠져
-		// 전체 텍스트를 content로 반환한다
+		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 		expect(result.content).toBeDefined();
 	});
 
 	test("completed 필드가 boolean으로 파싱된다", () => {
-		const trueText = `---\ncompleted: true\n---\nDone`;
-		const falseText = `---\ncompleted: false\n---\nNot done`;
+		const trueText = `---\ntitle: Done\ncompleted: true\n---\nDone`;
+		const falseText = `---\ntitle: Not Done\ncompleted: false\n---\nNot done`;
 
-		expect(parse(trueText).frontmatter.completed).toBe(true);
-		expect(parse(falseText).frontmatter.completed).toBe(false);
+		expect(parse(DUMMY_FILE, DUMMY_BIRTH, trueText).frontmatter.completed).toBe(true);
+		expect(parse(DUMMY_FILE, DUMMY_BIRTH, falseText).frontmatter.completed).toBe(false);
 	});
 });
+
