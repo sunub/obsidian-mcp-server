@@ -1,11 +1,11 @@
-import { describe, expect, test, vi } from "vitest";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { describe, expect, test, vi } from "vitest";
 import { collectContextResponseDataSchema } from "../../src/tools/vault/types/collect_context.js";
-import { collectContext } from "../../src/tools/vault/utils.js";
 import {
 	CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
 	CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
 } from "../../src/tools/vault/utils/constants.js";
+import { collectContext } from "../../src/tools/vault/utils.js";
 import type { DocumentIndex } from "../../src/utils/processor/types.js";
 import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
 import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
