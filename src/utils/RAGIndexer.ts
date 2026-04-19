@@ -16,7 +16,11 @@ function extractHeadingsWithPositions(body: string): HeadingEntry[] {
   const results: HeadingEntry[] = [];
   let match: RegExpExecArray | null;
   while ((match = headingRegex.exec(body)) !== null) {
-    results.push({ heading: match[2].trim(), pos: match.index, depth: match[1].length });
+    results.push({
+      heading: match[2].trim(),
+      pos: match.index,
+      depth: match[1].length,
+    });
   }
   return results;
 }
@@ -47,7 +51,7 @@ export class RAGIndexer {
 
   constructor() {
     this.splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 120,
+      chunkSize: 100,
       chunkOverlap: 12,
       lengthFunction: (text: string) => {
         return this.enc.encode(text).length;
@@ -139,9 +143,11 @@ export class RAGIndexer {
       const safeText =
         combinedTokenCount > MAX_EMBED_TOKENS
           ? combined.slice(
-              0,
-              Math.floor(combined.length * (MAX_EMBED_TOKENS / combinedTokenCount)),
-            )
+            0,
+            Math.floor(
+              combined.length * (MAX_EMBED_TOKENS / combinedTokenCount),
+            ),
+          )
           : combined;
 
       await this.embeddingSemaphore.acquire();
