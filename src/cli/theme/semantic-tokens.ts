@@ -52,9 +52,9 @@ export const lightSemanticColors: SemanticColors = {
 	},
 	background: {
 		primary: lightTheme.Background,
-		message: lightTheme.MessageBackground!,
-		input: lightTheme.InputBackground!,
-		focus: lightTheme.FocusBackground!,
+		message: lightTheme.MessageBackground ?? "",
+		input: lightTheme.InputBackground ?? "",
+		focus: lightTheme.FocusBackground ?? "",
 		diff: {
 			added: lightTheme.DiffAdded,
 			removed: lightTheme.DiffRemoved,
@@ -88,9 +88,9 @@ export const darkSemanticColors: SemanticColors = {
 	},
 	background: {
 		primary: darkTheme.Background,
-		message: darkTheme.MessageBackground!,
-		input: darkTheme.InputBackground!,
-		focus: darkTheme.FocusBackground!,
+		message: darkTheme.MessageBackground ?? "",
+		input: darkTheme.InputBackground ?? "",
+		focus: darkTheme.FocusBackground ?? "",
 		diff: {
 			added: darkTheme.DiffAdded,
 			removed: darkTheme.DiffRemoved,

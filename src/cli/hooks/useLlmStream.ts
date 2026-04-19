@@ -60,7 +60,7 @@ async function* generateLLMStream(messages: OllamaMessage[]) {
         const parsed = JSON.parse(cleanedLine);
         const content = parsed.choices?.[0]?.delta?.content;
         if (content) yield content;
-      } catch (e) {
+      } catch (_e) {
         // partial JSON or noise
       }
     }
@@ -83,7 +83,7 @@ export const useLlmStream = (): LlmStreamState => {
         const resp = await fetch(url);
         if (!resp.ok) throw new Error("API Check Failed");
         debugLogger.log(`[CLI] LLM Server verified at ${state.llmApiUrl}`);
-      } catch (err) {
+      } catch (_err) {
         debugLogger.warn(
           `[CLI] Could not reach LLM Server at ${state.llmApiUrl}`,
         );
@@ -136,10 +136,11 @@ export const useLlmStream = (): LlmStreamState => {
         });
 
         setPendingItem((prev) => (prev ? { ...prev, isComplete: true } : null));
-      } catch (err: any) {
+      } catch (err: unknown) {
         debugLogger.error("Stream Error:", err);
         setStreamingState("error");
-        setError(new Error(`LLM 통신 실패: ${err.message}`));
+        const message = err instanceof Error ? err.message : String(err);
+        setError(new Error(`LLM 통신 실패: ${message}`));
         conversationRef.current.pop();
         setPendingItem(null);
       }

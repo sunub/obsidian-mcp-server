@@ -38,8 +38,8 @@ export class HistoryStorage {
 
 			// Return just the text values
 			return validItems.map((item) => item.text);
-		} catch (error: any) {
-			if (error.code !== "ENOENT") {
+		} catch (error: unknown) {
+			if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
 				debugLogger.warn("Failed to read history storage", error);
 			}
 			return [];
@@ -67,7 +67,7 @@ export class HistoryStorage {
 		try {
 			const data = await fs.readFile(this.filePath, "utf-8");
 			return JSON.parse(data);
-		} catch (error) {
+		} catch (_error) {
 			return [];
 		}
 	}

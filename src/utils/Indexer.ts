@@ -2,7 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import * as LinkExtractor from "./processor/LinkExtractor.js";
 import * as MatterParser from "./processor/MatterParser.js";
-import { type DocumentIndex } from "./processor/types.js";
+import type { DocumentIndex } from "./processor/types.js";
 import type { Semaphore } from "./semaphore.js";
 
 export class Indexer {

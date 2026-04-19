@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { Box, Static, Text } from "ink";
 import type { HistoryItem, PendingItem, StreamingState } from "../types.js";
 import { HistoryItemDisplay } from "./HistoryItemDisplay.js";

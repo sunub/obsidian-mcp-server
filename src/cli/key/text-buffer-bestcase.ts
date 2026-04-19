@@ -1126,7 +1126,7 @@ interface AtomicPlaceholder {
  * Checks all placeholder types in priority order.
  */
 function findAtomicPlaceholderForBackspace(
-	line: string,
+	_line: string,
 	cursorCol: number,
 	transformations: Transformation[],
 ): AtomicPlaceholder | null {
@@ -1148,7 +1148,7 @@ function findAtomicPlaceholderForBackspace(
  * Find atomic placeholder at cursor for delete (cursor at start).
  */
 function findAtomicPlaceholderForDelete(
-	line: string,
+	_line: string,
 	cursorCol: number,
 	transformations: Transformation[],
 ): AtomicPlaceholder | null {
@@ -2998,7 +2998,7 @@ export function useTextBuffer({
 		(dir: Direction): void => {
 			dispatch({ type: "move", payload: { dir } });
 		},
-		[dispatch],
+		[],
 	);
 
 	const undo = useCallback((): void => {

@@ -39,13 +39,13 @@ export const configSchema = z.object({
 export type ObsidianMcpConfig = z.infer<typeof configSchema>;
 
 const state: ObsidianMcpConfig = {
-  vaultPath: process.env["VAULT_DIR_PATH"] || "",
+  vaultPath: process.env.VAULT_DIR_PATH || "",
   loggingLevel: "info",
-  llmApiUrl: process.env["LLM_API_URL"] || "http://127.0.0.1:8080",
+  llmApiUrl: process.env.LLM_API_URL || "http://127.0.0.1:8080",
   llmEmbeddingApiUrl:
-    process.env["LLM_EMBEDDING_API_URL"] || "http://127.0.0.1:8081",
-  llmEmbeddingModel: process.env["LLM_EMBEDDING_MODEL"] || "nomic-embed-text",
-  llmChatModel: process.env["LLM_CHAT_MODEL"] || "llama3",
+    process.env.LLM_EMBEDDING_API_URL || "http://127.0.0.1:8081",
+  llmEmbeddingModel: process.env.LLM_EMBEDDING_MODEL || "nomic-embed-text",
+  llmChatModel: process.env.LLM_CHAT_MODEL || "llama3",
 };
 
 export function getOptions(): ObsidianMcpConfig | false {
@@ -55,32 +55,32 @@ export function getOptions(): ObsidianMcpConfig | false {
     .option(
       "--vault-path <path>",
       "Path to the Obsidian vault directory",
-      process.env["VAULT_DIR_PATH"] ?? "",
+      process.env.VAULT_DIR_PATH ?? "",
     )
     .option(
       "--logging-level <level>",
       "Logging level (debug, info, warn, error)",
-      process.env["LOGGING_LEVEL"] ?? "info",
+      process.env.LOGGING_LEVEL ?? "info",
     )
     .option(
       "--llm-api-url <url>",
       "LLM Chat API URL",
-      process.env["LLM_API_URL"] ?? "http://127.0.0.1:8080",
+      process.env.LLM_API_URL ?? "http://127.0.0.1:8080",
     )
     .option(
       "--llm-embedding-api-url <url>",
       "LLM Embedding API URL",
-      process.env["LLM_EMBEDDING_API_URL"] ?? "http://127.0.0.1:8081",
+      process.env.LLM_EMBEDDING_API_URL ?? "http://127.0.0.1:8081",
     )
     .option(
       "--llm-embedding-model <model>",
       "LLM Embedding Model",
-      process.env["LLM_EMBEDDING_MODEL"] ?? "nomic-embed-text",
+      process.env.LLM_EMBEDDING_MODEL ?? "nomic-embed-text",
     )
     .option(
       "--llm-chat-model <model>",
       "LLM Chat Model",
-      process.env["LLM_CHAT_MODEL"] ?? "llama3",
+      process.env.LLM_CHAT_MODEL ?? "llama3",
     )
     .allowUnknownOption()
     .parse(process.argv);

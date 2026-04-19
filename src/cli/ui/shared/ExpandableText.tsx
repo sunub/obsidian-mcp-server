@@ -1,4 +1,4 @@
-import { type ReactElement } from "react";
+import type { ReactElement } from "react";
 import { Text } from "ink";
 
 export const MAX_WIDTH = 120;

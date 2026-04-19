@@ -4,7 +4,7 @@
  * 터미널 상단에 MCP 서버 연결 상태를 시각적으로 표시합니다.
  */
 
-import React from "react";
+import type React from "react";
 import { Box, Text } from "ink";
 import type { McpConnectionState } from "../types.js";
 

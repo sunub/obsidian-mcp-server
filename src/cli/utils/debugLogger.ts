@@ -6,7 +6,7 @@ class DebugLogger {
 	private logStream: fs.WriteStream | undefined;
 
 	constructor() {
-		const logFilePath = process.env["DEBUG_LOG_FILE"];
+		const logFilePath = process.env.DEBUG_LOG_FILE;
 
 		if (logFilePath) {
 			// 1. 파일이 위치할 디렉토리 경로 추출

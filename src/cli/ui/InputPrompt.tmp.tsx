@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React from "react";
+import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import chalk from "chalk";
 import { Box, Text, useInput, type Key as InkKey } from "ink";

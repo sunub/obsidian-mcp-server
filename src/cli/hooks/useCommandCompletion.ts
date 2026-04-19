@@ -382,7 +382,7 @@ export function useCommandCompletion({
 			if (completionMode === CompletionMode.SLASH) {
 				// Add leading space if completing a subcommand (cursor is after parent command with no space)
 				if (start === end && start > 1 && currentLine[start - 1] !== " ") {
-					suggestionText = " " + suggestionText;
+					suggestionText = ` ${suggestionText}`;
 				}
 			}
 
@@ -434,7 +434,7 @@ export function useCommandCompletion({
 					start > 1 &&
 					(buffer.lines[cursorRow] || "")[start - 1] !== " "
 				) {
-					suggestionText = " " + suggestionText;
+					suggestionText = ` ${suggestionText}`;
 				}
 			}
 
@@ -447,8 +447,8 @@ export function useCommandCompletion({
 					slashCompletionRange.getCommandFromSuggestion(suggestion);
 				// Don't add a space if the command has an action (can be executed)
 				// and doesn't have a completion function (doesn't REQUIRE more arguments)
-				const isExecutableCommand = !!(command && command.action);
-				const requiresArguments = !!(command && command.completion);
+				const isExecutableCommand = !!(command?.action);
+				const requiresArguments = !!(command?.completion);
 				shouldAddSpace = !isExecutableCommand || requiresArguments;
 			}
 

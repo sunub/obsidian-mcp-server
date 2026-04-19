@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import {
   createContext,
   useCallback,
@@ -40,7 +40,7 @@ interface KeypressContextValue {
   unsubscribe: (handler: KeypressHandler) => void;
 }
 
-export type KeypressHandler = (key: Key) => boolean | void;
+export type KeypressHandler = (key: Key) => boolean | undefined;
 
 /**
  * Buffers "/" keys to see if they are followed return.

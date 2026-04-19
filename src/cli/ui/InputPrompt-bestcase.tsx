@@ -355,7 +355,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 
 	useEffect(() => {
 		appEvents.emit(AppEvent.ScrollToBottom);
-	}, [buffer.text, buffer.cursor]);
+	}, []);
 
 	// Notify parent component about escape prompt state changes
 	useEffect(() => {
@@ -409,7 +409,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 			buffer.setText(newText, cursorPosition);
 			setSuppressCompletion(true);
 		},
-		[buffer, setSuppressCompletion],
+		[buffer],
 	);
 
 	const inputHistory = useInputHistory({
@@ -471,13 +471,10 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 			setExpandedSuggestionIndex(-1);
 		}
 	}, [
-		suppressCompletion,
-		buffer.text,
-		resetCompletionState,
-		setSuppressCompletion,
-		resetReverseSearchCompletionState,
-		resetCommandSearchCompletionState,
-		setExpandedSuggestionIndex,
+		suppressCompletion, 
+		resetCompletionState, 
+		resetReverseSearchCompletionState, 
+		resetCommandSearchCompletionState
 	]);
 
 	// Helper function to handle loading queued messages into input
@@ -526,10 +523,10 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 						offset < currentText.length ? currentText[offset] : "";
 
 					if (charBefore && charBefore !== " " && charBefore !== "\n") {
-						textToInsert = " " + textToInsert;
+						textToInsert = ` ${textToInsert}`;
 					}
 					if (!charAfter || (charAfter !== " " && charAfter !== "\n")) {
-						textToInsert = textToInsert + " ";
+						textToInsert = `${textToInsert} `;
 					}
 
 					// Insert at cursor position
@@ -854,7 +851,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 				return true;
 			}
 
-			if (vimHandleInput && vimHandleInput(key)) {
+			if (vimHandleInput?.(key)) {
 				return true;
 			}
 

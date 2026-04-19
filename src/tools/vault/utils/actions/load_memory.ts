@@ -84,7 +84,7 @@ function buildLoadMemoryPayload(
 	preview: string,
 ): LoadMemoryPayload {
 	const canonical = parseCanonicalJsonBlock(content);
-	const memoryPacketCandidate = canonical?.["memory_packet"];
+	const memoryPacketCandidate = canonical?.memory_packet;
 	const parsedMemoryPacket = collectContextMemoryPacketSchema.safeParse(
 		memoryPacketCandidate,
 	);
@@ -92,29 +92,29 @@ function buildLoadMemoryPayload(
 		? parsedMemoryPacket.data
 		: null;
 	const scopeCandidate = collectContextScopeSchema.safeParse(
-		canonical?.["scope"],
+		canonical?.scope,
 	);
 	const scope = scopeCandidate.success ? scopeCandidate.data : null;
 	const topic =
-		typeof canonical?.["topic"] === "string"
-			? canonical["topic"]
-			: canonical?.["topic"] === null
+		typeof canonical?.topic === "string"
+			? canonical.topic
+			: canonical?.topic === null
 				? null
 				: null;
-	const documentsCount = Array.isArray(canonical?.["documents"])
-		? canonical["documents"].length
+	const documentsCount = Array.isArray(canonical?.documents)
+		? canonical.documents.length
 		: 0;
 	const schemaVersion =
-		typeof canonical?.["schema_version"] === "string"
-			? canonical["schema_version"]
+		typeof canonical?.schema_version === "string"
+			? canonical.schema_version
 			: extractMarkdownMetaValue(content, "schema_version");
 	const generatedAt =
-		typeof canonical?.["generated_at"] === "string"
-			? canonical["generated_at"]
+		typeof canonical?.generated_at === "string"
+			? canonical.generated_at
 			: extractMarkdownMetaValue(content, "generated_at");
 	const sourceHash =
-		typeof canonical?.["source_hash"] === "string"
-			? canonical["source_hash"]
+		typeof canonical?.source_hash === "string"
+			? canonical.source_hash
 			: extractMarkdownMetaValue(content, "source_hash");
 
 	return {

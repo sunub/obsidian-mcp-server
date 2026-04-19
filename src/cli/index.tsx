@@ -5,7 +5,7 @@ import "dotenv/config";
 
 async function checkLLMHealth() {
   const apiUrl = (
-    process.env["LLM_API_URL"] || "http://127.0.0.1:8080"
+    process.env.LLM_API_URL || "http://127.0.0.1:8080"
   ).replace(/\/$/, "");
 
   try {
@@ -17,7 +17,7 @@ async function checkLLMHealth() {
       return;
     }
     debugLogger.log(`[CLI] Successfully verified LLM API at ${apiUrl}.`);
-  } catch (error) {
+  } catch (_error) {
     debugLogger.warn(
       `[CLI] Could not connect to LLM API at ${apiUrl}. Make sure your server is running.`,
     );

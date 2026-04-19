@@ -83,7 +83,7 @@ class ThemeManager {
 	}
 
 	getActiveTheme(): Theme {
-		if (process.env["NO_COLOR"]) {
+		if (process.env.NO_COLOR) {
 			return NoColorTheme;
 		}
 
@@ -160,9 +160,9 @@ class ThemeManager {
 				background: {
 					...semanticColors.background,
 					primary: this.terminalBackground,
-					message: colors.MessageBackground!,
-					input: colors.InputBackground!,
-					focus: colors.FocusBackground!,
+					message: colors.MessageBackground ?? "",
+					input: colors.InputBackground ?? "",
+					focus: colors.FocusBackground ?? "",
 				},
 				border: {
 					...semanticColors.border,

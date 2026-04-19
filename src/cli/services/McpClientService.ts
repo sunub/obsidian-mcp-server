@@ -100,7 +100,7 @@ export class McpClientService {
   async listTools(): Promise<McpToolInfo[]> {
     this.ensureConnected();
 
-    const result = await this.client!.listTools();
+    const result = await this.client?.listTools();
     return result.tools.map((tool) => ({
       name: tool.name,
       description: tool.description,
@@ -119,7 +119,7 @@ export class McpClientService {
     );
 
     try {
-      const result = await this.client!.callTool({ name, arguments: args });
+      const result = await this.client?.callTool({ name, arguments: args });
 
       debugLogger.log(
         `[McpClient] Tool ${name} completed (isError: ${result.isError ?? false})`,

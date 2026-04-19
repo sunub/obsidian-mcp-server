@@ -588,7 +588,7 @@ function bufferReducerLogic(
   const currentLineText = lines[cursorRow] || "";
   const lineCount = lines.length;
 
-  const pushUndo = (newLines: string[]): string[][] => {
+  const pushUndo = (_newLines: string[]): string[][] => {
     return [...state.undoStack, lines].slice(-100);
   };
 
@@ -626,7 +626,7 @@ function bufferReducerLogic(
     }
 
     case "INSERT": {
-      let payload = action.payload.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      const payload = action.payload.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
       const parts = payload.split("\n");
       const newLines = [...lines];
       const before = cpSlice(currentLineText, 0, cursorCol);

@@ -27,12 +27,12 @@ function buildConnectionOptions(): McpConnectionOptions {
     "[useMcpClient] Building MCP connection options from environment variables...",
   );
   const env = configSchema.parse({
-    vaultPath: process.env["VAULT_DIR_PATH"],
-    loggingLevel: process.env["LOGGING_LEVEL"],
-    llmApiUrl: process.env["LLM_API_URL"],
-    llmEmbeddingApiUrl: process.env["LLM_EMBEDDING_API_URL"],
-    llmEmbeddingModel: process.env["LLM_EMBEDDING_MODEL"],
-    llmChatModel: process.env["LLM_CHAT_MODEL"],
+    vaultPath: process.env.VAULT_DIR_PATH,
+    loggingLevel: process.env.LOGGING_LEVEL,
+    llmApiUrl: process.env.LLM_API_URL,
+    llmEmbeddingApiUrl: process.env.LLM_EMBEDDING_API_URL,
+    llmEmbeddingModel: process.env.LLM_EMBEDDING_MODEL,
+    llmChatModel: process.env.LLM_CHAT_MODEL,
   });
   const vaultPath = env.vaultPath;
   if (!vaultPath) {
@@ -55,7 +55,7 @@ function buildConnectionOptions(): McpConnectionOptions {
       LLM_EMBEDDING_API_URL: env.llmEmbeddingApiUrl ?? "http://127.0.0.1:8081",
       LLM_EMBEDDING_MODEL: env.llmEmbeddingModel ?? "nomic-embed-text",
       LLM_CHAT_MODEL: env.llmChatModel ?? "llama3",
-      LOGGING_LEVEL: process.env["LOGGING_LEVEL"] ?? "info",
+      LOGGING_LEVEL: process.env.LOGGING_LEVEL ?? "info",
     },
   };
 }

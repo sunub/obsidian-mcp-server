@@ -142,8 +142,8 @@ function charLengthAt(str: string, i: number): number {
 export function* emitKeys(
   keypressHandler: KeypressHandler,
 ): Generator<void, void, string> {
-  const lang = process.env["LANG"] || "";
-  const lcAll = process.env["LC_ALL"] || "";
+  const lang = process.env.LANG || "";
+  const lcAll = process.env.LC_ALL || "";
   const isGreek = lang.startsWith("el") || lcAll.startsWith("el");
 
   while (true) {
@@ -151,12 +151,12 @@ export function* emitKeys(
     let sequence = ch;
     let escaped = false;
 
-    let name = undefined;
+    let name: string | undefined;
     let shift = false;
     let alt = false;
     let ctrl = false;
     let cmd = false;
-    let code = undefined;
+    let code: string | undefined;
     let insertable = false;
 
     if (ch === ESC) {
@@ -328,7 +328,7 @@ export function* emitKeys(
           if (match[1] === "27" && match[3] && match[4] === "~") {
             // modifyOtherKeys format: CSI 27 ; modifier ; key ~
             // Treat as CSI u: key + 'u'
-            code += match[3] + "u";
+            code += `${match[3]}u`;
             modifier = parseInt(match[2] ?? "1", 10) - 1;
           } else {
             code += match[1] + match[4];
@@ -394,7 +394,7 @@ export function* emitKeys(
       // We scope this to Windows/WT_SESSION to avoid breaking other unixes where \b is a plain backspace.
       if (
         typeof process !== "undefined" &&
-        (process.env?.["OS"] === "Windows_NT" || !!process.env?.["WT_SESSION"])
+        (process.env?.OS === "Windows_NT" || !!process.env?.WT_SESSION)
       ) {
         ctrl = true;
       }

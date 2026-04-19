@@ -15,7 +15,7 @@ import type { CallToolFn, DispatchResult, McpToolResult } from "../types.js";
 function extractText(result: McpToolResult): string {
   return result.content
     .filter((c) => c.type === "text" && c.text)
-    .map((c) => c.text!)
+    .map((c) => c.text ?? "")
     .join("\n");
 }
 

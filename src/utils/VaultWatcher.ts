@@ -82,7 +82,7 @@ export class VaultWatcher {
         }
       });
 
-    this.watcher.on("error", (error: any) => {
+    this.watcher.on("error", (error: unknown) => {
       console.error(`Watcher error: ${error}`);
     });
   }

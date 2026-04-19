@@ -138,8 +138,8 @@ export class VectorDB {
     }
 
     const meta = await this.readMetadata(db);
-    const storedVersion = Number.parseInt(meta["index_version"] ?? "0", 10);
-    const storedModel = meta["embed_model"] ?? "";
+    const storedVersion = Number.parseInt(meta.index_version ?? "0", 10);
+    const storedModel = meta.embed_model ?? "";
 
     if (storedVersion !== INDEX_VERSION || storedModel !== currentEmbedModel) {
       debugLogger.error(

@@ -30,5 +30,13 @@
 				"organizeImports": "on"
 			}
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["src/cli/reference/**", "src/cli/**/*-bestcase*"],
+			"linter": {
+				"enabled": false
+			}
+		}
+	]
 }
