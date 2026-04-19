@@ -15,7 +15,9 @@ export interface UseSlashCompletionOptions {
 export interface SlashCompletionRange {
 	completionStart: number;
 	completionEnd: number;
-	getCommandFromSuggestion: (suggestion: Suggestion) => SlashCommand | undefined;
+	getCommandFromSuggestion: (
+		suggestion: Suggestion,
+	) => SlashCommand | undefined;
 	isArgumentCompletion: boolean;
 	leafCommand: SlashCommand | null;
 }

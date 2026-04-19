@@ -6,10 +6,10 @@
 
 import { useEffect } from "react";
 import {
-  useKeypressContext,
-  type KeypressHandler,
-  type Key,
-  type KeypressPriority,
+	useKeypressContext,
+	type KeypressHandler,
+	type Key,
+	type KeypressPriority,
 } from "../context/KeypressContext.js";
 
 export type { Key };
@@ -23,22 +23,22 @@ export type { Key };
  * @param options.priority - Priority level (integer or KeypressPriority enum) or boolean for backward compatibility.
  */
 export function useKeypress(
-  onKeypress: KeypressHandler,
-  {
-    isActive,
-    priority,
-  }: { isActive: boolean; priority?: KeypressPriority | boolean },
+	onKeypress: KeypressHandler,
+	{
+		isActive,
+		priority,
+	}: { isActive: boolean; priority?: KeypressPriority | boolean },
 ) {
-  const { subscribe, unsubscribe } = useKeypressContext();
+	const { subscribe, unsubscribe } = useKeypressContext();
 
-  useEffect(() => {
-    if (!isActive) {
-      return;
-    }
+	useEffect(() => {
+		if (!isActive) {
+			return;
+		}
 
-    subscribe(onKeypress, priority);
-    return () => {
-      unsubscribe(onKeypress);
-    };
-  }, [isActive, onKeypress, subscribe, unsubscribe, priority]);
+		subscribe(onKeypress, priority);
+		return () => {
+			unsubscribe(onKeypress);
+		};
+	}, [isActive, onKeypress, subscribe, unsubscribe, priority]);
 }

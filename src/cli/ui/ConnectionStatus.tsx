@@ -9,34 +9,34 @@ import { Box, Text } from "ink";
 import type { McpConnectionState } from "../types.js";
 
 interface ConnectionStatusProps {
-  connectionState: McpConnectionState;
-  toolCount: number;
+	connectionState: McpConnectionState;
+	toolCount: number;
 }
 
 const STATUS_CONFIG: Record<
-  McpConnectionState,
-  { symbol: string; color: string; label: string }
+	McpConnectionState,
+	{ symbol: string; color: string; label: string }
 > = {
-  connected: { symbol: "●", color: "green", label: "Obsidian MCP Connected" },
-  connecting: { symbol: "○", color: "yellow", label: "Connecting to MCP..." },
-  disconnected: { symbol: "✖", color: "gray", label: "MCP Disconnected" },
-  error: { symbol: "✖", color: "red", label: "MCP Connection Error" },
+	connected: { symbol: "●", color: "green", label: "Obsidian MCP Connected" },
+	connecting: { symbol: "○", color: "yellow", label: "Connecting to MCP..." },
+	disconnected: { symbol: "✖", color: "gray", label: "MCP Disconnected" },
+	error: { symbol: "✖", color: "red", label: "MCP Connection Error" },
 };
 
 export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
-  connectionState,
-  toolCount,
+	connectionState,
+	toolCount,
 }) => {
-  const config = STATUS_CONFIG[connectionState];
+	const config = STATUS_CONFIG[connectionState];
 
-  return (
-    <Box paddingX={1} marginBottom={1}>
-      <Text color={config.color}>
-        {config.symbol} {config.label}
-      </Text>
-      {connectionState === "connected" && toolCount > 0 && (
-        <Text color="gray"> ({toolCount} tools)</Text>
-      )}
-    </Box>
-  );
+	return (
+		<Box paddingX={1} marginBottom={1}>
+			<Text color={config.color}>
+				{config.symbol} {config.label}
+			</Text>
+			{connectionState === "connected" && toolCount > 0 && (
+				<Text color="gray"> ({toolCount} tools)</Text>
+			)}
+		</Box>
+	);
 };

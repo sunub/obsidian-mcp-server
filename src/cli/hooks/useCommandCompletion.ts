@@ -447,8 +447,8 @@ export function useCommandCompletion({
 					slashCompletionRange.getCommandFromSuggestion(suggestion);
 				// Don't add a space if the command has an action (can be executed)
 				// and doesn't have a completion function (doesn't REQUIRE more arguments)
-				const isExecutableCommand = !!(command?.action);
-				const requiresArguments = !!(command?.completion);
+				const isExecutableCommand = !!command?.action;
+				const requiresArguments = !!command?.completion;
 				shouldAddSpace = !isExecutableCommand || requiresArguments;
 			}
 

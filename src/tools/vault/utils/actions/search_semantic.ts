@@ -15,7 +15,9 @@ export const searchSemantic = async (
 	try {
 		// 1. Embed the user query
 		// nomic-embed-text requires 'search_query: ' prefix for queries
-		const queryVector = await llmClient.generateEmbedding(`search_query: ${query}`);
+		const queryVector = await llmClient.generateEmbedding(
+			`search_query: ${query}`,
+		);
 
 		// 2. Search LanceDB
 		const results = await vectorDB.search(queryVector, limit);

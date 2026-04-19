@@ -141,8 +141,11 @@ Content`;
 		const trueText = `---\ntitle: Done\ncompleted: true\n---\nDone`;
 		const falseText = `---\ntitle: Not Done\ncompleted: false\n---\nNot done`;
 
-		expect(parse(DUMMY_FILE, DUMMY_BIRTH, trueText).frontmatter.completed).toBe(true);
-		expect(parse(DUMMY_FILE, DUMMY_BIRTH, falseText).frontmatter.completed).toBe(false);
+		expect(parse(DUMMY_FILE, DUMMY_BIRTH, trueText).frontmatter.completed).toBe(
+			true,
+		);
+		expect(
+			parse(DUMMY_FILE, DUMMY_BIRTH, falseText).frontmatter.completed,
+		).toBe(false);
 	});
 });
-

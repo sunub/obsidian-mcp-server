@@ -84,7 +84,9 @@ function buildLoadMemoryPayload(
 	preview: string,
 ): LoadMemoryPayload {
 	const canonical = parseCanonicalJsonBlock(content);
-	const memoryPacketCandidate = canonical?.memory_packet;
+	const memoryPacketCandidate = canonical
+		? canonical["memory_packet"]
+		: undefined;
 	const parsedMemoryPacket = collectContextMemoryPacketSchema.safeParse(
 		memoryPacketCandidate,
 	);
@@ -92,29 +94,37 @@ function buildLoadMemoryPayload(
 		? parsedMemoryPacket.data
 		: null;
 	const scopeCandidate = collectContextScopeSchema.safeParse(
-		canonical?.scope,
+		canonical ? canonical["scope"] : undefined,
 	);
 	const scope = scopeCandidate.success ? scopeCandidate.data : null;
 	const topic =
-		typeof canonical?.topic === "string"
-			? canonical.topic
-			: canonical?.topic === null
+		typeof (canonical ? canonical["topic"] : undefined) === "string"
+			? (canonical?.["topic"] as string)
+			: (canonical ? canonical["topic"] : undefined) === null
 				? null
 				: null;
-	const documentsCount = Array.isArray(canonical?.documents)
-		? canonical.documents.length
-		: 0;
+	const documentsCount =
+		canonical && Array.isArray(canonical["documents"])
+			? (canonical["documents"] as unknown[]).length
+			: 0;
+	const schemaVersionCandidate = canonical
+		? canonical["schema_version"]
+		: undefined;
 	const schemaVersion =
-		typeof canonical?.schema_version === "string"
-			? canonical.schema_version
+		typeof schemaVersionCandidate === "string"
+			? schemaVersionCandidate
 			: extractMarkdownMetaValue(content, "schema_version");
+	const generatedAtCandidate = canonical
+		? canonical["generated_at"]
+		: undefined;
 	const generatedAt =
-		typeof canonical?.generated_at === "string"
-			? canonical.generated_at
+		typeof generatedAtCandidate === "string"
+			? generatedAtCandidate
 			: extractMarkdownMetaValue(content, "generated_at");
+	const sourceHashCandidate = canonical ? canonical["source_hash"] : undefined;
 	const sourceHash =
-		typeof canonical?.source_hash === "string"
-			? canonical.source_hash
+		typeof sourceHashCandidate === "string"
+			? sourceHashCandidate
 			: extractMarkdownMetaValue(content, "source_hash");
 
 	return {

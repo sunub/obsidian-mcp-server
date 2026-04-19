@@ -471,10 +471,10 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 			setExpandedSuggestionIndex(-1);
 		}
 	}, [
-		suppressCompletion, 
-		resetCompletionState, 
-		resetReverseSearchCompletionState, 
-		resetCommandSearchCompletionState
+		suppressCompletion,
+		resetCompletionState,
+		resetReverseSearchCompletionState,
+		resetCommandSearchCompletionState,
 	]);
 
 	// Helper function to handle loading queued messages into input

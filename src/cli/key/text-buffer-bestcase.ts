@@ -2994,12 +2994,9 @@ export function useTextBuffer({
 		dispatch({ type: "delete" });
 	}, []);
 
-	const move = useCallback(
-		(dir: Direction): void => {
-			dispatch({ type: "move", payload: { dir } });
-		},
-		[],
-	);
+	const move = useCallback((dir: Direction): void => {
+		dispatch({ type: "move", payload: { dir } });
+	}, []);
 
 	const undo = useCallback((): void => {
 		dispatch({ type: "undo" });
