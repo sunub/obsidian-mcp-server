@@ -30,13 +30,22 @@ const vaultPathSchema = z
 export const configSchema = z.object({
 	vaultPath: vaultPathSchema,
 	loggingLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
+	llmApiUrl: z.string().url().default("http://127.0.0.1:8080"),
+	llmEmbeddingApiUrl: z.string().url().default("http://127.0.0.1:8081"),
+	llmEmbeddingModel: z.string().default("nomic-embed-text"),
+	llmChatModel: z.string().default("llama3"),
 });
 
 export type ObsidianMcpConfig = z.infer<typeof configSchema>;
 
 const state: ObsidianMcpConfig = {
-	vaultPath: process.env.VAULT_DIR_PATH || "",
+	vaultPath: process.env["VAULT_DIR_PATH"] || "",
 	loggingLevel: "info",
+	llmApiUrl: process.env["LLM_API_URL"] || "http://127.0.0.1:8080",
+	llmEmbeddingApiUrl:
+		process.env["LLM_EMBEDDING_API_URL"] || "http://127.0.0.1:8081",
+	llmEmbeddingModel: process.env["LLM_EMBEDDING_MODEL"] || "nomic-embed-text",
+	llmChatModel: process.env["LLM_CHAT_MODEL"] || "llama3",
 };
 
 export function getOptions(): ObsidianMcpConfig | false {
@@ -46,12 +55,32 @@ export function getOptions(): ObsidianMcpConfig | false {
 		.option(
 			"--vault-path <path>",
 			"Path to the Obsidian vault directory",
-			process.env.VAULT_DIR_PATH ?? "",
+			process.env["VAULT_DIR_PATH"] ?? "",
 		)
 		.option(
 			"--logging-level <level>",
 			"Logging level (debug, info, warn, error)",
-			process.env.LOGGING_LEVEL ?? "info",
+			process.env["LOGGING_LEVEL"] ?? "info",
+		)
+		.option(
+			"--llm-api-url <url>",
+			"LLM Chat API URL",
+			process.env["LLM_API_URL"] ?? "http://127.0.0.1:8080",
+		)
+		.option(
+			"--llm-embedding-api-url <url>",
+			"LLM Embedding API URL",
+			process.env["LLM_EMBEDDING_API_URL"] ?? "http://127.0.0.1:8081",
+		)
+		.option(
+			"--llm-embedding-model <model>",
+			"LLM Embedding Model",
+			process.env["LLM_EMBEDDING_MODEL"] ?? "nomic-embed-text",
+		)
+		.option(
+			"--llm-chat-model <model>",
+			"LLM Chat Model",
+			process.env["LLM_CHAT_MODEL"] ?? "llama3",
 		)
 		.allowUnknownOption()
 		.parse(process.argv);
@@ -64,7 +93,7 @@ export function getOptions(): ObsidianMcpConfig | false {
 			console.error(` - ${issue.path.join(".")}: ${issue.message}`);
 		});
 
-		console.info(
+		console.error(
 			"\n사용 방법: Environment variables 에 VAULT_DIR_PATH 설정 또는 명령줄 인수 --vault-path <path>를 통해 올바른 구성을 제공하세요.",
 		);
 		return false;
@@ -72,6 +101,10 @@ export function getOptions(): ObsidianMcpConfig | false {
 
 	state.vaultPath = parseResult.data.vaultPath;
 	state.loggingLevel = parseResult.data.loggingLevel;
+	state.llmApiUrl = parseResult.data.llmApiUrl;
+	state.llmEmbeddingApiUrl = parseResult.data.llmEmbeddingApiUrl;
+	state.llmEmbeddingModel = parseResult.data.llmEmbeddingModel;
+	state.llmChatModel = parseResult.data.llmChatModel;
 
 	return state;
 }

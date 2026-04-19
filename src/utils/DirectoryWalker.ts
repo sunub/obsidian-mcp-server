@@ -24,6 +24,15 @@ export class DirectoryWalker {
 		}
 		try {
 			const tasks = entries.map(async (entry) => {
+				// Ignore dotfiles, .obsidian, and node_modules
+				if (
+					entry.name.startsWith(".") ||
+					entry.name === "node_modules" ||
+					entry.name === ".obsidian"
+				) {
+					return [];
+				}
+
 				const fullPath = join(dirPath, entry.name);
 				if (entry.isDirectory()) {
 					// 하위 디렉토리 재귀 탐색

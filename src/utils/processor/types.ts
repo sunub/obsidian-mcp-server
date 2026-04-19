@@ -1,18 +1,11 @@
 import { z } from "zod";
 
-const PostCategorySchema = z
-	.union([
-		z.literal("web"),
-		z.literal("algorithm"),
-		z.literal("cs"),
-		z.literal("code"),
-	])
-	.optional();
+const PostCategorySchema = z.string().optional();
 
 const DateStringSchema = z.union([z.string(), z.date()]).optional();
 
 export const FrontMatterSchema = z.object({
-	title: z.string().optional(),
+	title: z.string(),
 	date: DateStringSchema,
 	tags: z.array(z.string()).optional(),
 	summary: z.string().optional(),

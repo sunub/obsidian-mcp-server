@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import * as LinkExtractor from "./processor/LinkExtractor.js";
 import * as MatterParser from "./processor/MatterParser.js";
@@ -7,8 +7,8 @@ import type { Semaphore } from "./semaphore.js";
 
 export class Indexer {
 	private documentMap: Map<string, DocumentIndex> = new Map();
-	private invertedIndex: Map<string, Set<string>> = new Map();
 	private backlinkIndex: Map<string, Set<string>> = new Map();
+	private invertedIndex: Map<string, Set<string>> = new Map();
 
 	public get totalFiles(): number {
 		return this.documentMap.size;
@@ -97,7 +97,12 @@ export class Indexer {
 		await ioSemaphore.acquire();
 		try {
 			const fileContent = await readFile(filePath, "utf-8");
-			const { frontmatter, content } = MatterParser.parse(fileContent);
+			const fileStat = await stat(filePath);
+			const { frontmatter, content } = MatterParser.parse(
+				filePath,
+				fileStat.birthtime.toISOString(),
+				fileContent,
+			);
 
 			const imageLinks = LinkExtractor.extractImageLinks(content);
 			const documentLinks = LinkExtractor.extractDocumentLinks(content);
@@ -125,12 +130,6 @@ export class Indexer {
 	): void {
 		const tokens = new Set<string>();
 
-		index.filePath
-			.toLowerCase()
-			.split(/[/\s\-.]+/)
-			.forEach((t) => {
-				t && tokens.add(t);
-			});
 		const extension = extname(index.filePath);
 		const fileBasename = basename(index.filePath, extension);
 		tokens.add(fileBasename);

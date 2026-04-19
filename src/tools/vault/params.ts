@@ -33,13 +33,20 @@ export const obsidianContentActions = z
 		"stats",
 		"collect_context",
 		"load_memory",
+		"search_vault_by_semantic",
+		"index_vault_to_vectordb",
 	])
 	.describe(
-		"The action to perform: search documents, read specific file, list all content, get stats, collect contextual memory packets, or load stored memory",
+		"The action to perform: search documents, read specific file, list all content, get stats, collect contextual memory packets, load stored memory, semantic search, or trigger indexing",
 	);
 export const obsidianContentKeyword = z
 	.string()
 	.describe("Keyword to search for in documents (required for search action)");
+export const obsidianContentQuery = z
+	.string()
+	.describe(
+		"Natural language query for semantic search (required for search_vault_by_semantic action)",
+	);
 export const obsidianContentFilename = z
 	.string()
 	.describe("Specific filename to read (required for read action)");
@@ -118,6 +125,7 @@ export const obsidianContentMemoryPath = z
 export const obsidianContentQueryParamsZod = z.object({
 	action: obsidianContentActions,
 	keyword: obsidianContentKeyword.optional(),
+	query: obsidianContentQuery.optional(),
 	filename: obsidianContentFilename.optional(),
 	limit: obsidianContentLimit.optional(),
 	includeContent: obsidianContentIncludeContent.optional(),

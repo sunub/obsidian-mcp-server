@@ -6,13 +6,14 @@
 
 MCP 클라이언트에 연결해 에이전트에게 **토큰 사용량을 제어하면서** Vault 내용을 조회할 수 있게 합니다.
 
-
 ## 무엇을 할 수 있나
 
 - 키워드 기반 노트 검색 (`vault`, `action="search"`)
 - 특정 노트 열람 (`vault`, `action="read"`)
 - Vault 전체 문서 목록 조회 (`vault`, `action="list_all"`)
 - Vault 상태 조회 (`vault`, `action="stats"`)
+- 의미 기반 검색 (`vault`, `action="search_vault_by_semantic"`) - LLM 서버(llama.cpp) 연동 필수
+- 전체 색인 트리거 (`vault`, `action="index_vault_to_vectordb"`)
 - 장기 컨텍스트용 메모리 패킷 생성 (`vault`, `action="collect_context"`)
 - 저장된 메모리 노트 조회 (`vault`, `action="load_memory"`)
 - frontmatter 자동 생성 제안 (`generate_property`)
@@ -44,7 +45,7 @@ MCP 클라이언트에 연결해 에이전트에게 **토큰 사용량을 제어
 "VAULT_DIR_PATH": "./vault"              // 상대 경로 사용 불가
 ```
 
-2. Node.js 요구사항: Node.js 22 이상이 설치되어 있어야 합니다.
+1. Node.js 요구사항: Node.js 22 이상이 설치되어 있어야 합니다.
 
 ```bash
 node --version  # v22.0.0 이상 확인
@@ -101,6 +102,7 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
   args = ["-y", "@sunub/obsidian-mcp-server@latest"]
   env = { VAULT_DIR_PATH = "/abs/path/to/your/vault" }
   ```
+
 </details>
 
 <details>
@@ -110,10 +112,11 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
   2) `/mcp add`
   3) 아래 값 입력
 
-  - **Server name:** `obsidian`
-  - **Server Type:** `[1] Local`
-  - **Command:** `npx -y @sunub/obsidian-mcp-server@latest`
-  - **Environment:** `{ "VAULT_DIR_PATH": "/abs/path/to/your/vault" }`
+- **Server name:** `obsidian`
+- **Server Type:** `[1] Local`
+- **Command:** `npx -y @sunub/obsidian-mcp-server@latest`
+- **Environment:** `{ "VAULT_DIR_PATH": "/abs/path/to/your/vault" }`
+
 </details>
 
 <details>
@@ -132,6 +135,7 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
     }
   }
   ```
+
 </details>
 
 <details>
@@ -178,7 +182,11 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
       "env": {
         "VAULT_DIR_PATH": "/path/to/obsidian-vault",
         "VAULT_METRICS_LOG_PATH": "/path/to/vault-metrics.ndjson",
-        "LOGGING_LEVEL": "info"
+        "LOGGING_LEVEL": "info",
+        "LLM_API_URL": "http://127.0.0.1:8080",
+        "LLM_EMBEDDING_API_URL": "http://127.0.0.1:8081",
+        "LLM_EMBEDDING_MODEL": "nomic-embed-text",
+        "LLM_CHAT_MODEL": "llama3"
       }
     }
   }
@@ -190,6 +198,10 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
 - `VAULT_DIR_PATH` (필수): Obsidian Vault 절대 경로
 - `VAULT_METRICS_LOG_PATH` (선택): 액션 응답 압축/토큰 메트릭을 JSONL로 기록
 - `LOGGING_LEVEL` (선택): `debug` | `info` | `warn` | `error`
+- `LLM_API_URL` (선택): llama.cpp 채팅 서버 주소 (기본값: `http://127.0.0.1:8080`)
+- `LLM_EMBEDDING_API_URL` (선택): llama.cpp 임베딩 서버 주소 (기본값: `http://127.0.0.1:8081`)
+- `LLM_EMBEDDING_MODEL` (선택): 임베딩용 모델명 (기본값: `nomic-embed-text`)
+- `LLM_CHAT_MODEL` (선택): 문맥 생성용 모델명 (기본값: `llama3`)
 
 ## 시작 후 빠른 검증
 
@@ -216,7 +228,7 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
 
 정상 동작 시 응답에 `totalFiles`, `isInitialized`, `vaultPath`가 들어갑니다.
 
-2) 검색 인덱스 확인
+1) 검색 인덱스 확인
 
 ```text
 "노트 제목에 'MCP'가 들어간 문서만 5개 찾아줘."
@@ -240,7 +252,7 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
 
 `search`에서 결과가 비어 있으면 인덱싱/경로 또는 키워드 범위를 의심합니다.
 
-3) 문서 읽기 확인
+1) 문서 읽기 확인
 
 ```text
 "특정 노트 하나를 읽어줘."
@@ -305,7 +317,7 @@ https://github.com/user-attachments/assets/eb74ec05-09f7-4632-a22c-666b7e844147
 
 <!-- BEGIN AUTO GENERATED TOOLS -->
 
-- **Obsidian Tools (6 actions)**
+- **Obsidian Tools (8 actions)**
   - [`vault`](docs/tool-reference.md#vault-action)
     - `search`
     - `read`
@@ -313,6 +325,8 @@ https://github.com/user-attachments/assets/eb74ec05-09f7-4632-a22c-666b7e844147
     - `stats`
     - `collect_context`
     - `load_memory`
+    - `search_vault_by_semantic`
+    - `index_vault_to_vectordb`
 - [`generate_property`](docs/tool-reference.md#generate_property)
 - [`write_property`](docs/tool-reference.md#write_property)
 - [`create_document_with_properties`](docs/tool-reference.md#create_document_with_properties)

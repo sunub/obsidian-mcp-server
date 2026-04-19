@@ -4,10 +4,10 @@ import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js
 import type { ObsidianContentQueryParams } from "../../params.js";
 import {
 	ACTION_DEFAULT_MAX_OUTPUT_CHARS,
-	READ_DEFAULT_BACKLINK_LIMIT,
-	READ_DEFAULT_CONTENT_MAX_CHARS,
 	finalizePayloadWithCompression,
 	jsonCharLength,
+	READ_DEFAULT_BACKLINK_LIMIT,
+	READ_DEFAULT_CONTENT_MAX_CHARS,
 	resolveCompressionMode,
 } from "../shared.js";
 
