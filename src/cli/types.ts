@@ -25,8 +25,12 @@ export interface HistoryItem {
  */
 export interface PendingItem {
 	type: "assistant";
-	/** 실시간으로 누적되는 텍스트 */
+	/** 실시간으로 누적되는 텍스트 (thinking 제외) */
 	content: string;
+	/** 생각하는 과정 텍스트 */
+	thinkingContent?: string;
+	/** 현재 thinking 블록 안에 있는지 */
+	isThinking?: boolean;
 	/** 스트림이 완료되었는지 */
 	isComplete: boolean;
 }

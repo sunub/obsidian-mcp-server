@@ -6,6 +6,54 @@ import state from "../../config.js";
 
 let toolCallingSupportedCache: boolean | null = null;
 
+const THINK_START = ["[Start thinking]", "<think>"];
+const THINK_END = ["[End thinking]", "</think>"];
+
+function parseThinkingContent(raw: string): {
+	thinking: string;
+	main: string;
+	isThinking: boolean;
+} {
+	let thinking = "";
+	let main = "";
+	let remaining = raw;
+	let inThinking = false;
+
+	while (remaining.length > 0) {
+		if (!inThinking) {
+			let earliest = remaining.length;
+			let markerLen = 0;
+			for (const marker of THINK_START) {
+				const idx = remaining.indexOf(marker);
+				if (idx >= 0 && idx < earliest) {
+					earliest = idx;
+					markerLen = marker.length;
+				}
+			}
+			main += remaining.slice(0, earliest);
+			if (earliest === remaining.length) break;
+			remaining = remaining.slice(earliest + markerLen);
+			inThinking = true;
+		} else {
+			let earliest = remaining.length;
+			let markerLen = 0;
+			for (const marker of THINK_END) {
+				const idx = remaining.indexOf(marker);
+				if (idx >= 0 && idx < earliest) {
+					earliest = idx;
+					markerLen = marker.length;
+				}
+			}
+			thinking += remaining.slice(0, earliest);
+			if (earliest === remaining.length) break;
+			remaining = remaining.slice(earliest + markerLen);
+			inThinking = false;
+		}
+	}
+
+	return { thinking: thinking.trim(), main: main.trim(), isThinking: inThinking };
+}
+
 const ANSI_RE =
 	// biome-ignore lint/suspicious/noControlCharactersInRegex:터미널 입력을 파싱하기 위한 정규식입니다.
 	/[\u001b\u009b][[()#;?]*(?:\d{1,4}(?:;\d{0,4})*)?[A-Za-z0-9=><~]/g;
@@ -303,12 +351,14 @@ export const useLlmStream = (
 
 						if (event.type === "content") {
 							contentAccum += event.chunk;
-							const display = progressLog
-								? `${progressLog}\n${contentAccum}`
-								: contentAccum;
+							const { thinking, main, isThinking } =
+								parseThinkingContent(contentAccum);
+							const display = progressLog ? `${progressLog}\n${main}` : main;
 							setPendingItem({
 								type: "assistant",
 								content: display,
+								thinkingContent: thinking || undefined,
+								isThinking,
 								isComplete: false,
 							});
 						} else if (event.type === "tool_calls") {
@@ -368,14 +418,16 @@ export const useLlmStream = (
 							});
 						}
 					} else {
+						const { main } = parseThinkingContent(contentAccum);
+						const finalContent = main || contentAccum;
 						conversationRef.current.push({
 							role: "assistant",
-							content: contentAccum,
+							content: finalContent,
 						});
 
 						const display = progressLog
-							? `${progressLog}\n${contentAccum}`
-							: contentAccum;
+							? `${progressLog}\n${finalContent}`
+							: finalContent;
 
 						setPendingItem({
 							type: "assistant",
