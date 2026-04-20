@@ -4,23 +4,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { DefaultDark } from "./builtin/default-dark.js";
-import { TokyoNight } from "./builtin/tokyonight-dark.js";
-import { NoColorTheme } from "./builtin/no-color.js";
-import type { Theme, ThemeType, ColorsTheme } from "./theme.js";
-import {
-	interpolateColor,
-	getThemeTypeFromBackgroundColor,
-	resolveColor,
-} from "./theme.js";
-import type { SemanticColors } from "./semantic-tokens.js";
+import process from "node:process";
 import {
 	DEFAULT_BACKGROUND_OPACITY,
+	DEFAULT_BORDER_OPACITY,
 	DEFAULT_INPUT_BACKGROUND_OPACITY,
 	DEFAULT_SELECTION_OPACITY,
-	DEFAULT_BORDER_OPACITY,
 } from "../constants.js";
-import process from "node:process";
+import { DefaultDark } from "./builtin/default-dark.js";
+import { NoColorTheme } from "./builtin/no-color.js";
+import { TokyoNight } from "./builtin/tokyonight-dark.js";
+import type { SemanticColors } from "./semantic-tokens.js";
+import type { ColorsTheme, Theme, ThemeType } from "./theme.js";
+import {
+	getThemeTypeFromBackgroundColor,
+	interpolateColor,
+	resolveColor,
+} from "./theme.js";
 
 export interface ThemeDisplay {
 	name: string;

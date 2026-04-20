@@ -5,14 +5,13 @@
  */
 
 import type { CSSProperties } from "react";
-import type { SemanticColors } from "./semantic-tokens.js";
-
+import tinycolor from "tinycolor2";
+import tinygradient from "tinygradient";
 import {
 	DEFAULT_INPUT_BACKGROUND_OPACITY,
 	DEFAULT_SELECTION_OPACITY,
 } from "../constants.js";
-import tinygradient from "tinygradient";
-import tinycolor from "tinycolor2";
+import type { SemanticColors } from "./semantic-tokens.js";
 
 // Define the set of Ink's named colors for quick lookup
 export const INK_SUPPORTED_NAMES = new Set([

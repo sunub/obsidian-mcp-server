@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Theme, type ColorsTheme } from "../theme.js";
 import type { SemanticColors } from "../semantic-tokens.js";
+import { type ColorsTheme, Theme } from "../theme.js";
 
 const noColorColorsTheme: ColorsTheme = {
 	type: "ansi",
