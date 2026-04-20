@@ -1,13 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { encodingForModel } from "js-tiktoken";
 import ora, { type Ora } from "ora";
 import { DirectoryWalker } from "./DirectoryWalker.js";
 import { llmClient } from "./LLMClient.js";
 import { parse as parseMatter } from "./processor/MatterParser.js";
 import { Semaphore } from "./semaphore.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
-import { encodingForModel } from "js-tiktoken";
 
 type HeadingEntry = { heading: string; pos: number; depth: number };
 

@@ -1,6 +1,6 @@
+import { z } from "zod/v4";
 import { debugLogger } from "@/cli/utils/debugLogger.js";
 import state from "../config.js";
-import { z } from "zod/v4";
 
 export const RerankResponseSchema = z.object({
 	model: z.string(),

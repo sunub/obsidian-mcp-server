@@ -1,10 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
-import { ragIndexer } from "./RAGIndexer.js";
-import { vectorDB } from "./VectorDB.js";
 import { DirectoryWalker } from "./DirectoryWalker.js";
+import { ragIndexer } from "./RAGIndexer.js";
 import { Semaphore } from "./semaphore.js";
+import { vectorDB } from "./VectorDB.js";
 
 export class VaultWatcher {
 	private watcher: FSWatcher | null = null;
