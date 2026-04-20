@@ -2,6 +2,7 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { getOptions } from "./config.js";
 import createMcpServer from "./server.js";
+import { vaultWatcher } from "./utils/VaultWatcher.js";
 
 async function main() {
 	const options = getOptions();
@@ -11,6 +12,9 @@ async function main() {
 	}
 
 	try {
+		// Start vault watcher for RAG sync
+		await vaultWatcher.start(options.vaultPath);
+
 		const server = createMcpServer();
 		const transport = new StdioServerTransport();
 		await server.connect(transport);

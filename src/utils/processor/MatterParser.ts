@@ -2,6 +2,7 @@ import { basename } from "node:path";
 import matter from "gray-matter";
 import type { ParsedMatter } from "./types.js";
 import { FrontMatterSchema } from "./types.js";
+import { basename } from "node:path";
 
 export function parse(
 	filePath: string,
