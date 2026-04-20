@@ -6,8 +6,7 @@ import type { PendingItem, StreamingState, OllamaMessage } from "../types.ts";
 
 /** ANSI 이스케이프 시퀀스 제거 */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences intentionally matched
-const ANSI_RE =
-	/[\u001b\u009b][[()#;?]*(?:\d{1,4}(?:;\d{0,4})*)?[A-Za-z0-9=><~]/g;
+const ANSI_RE = /[\u001b\u009b][[()#;?]*(?:\d{1,4}(?:;\d{0,4})*)?[A-Za-z0-9=><~]/g;
 function stripAnsi(text: string): string {
 	return text.replace(ANSI_RE, "");
 }
