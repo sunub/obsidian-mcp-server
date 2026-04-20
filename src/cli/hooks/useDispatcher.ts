@@ -29,7 +29,6 @@ function parseKeyValueArgs(args: string): Record<string, unknown> {
 	while ((match = regex.exec(args)) !== null) {
 		const key = match[1];
 		const value = match[2] ?? match[3] ?? match[4];
-		// boolean / number coercion
 		if (value === "true") result[key] = true;
 		else if (value === "false") result[key] = false;
 		else if (/^\d+$/.test(value)) result[key] = Number(value);
@@ -119,7 +118,7 @@ async function handleReadFallback(
 	callTool: CallToolFn,
 ): Promise<DispatchResult> {
 	const filename = extractFilenameFromArgs(args);
-	debugLogger.log(
+	debugLogger.debug(
 		`[Dispatcher] Read failed, trying search fallback for: "${filename}"`,
 	);
 
@@ -142,7 +141,6 @@ async function handleReadFallback(
 			}
 		}
 	} catch {
-		// Fallback search failed — return generic message below
 	}
 
 	return {
@@ -171,51 +169,34 @@ function tryMatchDynamicTool(
 	return availableTools.find((t) => t.name === toolName);
 }
 
-/**
- * 동적 도구 호출 시 인자를 빌드하는 전략:
- * 1. key=value 구문으로 파싱 시도
- * 2. JSON 직접 파싱 시도
- * 3. 스키마 기반 — 첫 번째 required string 파라미터에 값 매핑
- *    이때 raw text에 따옴표로 감싼 단어가 있으면 그것을 추출해서 사용
- *    (예: "VectorDB 문서를 읽어줘" → "VectorDB")
- * 4. 공통 파라미터명 폴백
- */
 function buildDynamicArgs(
 	rawArgs: string,
 	tool: McpToolInfo,
 ): Record<string, unknown> {
 	if (!rawArgs) return {};
 
-	// 1차: key=value 파싱
 	const kvArgs = parseKeyValueArgs(rawArgs);
 	if (Object.keys(kvArgs).length > 0) return kvArgs;
 
-	// 2차: JSON 직접 파싱 시도
 	if (rawArgs.startsWith("{")) {
 		try {
 			return JSON.parse(rawArgs) as Record<string, unknown>;
 		} catch {
-			// fall through
 		}
 	}
 
-	// 따옴표로 감싼 키워드 추출 시도 (자연어 입력에서 핵심 식별자 추출)
-	// 예: '현재 vault에서 "VectorDB" 문서를 ...' → "VectorDB"
 	const extractedIdentifier = extractFilenameFromArgs(rawArgs);
-	// extractFilenameFromArgs는 따옴표가 없으면 rawArgs 전체를 반환하므로
-	// 실제로 따옴표에서 추출된 경우만 사용 (더 짧고, 공백이 없거나 적음)
 	const isExtracted =
 		extractedIdentifier !== rawArgs &&
 		extractedIdentifier.length < rawArgs.length;
 
-	// 3차: 스키마 기반 — 첫 번째 required string 파라미터에 매핑
 	const schema = tool.inputSchema;
 	if (schema?.required?.length && schema.properties) {
 		for (const paramName of schema.required) {
 			const prop = schema.properties[paramName];
 			if (prop?.type === "string") {
 				const value = isExtracted ? extractedIdentifier : rawArgs;
-				debugLogger.log(
+				debugLogger.debug(
 					`[Dispatcher] Schema-based arg mapping: "${paramName}" ← ${isExtracted ? `extracted "${value}"` : "raw text"}`,
 				);
 				return { [paramName]: value };
@@ -223,7 +204,6 @@ function buildDynamicArgs(
 		}
 	}
 
-	// 최후 폴백: 일반적인 파라미터 이름에 매핑 시도
 	const commonParamNames = [
 		"filename",
 		"keyword",
@@ -243,7 +223,6 @@ function buildDynamicArgs(
 		}
 	}
 
-	// 어떤 매핑도 못 찾으면 추출값 또는 raw text 반환
 	return { input: isExtracted ? extractedIdentifier : rawArgs };
 }
 
@@ -263,7 +242,7 @@ export function useDispatcher(
 			const [command, ...argParts] = trimmed.split(/\s+/);
 			const args = argParts.join(" ").trim();
 
-			debugLogger.log(`[Dispatcher] Command: ${command}, Args: "${args}"`);
+			debugLogger.debug(`[Dispatcher] Command: ${command}, Args: "${args}"`);
 
 			switch (command) {
 				case "/help":
@@ -296,13 +275,20 @@ export function useDispatcher(
 				}
 
 				const toolArgs = mapping.buildArgs(args);
-				return executeToolCall(command, mapping.tool, toolArgs, args, callTool, text);
+				return executeToolCall(
+					command,
+					mapping.tool,
+					toolArgs,
+					args,
+					callTool,
+					text,
+				);
 			}
 
 			const dynamicTool = tryMatchDynamicTool(command, availableTools);
 			if (dynamicTool) {
 				const toolArgs = buildDynamicArgs(args, dynamicTool);
-				debugLogger.log(
+				debugLogger.debug(
 					`[Dispatcher] Dynamic tool dispatch: ${dynamicTool.name}`,
 					JSON.stringify(toolArgs).slice(0, 200),
 				);
@@ -312,7 +298,7 @@ export function useDispatcher(
 					toolArgs,
 					args,
 					callTool,
-						text,
+					text,
 				);
 			}
 
@@ -354,10 +340,8 @@ async function executeToolCall(
 
 		const text = extractText(result);
 
-		// 도구 결과가 LLM 지시문 형식인지 감지
-		// (instructions 키를 포함한 JSON → LLM이 처리해야 함)
 		if (isLlmInstructionPayload(text)) {
-			debugLogger.log(
+			debugLogger.info(
 				`[Dispatcher] Tool "${toolName}" returned LLM instruction payload — routing to LLM`,
 			);
 			return {
@@ -381,7 +365,6 @@ async function executeToolCall(
 	}
 }
 
-/** 도구 결과가 LLM 지시문 형식(generate_property 등)인지 감지 */
 function isLlmInstructionPayload(text: string): boolean {
 	try {
 		const parsed = JSON.parse(text);

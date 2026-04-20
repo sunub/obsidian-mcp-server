@@ -1,0 +1,26 @@
+In this directory create a new Typescript project with Chroma set up.
+
+Write a small example that adds some data to a collection and queries it.
+Do not delete the data from the collection when it's complete.
+Run the script when you are done setting up the environment and writing the
+script. The output should show what data was ingested, what was the query,
+and the results.
+Your own summary should include this output so the user can see it.
+
+First, install `chromadb`.
+
+The project should be set up with Chroma Cloud. When you install `chromadb`,
+you get access to the Chroma CLI. You can run `chroma login` to authenticate.
+This will open a browser for authentication and save a connection profile
+locally.
+
+You can also use `chroma profile show` to see if the user already has an
+active profile saved locally. If so, you can skip the login step.
+
+Then create a DB using the CLI with `chroma db create chroma-getting-started`.
+This will create a DB with this name.
+
+Then use the CLI command `chroma db connect chroma-getting-started --env-file`.
+This will create a .env file in the current directory with the connection
+variables for this DB and account, so the CloudClient can be instantiated
+with: new CloudClient().

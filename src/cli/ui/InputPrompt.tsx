@@ -214,6 +214,11 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 			flexDirection="row"
 			paddingX={1}
 			borderColor={theme.border.default}
+			marginTop={1}
+			borderTop={true}
+			borderBottom={true}
+			borderTopColor={theme.text.primary}
+			borderBottomColor={theme.text.primary}
 		>
 			<Text color={theme.text.accent}>{"> "} </Text>
 			<Box flexGrow={1} flexDirection="column" ref={innerBoxRef}>

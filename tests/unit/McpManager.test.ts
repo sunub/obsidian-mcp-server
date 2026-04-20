@@ -46,9 +46,9 @@ describe("McpManager", () => {
 						isConnected: true,
 						connect: vi.fn().mockResolvedValue(undefined),
 						disconnect: vi.fn().mockResolvedValue(undefined),
-						listTools: vi.fn().mockResolvedValue([
-							{ name: "tool_a", description: "Tool A" },
-						]),
+						listTools: vi
+							.fn()
+							.mockResolvedValue([{ name: "tool_a", description: "Tool A" }]),
 						callTool: vi.fn(),
 					}) as unknown as McpClientService,
 			);
@@ -78,11 +78,13 @@ describe("McpManager", () => {
 						? vi.fn().mockRejectedValue(new Error("Connection refused"))
 						: vi.fn().mockResolvedValue(undefined),
 					disconnect: vi.fn().mockResolvedValue(undefined),
-					listTools: vi.fn().mockResolvedValue(
-						shouldFail
-							? []
-							: [{ name: `tool_${callCount}`, description: "test" }],
-					),
+					listTools: vi
+						.fn()
+						.mockResolvedValue(
+							shouldFail
+								? []
+								: [{ name: `tool_${callCount}`, description: "test" }],
+						),
 					callTool: vi.fn(),
 				} as unknown as McpClientService;
 			});
@@ -107,9 +109,10 @@ describe("McpManager", () => {
 
 	describe("도구 라우팅", () => {
 		test("도구 이름으로 올바른 서버에 라우팅된다", async () => {
-			const mockCallTool = vi
-				.fn()
-				.mockResolvedValue({ isError: false, content: [{ type: "text", text: "ok" }] });
+			const mockCallTool = vi.fn().mockResolvedValue({
+				isError: false,
+				content: [{ type: "text", text: "ok" }],
+			});
 
 			let callCount = 0;
 			const MockService = vi.mocked(McpClientService);
@@ -121,9 +124,9 @@ describe("McpManager", () => {
 					isConnected: true,
 					connect: vi.fn().mockResolvedValue(undefined),
 					disconnect: vi.fn().mockResolvedValue(undefined),
-					listTools: vi.fn().mockResolvedValue([
-						{ name: toolName, description: "test" },
-					]),
+					listTools: vi
+						.fn()
+						.mockResolvedValue([{ name: toolName, description: "test" }]),
 					callTool: mockCallTool,
 				} as unknown as McpClientService;
 			});
@@ -148,9 +151,9 @@ describe("McpManager", () => {
 						isConnected: true,
 						connect: vi.fn().mockResolvedValue(undefined),
 						disconnect: vi.fn().mockResolvedValue(undefined),
-						listTools: vi.fn().mockResolvedValue([
-							{ name: "vault", description: "test" },
-						]),
+						listTools: vi
+							.fn()
+							.mockResolvedValue([{ name: "vault", description: "test" }]),
 						callTool: vi.fn(),
 					}) as unknown as McpClientService,
 			);
@@ -164,12 +167,14 @@ describe("McpManager", () => {
 		});
 
 		test("도구 이름 충돌 시 먼저 등록된 서버가 우선된다 (FIFO)", async () => {
-			const callToolFirst = vi
-				.fn()
-				.mockResolvedValue({ isError: false, content: [{ type: "text", text: "first" }] });
-			const callToolSecond = vi
-				.fn()
-				.mockResolvedValue({ isError: false, content: [{ type: "text", text: "second" }] });
+			const callToolFirst = vi.fn().mockResolvedValue({
+				isError: false,
+				content: [{ type: "text", text: "first" }],
+			});
+			const callToolSecond = vi.fn().mockResolvedValue({
+				isError: false,
+				content: [{ type: "text", text: "second" }],
+			});
 
 			let callCount = 0;
 			const MockService = vi.mocked(McpClientService);
@@ -181,9 +186,11 @@ describe("McpManager", () => {
 					isConnected: true,
 					connect: vi.fn().mockResolvedValue(undefined),
 					disconnect: vi.fn().mockResolvedValue(undefined),
-					listTools: vi.fn().mockResolvedValue([
-						{ name: "duplicate_tool", description: "test" },
-					]),
+					listTools: vi
+						.fn()
+						.mockResolvedValue([
+							{ name: "duplicate_tool", description: "test" },
+						]),
 					callTool: isFirst ? callToolFirst : callToolSecond,
 				} as unknown as McpClientService;
 			});
@@ -248,11 +255,11 @@ describe("McpManager", () => {
 						? vi.fn().mockRejectedValue(new Error("fail"))
 						: vi.fn().mockResolvedValue(undefined),
 					disconnect: vi.fn().mockResolvedValue(undefined),
-					listTools: vi.fn().mockResolvedValue(
-						shouldFail
-							? []
-							: [{ name: "tool", description: "test" }],
-					),
+					listTools: vi
+						.fn()
+						.mockResolvedValue(
+							shouldFail ? [] : [{ name: "tool", description: "test" }],
+						),
 					callTool: vi.fn(),
 				} as unknown as McpClientService;
 			});

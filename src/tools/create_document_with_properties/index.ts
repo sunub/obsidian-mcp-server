@@ -139,6 +139,11 @@ export const execute = async (
 	}
 };
 
+const shorthandDescription = {
+	ko: "AI 기반 프론트매터 생성 및 적용을 위한 2단계 통합 워크플로우 도구입니다. 첫 번째 호출 시 파일 경로를 통해 문서 내용과 지침을 반환하며, 두 번째 호출 시 생성된 속성값을 받아 실제 문서에 기록합니다.",
+	en: "Orchestrates a two-step workflow for AI-generated frontmatter properties. Step 1 retrieves a content preview and schema instructions via file path. Step 2 takes the AI-generated properties and writes them directly to the file. Ideal for end-to-end automation.",
+};
+
 export default {
 	name,
 	description,
@@ -146,4 +151,5 @@ export default {
 	inputSchema: createDocumentWithPropertiesParamsSchema.shape,
 	execute,
 	register,
+	shorthandDescription,
 };

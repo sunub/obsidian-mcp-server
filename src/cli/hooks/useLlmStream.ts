@@ -11,8 +11,6 @@ function stripAnsi(text: string): string {
 	return text.replace(ANSI_RE, "");
 }
 
-// ─── Agentic loop types ───────────────────────────────────────────────────────
-
 interface OpenAITool {
 	type: "function";
 	function: {
@@ -28,7 +26,6 @@ interface ToolCall {
 	function: { name: string; arguments: string };
 }
 
-/** OpenAI-compatible conversation message — superset of OllamaMessage */
 type ConversationMessage =
 	| { role: "system"; content: string }
 	| { role: "user"; content: string }
@@ -42,7 +39,6 @@ interface LLMResponse {
 }
 
 const MAX_AGENTIC_ITERATIONS = 10;
-/** MCP 도구 결과를 LLM 컨텍스트 창 초과 방지를 위해 잘라냄 */
 const MAX_TOOL_RESULT_CHARS = 8000;
 
 function mcpToolsToOpenAI(tools: McpToolInfo[]): OpenAITool[] {
@@ -59,7 +55,6 @@ function mcpToolsToOpenAI(tools: McpToolInfo[]): OpenAITool[] {
 	}));
 }
 
-/** 도구 호출 중간 단계에서 사용하는 non-streaming LLM 호출 */
 async function callLLMNonStreaming(
 	messages: ConversationMessage[],
 	tools?: OpenAITool[],
@@ -100,7 +95,6 @@ async function callLLMNonStreaming(
 	};
 }
 
-/** 최종 텍스트 응답에 사용하는 streaming LLM 호출 */
 async function* generateLLMStream(messages: ConversationMessage[]) {
 	const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
 
@@ -147,13 +141,10 @@ async function* generateLLMStream(messages: ConversationMessage[]) {
 				const content = parsed.choices?.[0]?.delta?.content;
 				if (content) yield content;
 			} catch (_e) {
-				// partial JSON or noise
 			}
 		}
 	}
 }
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export interface LlmStreamState {
 	pendingItem: PendingItem | null;
@@ -176,14 +167,13 @@ export const useLlmStream = (
 	const conversationRef = useRef<ConversationMessage[]>([]);
 	const isLoading = useMemo(() => streamingState !== "idle", [streamingState]);
 
-	// 부팅 시 연결 확인
 	useEffect(() => {
 		async function bootCheck() {
 			const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/models`;
 			try {
 				const resp = await fetch(url);
 				if (!resp.ok) throw new Error("API Check Failed");
-				debugLogger.log(`[CLI] LLM Server verified at ${state.llmApiUrl}`);
+				debugLogger.info(`[CLI] LLM Server verified at ${state.llmApiUrl}`);
 			} catch (_err) {
 				debugLogger.warn(
 					`[CLI] Could not reach LLM Server at ${state.llmApiUrl}`,
@@ -217,33 +207,28 @@ export const useLlmStream = (
 				const hasTools = Boolean(callTool) && availableTools.length > 0;
 
 				if (hasTools && callTool) {
-					// ── Agentic loop: non-streaming for tool turns ──────────────────
 					const openAITools = mcpToolsToOpenAI(availableTools);
 					let progressLog = "";
 					let finalContent = "";
 
 					for (let iter = 0; iter < MAX_AGENTIC_ITERATIONS; iter++) {
 						const response = await callLLMNonStreaming(messages, openAITools);
-						debugLogger.log(
+						debugLogger.debug(
 							`[LLM] iter=${iter} finish_reason=${response.finish_reason} tool_calls=${response.tool_calls?.length ?? 0}`,
 						);
 
-						// tool_calls 존재 여부를 최우선 신호로 사용
-						// (Ollama 버전에 따라 finish_reason이 "stop"으로 올 수 있음)
 						const wantsTools =
 							response.tool_calls != null && response.tool_calls.length > 0;
 
 						if (wantsTools && response.tool_calls) {
 							setStreamingState("streaming");
 
-							// 어시스턴트 tool_calls 메시지를 컨텍스트에 추가
 							messages.push({
 								role: "assistant",
 								content: response.content,
 								tool_calls: response.tool_calls,
 							});
 
-							// 각 도구 순차 실행
 							for (const tc of response.tool_calls) {
 								let args: Record<string, unknown> = {};
 								try {
@@ -252,7 +237,6 @@ export const useLlmStream = (
 										unknown
 									>;
 								} catch {
-									/* 빈 args 유지 */
 								}
 
 								const argSummary = Object.entries(args)
@@ -286,7 +270,6 @@ export const useLlmStream = (
 								});
 							}
 						} else {
-							// finish_reason === "stop" → 최종 답변
 							finalContent = response.content;
 							break;
 						}
@@ -312,7 +295,6 @@ export const useLlmStream = (
 						isComplete: true,
 					});
 				} else {
-					// ── 도구 없음: 기존 streaming path ──────────────────────────────
 					const stream = generateLLMStream(messages);
 					let isFirstChunk = true;
 					let fullResponse = "";

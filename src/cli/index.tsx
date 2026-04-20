@@ -16,7 +16,7 @@ async function checkLLMHealth() {
 			);
 			return;
 		}
-		debugLogger.log(`[CLI] Successfully verified LLM API at ${apiUrl}.`);
+		debugLogger.info(`[CLI] Successfully verified LLM API at ${apiUrl}.`);
 	} catch (_error) {
 		debugLogger.warn(
 			`[CLI] Could not connect to LLM API at ${apiUrl}. Make sure your server is running.`,
@@ -25,9 +25,10 @@ async function checkLLMHealth() {
 }
 
 async function start() {
-	debugLogger.log("App starting - verifying environment.");
-	await checkLLMHealth();
-	render(<AppContainer />);
+	debugLogger.info("App starting - verifying environment.");
+	checkLLMHealth().catch(() => {});
+	const { waitUntilExit } = render(<AppContainer />);
+	await waitUntilExit();
 }
 
 start();

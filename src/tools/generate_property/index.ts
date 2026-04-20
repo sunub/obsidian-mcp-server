@@ -99,6 +99,11 @@ export const execute = async (
 	return response;
 };
 
+export const shorthandDescription = {
+	en: `Returns document content and an output schema for generating Markdown frontmatter properties. Read-only; must be paired with 'write_property' to apply changes.`,
+	ko: "대상 마크다운 문서를 읽어 프론트매터 속성(제목, 태그, 요약 등) 생성을 위한 AI용 페이로드(내용 및 스키마)를 반환합니다. 읽기 전용 도구이며, 생성된 속성을 실제 파일에 적용하려면 'write_property'를 호출해야 합니다.",
+};
+
 export default {
 	name,
 	description,
@@ -106,4 +111,5 @@ export default {
 	inputSchema: obsidianPropertyQueryParamsSchema.shape,
 	execute,
 	register,
+	shorthandDescription,
 };

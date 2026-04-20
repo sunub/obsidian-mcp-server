@@ -78,3 +78,45 @@ export const MAX_SHELL_OUTPUT_SIZE = 10_000_000; // 10 MB
 // chunk, amortizing the cost to once per SHELL_OUTPUT_TRUNCATION_BUFFER bytes
 // of new input (i.e. once per ~1 MB on a busy shell).
 export const SHELL_OUTPUT_TRUNCATION_BUFFER = 1_000_000; // 1 MB
+
+// --- Added for Help Commands Integration ---
+export const HELP_COMMAND_MARKER = "__HELP_COMMANDS__";
+
+export const SLASH_COMMANDS = [
+	{
+		command: "/search <keyword>",
+		desc: "Vault 키워드 검색",
+	},
+	{
+		command: '/read "filename"',
+		desc: "문서 읽기 (파일명에 따옴표 권장)",
+	},
+	{
+		command: "/semantic <query>",
+		desc: "시맨틱(벡터) 검색",
+	},
+	{
+		command: "/stats",
+		desc: "Vault 상태 정보",
+	},
+	{
+		command: "/index",
+		desc: "벡터 DB 인덱싱 실행",
+	},
+	{
+		command: "/context <topic>",
+		desc: "토픽 기반 컨텍스트 수집",
+	},
+	{
+		command: "/tools",
+		desc: "사용 가능한 MCP 도구 목록",
+	},
+	{
+		command: "/clear",
+		desc: "대화 히스토리 초기화",
+	},
+	{
+		command: "/help",
+		desc: "이 도움말 표시",
+	},
+];

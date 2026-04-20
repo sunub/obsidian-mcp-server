@@ -4,10 +4,6 @@ import { z } from "zod/v4";
 import { configSchema } from "@/config.js";
 import { debugLogger } from "../utils/debugLogger.js";
 
-/**
- * 단일 MCP 서버의 설정 엔트리.
- * Claude Desktop 호환 형식을 따른다.
- */
 const mcpServerEntrySchema = z.object({
 	command: z.string().min(1),
 	args: z.array(z.string()).optional().default([]),
@@ -18,12 +14,10 @@ const mcpServerEntrySchema = z.object({
 
 export type McpServerEntry = z.infer<typeof mcpServerEntrySchema>;
 
-/** 설정 파일 전체 구조 — { mcpServers: { [name]: entry } } */
 const mcpServersFileSchema = z.object({
 	mcpServers: z.record(z.string(), mcpServerEntrySchema),
 });
 
-/** name이 포함된 런타임용 서버 설정 */
 export interface McpServerConfig {
 	name: string;
 	command: string;
@@ -32,13 +26,8 @@ export interface McpServerConfig {
 	cwd?: string;
 }
 
-// ─── 환경변수 치환 ─────────────────────────────────
-
 const ENV_VAR_PATTERN = /\$\{([^}:]+?)(?::-(.*?))?\}/g;
 
-/**
- * 문자열 내의 `${VAR}` 및 `${VAR:-default}` 패턴을 process.env 값으로 치환한다.
- */
 function substituteEnvVars(value: string): string {
 	return value.replace(
 		ENV_VAR_PATTERN,
@@ -65,12 +54,6 @@ function substituteEnvInRecord(
 	return result;
 }
 
-// ─── 로더 ─────────────────────────────────────────
-
-/**
- * mcp-servers.json 파일 경로를 탐색한다.
- * 프로젝트 루트(cwd)에서 먼저 찾고, 없으면 null을 반환한다.
- */
 function findConfigFile(): string | null {
 	const candidates = [
 		join(process.cwd(), "mcp-servers.json"),
@@ -86,10 +69,6 @@ function findConfigFile(): string | null {
 	return null;
 }
 
-/**
- * 기존 환경변수로부터 Obsidian MCP 서버 1개의 폴백 설정을 생성한다.
- * mcp-servers.json이 없을 때의 하위 호환 경로.
- */
 function buildFallbackConfig(): McpServerConfig[] {
 	try {
 		const env = configSchema.parse({
@@ -134,19 +113,11 @@ function buildFallbackConfig(): McpServerConfig[] {
 	}
 }
 
-/**
- * MCP 서버 설정을 로드한다.
- *
- * 1. 프로젝트 루트의 mcp-servers.json을 탐색
- * 2. 환경변수 치환 수행 (${VAR}, ${VAR:-default})
- * 3. disabled 서버 제외
- * 4. 파일이 없으면 기존 환경변수로 폴백 (하위 호환)
- */
 export function loadMcpServersConfig(): McpServerConfig[] {
 	const configPath = findConfigFile();
 
 	if (!configPath) {
-		debugLogger.log(
+		debugLogger.warn(
 			"[McpConfig] mcp-servers.json을 찾을 수 없습니다. 환경변수 폴백을 사용합니다.",
 		);
 		return buildFallbackConfig();
@@ -161,7 +132,7 @@ export function loadMcpServersConfig(): McpServerConfig[] {
 
 		for (const [name, entry] of Object.entries(validated.mcpServers)) {
 			if (entry.disabled) {
-				debugLogger.log(
+				debugLogger.info(
 					`[McpConfig] "${name}" 서버가 비활성화되어 있어 건너뜁니다.`,
 				);
 				continue;
@@ -176,14 +147,14 @@ export function loadMcpServersConfig(): McpServerConfig[] {
 			});
 		}
 
-		debugLogger.log(
+		debugLogger.info(
 			`[McpConfig] ${configPath}에서 ${configs.length}개의 MCP 서버 설정을 로드했습니다.`,
 		);
 
 		return configs;
 	} catch (err) {
 		debugLogger.error(`[McpConfig] 설정 파일 파싱 실패 (${configPath}):`, err);
-		debugLogger.log("[McpConfig] 환경변수 폴백을 사용합니다.");
+		debugLogger.warn("[McpConfig] 환경변수 폴백을 사용합니다.");
 		return buildFallbackConfig();
 	}
 }

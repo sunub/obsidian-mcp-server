@@ -33,8 +33,16 @@ export class VaultWatcher {
 				filesToProcess.push(filePath);
 			} else {
 				const stats = await fs.stat(filePath);
-				const storedMtime = await vectorDB.getFileMtime(filePath);
-				if (storedMtime !== stats.mtime.toISOString()) {
+				const storedMtimeStr = await vectorDB.getFileMtime(filePath);
+
+				if (storedMtimeStr) {
+					const storedTime = new Date(storedMtimeStr).getTime();
+					const fileTime = stats.mtime.getTime();
+
+					if (Math.abs(storedTime - fileTime) > 1000) {
+						filesToProcess.push(filePath);
+					}
+				} else {
 					filesToProcess.push(filePath);
 				}
 			}

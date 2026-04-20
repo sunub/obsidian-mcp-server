@@ -28,3 +28,5 @@ function HistoryPrompt({
 }
 
 render(<HistoryPrompt />);
+
+//generate_property 내 vault 에서 "VectorDB"라는 이름을 가진 문서의 내용을 읽고 frontmatter 를 작성해줘

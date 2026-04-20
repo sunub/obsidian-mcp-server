@@ -142,6 +142,11 @@ export const execute = async (
 	}
 };
 
+export const shorthandDescription = {
+	ko: "키워드나 제목을 기반으로 설정된 Obsidian Vault 내의 Markdown 문서(.md, .mdx)를 검색하고 조회합니다. 특정 노트 확인, 정보 요약, 백링크 탐색, 미완료 할 일 추출에 사용되며 문서의 본문과 메타데이터를 반환합니다.",
+	en: "Retrieves Obsidian vault Markdown files by keyword or title to extract content, metadata, links, and unfinished tasks.",
+};
+
 export default {
 	name,
 	description,
@@ -149,4 +154,5 @@ export default {
 	inputSchema: obsidianContentQueryParamsZod.shape,
 	execute,
 	register,
+	shorthandDescription,
 };

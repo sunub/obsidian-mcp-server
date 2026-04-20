@@ -34,11 +34,12 @@ export const configSchema = z.object({
 	llmEmbeddingApiUrl: z.string().url().default("http://127.0.0.1:8081"),
 	llmEmbeddingModel: z.string().default("nomic-embed-text"),
 	llmChatModel: z.string().default("llama3"),
+	llmRerankerApiUrl: z.string().url().default("http://1270.0.1:8082"),
 });
 
 export type ObsidianMcpConfig = z.infer<typeof configSchema>;
 
-const state: ObsidianMcpConfig = {
+const state: ObsidianMcpConfig = configSchema.parse({
 	vaultPath: process.env["VAULT_DIR_PATH"] || "",
 	loggingLevel: "info",
 	llmApiUrl: process.env["LLM_API_URL"] || "http://127.0.0.1:8080",
@@ -46,7 +47,9 @@ const state: ObsidianMcpConfig = {
 		process.env["LLM_EMBEDDING_API_URL"] || "http://127.0.0.1:8081",
 	llmEmbeddingModel: process.env["LLM_EMBEDDING_MODEL"] || "nomic-embed-text",
 	llmChatModel: process.env["LLM_CHAT_MODEL"] || "llama3",
-};
+	llmRerankerApiUrl:
+		process.env["LLM_RERANKER_API_URL"] || "http://1270.0.1:8082",
+});
 
 export function getOptions(): ObsidianMcpConfig | false {
 	const program = new Command()

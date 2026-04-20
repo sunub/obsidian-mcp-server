@@ -1,7 +1,27 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { llmClient } from "../../../../utils/LLMClient.js";
-import { type ChunkMetadata, vectorDB } from "../../../../utils/VectorDB.js";
+import { llmClient } from "@/utils/LLMClient.js";
+import { type ChunkMetadata, vectorDB } from "@/utils/VectorDB.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
+import { rerankerClient } from "@/utils/RerankerClient.js";
+
+function genereateFormattedResult(
+	res: ChunkMetadata & { relevance_score: number },
+	index: number,
+): string {
+	const fileStr = `File: ${res.fileName}`;
+	const pathStr = `Path: ${res.filePath}`;
+	const scoreStr = `Relevance: ${(res.relevance_score * 100).toFixed(2)}%`;
+	const contextStr = `Context: ${res.context || "N/A"}`;
+	const contentStr = `Content:\n---\n${res.content}\n---`;
+	return [
+		`[Result ${index + 1}]`,
+		fileStr,
+		pathStr,
+		scoreStr,
+		contextStr,
+		contentStr,
+	].join("\n");
+}
 
 export const searchSemantic = async (
 	params: ObsidianContentQueryParams,
@@ -13,41 +33,37 @@ export const searchSemantic = async (
 	}
 
 	try {
-		// 1. Embed the user query
-		// nomic-embed-text requires 'search_query: ' prefix for queries
 		const queryVector = await llmClient.generateEmbedding(
 			`search_query: ${query}`,
 		);
 
-		// 2. Search LanceDB
-		const results = await vectorDB.search(queryVector, limit);
-
-		if (results.length === 0) {
+		const candidates = await vectorDB.search(queryVector, limit * 4);
+		if (candidates.length === 0) {
 			return {
 				content: [{ type: "text", text: "No relevant documents found." }],
 			};
 		}
 
-		// 3. Format results
-		const formattedResults = results
-			.map((res: ChunkMetadata & { _distance: number }, i: number) => {
-				return `[Result ${i + 1}]
-File: ${res.fileName}
-Path: ${res.filePath}
-Distance: ${res._distance.toFixed(4)}
-Context: ${res.context || "N/A"}
-Content:
----
-${res.content}
----`;
-			})
+		const rerankedResults = await rerankerClient.rerank(
+			query,
+			candidates.map((c) => c.content),
+			limit,
+		);
+
+		const finalResults = rerankedResults.map((r) => ({
+			...candidates[r.index],
+			relevance_score: r.relevance_score,
+		}));
+
+		const formattedResults = finalResults
+			.map((res, i) => genereateFormattedResult(res, i))
 			.join("\n\n");
 
 		return {
 			content: [
 				{
 					type: "text",
-					text: `Found ${results.length} relevant chunks for query: "${query}"\n\n${formattedResults}`,
+					text: `Found ${finalResults.length} relevant chunks for query: "${query}"\n\n${formattedResults}`,
 				},
 			],
 		};

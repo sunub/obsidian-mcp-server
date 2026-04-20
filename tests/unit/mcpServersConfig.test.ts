@@ -9,7 +9,8 @@ vi.mock("../../src/config", () => ({
 			vaultPath: input["vaultPath"] || "",
 			loggingLevel: input["loggingLevel"] || "info",
 			llmApiUrl: input["llmApiUrl"] || "http://127.0.0.1:8080",
-			llmEmbeddingApiUrl: input["llmEmbeddingApiUrl"] || "http://127.0.0.1:8081",
+			llmEmbeddingApiUrl:
+				input["llmEmbeddingApiUrl"] || "http://127.0.0.1:8081",
 			llmEmbeddingModel: input["llmEmbeddingModel"] || "nomic-embed-text",
 			llmChatModel: input["llmChatModel"] || "llama3",
 		})),
@@ -26,9 +27,7 @@ vi.mock("node:fs", async () => {
 	};
 });
 
-import {
-	loadMcpServersConfig,
-} from "../../src/cli/config/mcpServersConfig";
+import { loadMcpServersConfig } from "../../src/cli/config/mcpServersConfig";
 
 const mockExistsSync = vi.mocked(fs.existsSync);
 const mockReadFileSync = vi.mocked(fs.readFileSync);

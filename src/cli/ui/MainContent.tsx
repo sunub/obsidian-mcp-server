@@ -3,6 +3,8 @@ import { Box, Static, Text } from "ink";
 import type { HistoryItem, PendingItem, StreamingState } from "../types.js";
 import { HistoryItemDisplay } from "./HistoryItemDisplay.js";
 import { ThinkingIndicator } from "./ThinkingIndicator.js";
+import { HelpCommands } from "./HelpCommands.js";
+import { HELP_COMMAND_MARKER } from "../constants.js";
 
 interface MainContentProps {
 	history: HistoryItem[];
@@ -21,9 +23,12 @@ export const MainContent: React.FC<MainContentProps> = ({
 		<>
 			{/* 과거 기록: <Static>에 가두어 한 번만 렌더링 */}
 			<Static items={history}>
-				{(item: HistoryItem) => (
-					<HistoryItemDisplay key={item.id} item={item} width={width} />
-				)}
+				{(item: HistoryItem) => {
+					if (item.content === HELP_COMMAND_MARKER) {
+						return <HelpCommands key={item.id} width={width} />;
+					}
+					return <HistoryItemDisplay key={item.id} item={item} width={width} />;
+				}}
 			</Static>
 
 			{/* Thinking 인디케이터: 첫 번째 청크 도착 전 */}

@@ -30,14 +30,6 @@ export interface UseMcpManagerReturn {
 	connectedCount: number;
 }
 
-/**
- * 다중 MCP 서버 관리 훅.
- *
- * - mcp-servers.json (또는 환경변수 폴백)에서 서버 설정을 로드
- * - McpManager를 통해 병렬 연결
- * - Partial Readiness: 하나라도 연결되면 isConnected = true
- * - 도구 라우팅: callTool(name, args)이 적절한 서버로 위임
- */
 export const useMcpManager = (): UseMcpManagerReturn => {
 	const [connections, setConnections] = useState<
 		Map<string, ServerConnectionInfo>
@@ -53,7 +45,6 @@ export const useMcpManager = (): UseMcpManagerReturn => {
 
 	const managerRef = useRef<McpManager | null>(null);
 
-	// McpManager의 현재 상태를 React 상태로 동기화
 	const syncState = useCallback(() => {
 		const manager = managerRef.current;
 		if (!manager) return;
@@ -67,7 +58,6 @@ export const useMcpManager = (): UseMcpManagerReturn => {
 		setIsConnected(manager.isPartiallyReady);
 	}, []);
 
-	// 마운트 시 연결, 언마운트 시 정리
 	useEffect(() => {
 		const manager = new McpManager();
 		managerRef.current = manager;
@@ -82,7 +72,7 @@ export const useMcpManager = (): UseMcpManagerReturn => {
 					return;
 				}
 
-				debugLogger.log(
+				debugLogger.info(
 					`[useMcpManager] ${configs.length}개의 MCP 서버 연결 시작: ${configs.map((c) => c.name).join(", ")}`,
 				);
 
