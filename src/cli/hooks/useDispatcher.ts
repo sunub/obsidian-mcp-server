@@ -1,17 +1,9 @@
-/**
- * useDispatcher — 슬래시 커맨드 라우터
- *
- * 사용자가 `/` 로 시작하는 커맨드를 입력하면
- * MCP 도구 호출 또는 로컬 액션으로 분기합니다.
- */
-
 import { useCallback } from "react";
-import { debugLogger } from "../utils/debugLogger.js";
+import { HELP_COMMAND_MARKER } from "../constants.js";
+import type { McpToolInfo } from "../services/McpClientService.js";
 import type { CallToolFn, DispatchResult, McpToolResult } from "../types.js";
+import { debugLogger } from "../utils/debugLogger.js";
 
-/**
- * MCP 도구 응답에서 텍스트를 추출합니다.
- */
 function extractText(result: McpToolResult): string {
 	return result.content
 		.filter((c) => c.type === "text" && c.text)
@@ -19,35 +11,217 @@ function extractText(result: McpToolResult): string {
 		.join("\n");
 }
 
-/**
- * 자연어 문장에서 따옴표로 감싼 파일명을 추출합니다.
- * 예: '내가 작성한 "CORS와 SOP" 문서를 읽어줘' → 'CORS와 SOP'
- * 따옴표가 없으면 원본 인자를 그대로 반환합니다.
- */
 function extractFilenameFromArgs(args: string): string {
-	// 큰따옴표 또는 겹낫표(「」) 안의 텍스트 추출
 	const quoted =
-		args.match(/[""]([^""]+)[""]/) ??
+		args.match(/[\u201C"]([^\u201D"]+)[\u201D"]/) ??
 		args.match(/"([^"]+)"/) ??
-		args.match(/「([^」]+)」/);
+		args.match(/\u300C([^\u300D]+)\u300D/);
 	if (quoted?.[1]) {
 		return quoted[1].trim();
 	}
 	return args;
 }
 
-const HELP_TEXT = `사용 가능한 커맨드:
-  /search <keyword>   — Vault 키워드 검색
-  /read <filename>    — 문서 읽기 (따옴표로 파일명 감싸기 권장)
-  /semantic <query>   — 시맨틱(벡터) 검색
-  /stats              — Vault 상태 정보
-  /index              — 벡터 DB 인덱싱 실행
-  /context <topic>    — 토픽 기반 컨텍스트 수집
-  /tools              — 사용 가능한 MCP 도구 목록
-  /clear              — 대화 히스토리 초기화
-  /help               — 이 도움말 표시
+function parseKeyValueArgs(args: string): Record<string, unknown> {
+	const result: Record<string, unknown> = {};
+	const regex = /(\w+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g;
+	for (const match of args.matchAll(regex)) {
+		const key = match[1];
+		const value = match[2] ?? match[3] ?? match[4];
+		if (value === "true") result[key] = true;
+		else if (value === "false") result[key] = false;
+		else if (/^\d+$/.test(value)) result[key] = Number(value);
+		else result[key] = value;
+	}
+	return result;
+}
 
-💡 자연어 질문은 슬래시 없이 입력하면 RAG 기반으로 답변합니다.`;
+interface CommandMapping {
+	tool: string;
+	buildArgs: (args: string) => Record<string, unknown>;
+	requiresArgs?: boolean;
+	noArgsMessage?: string;
+}
+
+const COMMAND_MAP: Record<string, CommandMapping> = {
+	"/search": {
+		tool: "vault",
+		requiresArgs: true,
+		noArgsMessage: "사용법: /search <검색어>",
+		buildArgs: (args) => ({
+			action: "search",
+			keyword: args,
+			limit: 10,
+			includeContent: true,
+			compressionMode: "balanced",
+		}),
+	},
+	"/read": {
+		tool: "vault",
+		requiresArgs: true,
+		noArgsMessage:
+			'사용법: /read <파일명>\n예: /read "브라우저의 교차 출처 리소스 공유(CORS).md"',
+		buildArgs: (args) => ({
+			action: "read",
+			filename: extractFilenameFromArgs(args),
+		}),
+	},
+	"/semantic": {
+		tool: "vault",
+		requiresArgs: true,
+		noArgsMessage: "사용법: /semantic <검색 쿼리>",
+		buildArgs: (args) => ({
+			action: "search_vault_by_semantic",
+			query: args,
+			limit: 5,
+		}),
+	},
+	"/stats": {
+		tool: "vault",
+		buildArgs: () => ({ action: "stats" }),
+	},
+	"/index": {
+		tool: "vault",
+		buildArgs: () => ({ action: "index_vault_to_vectordb" }),
+	},
+	"/context": {
+		tool: "vault",
+		requiresArgs: true,
+		noArgsMessage: "사용법: /context <토픽>",
+		buildArgs: (args) => ({
+			action: "collect_context",
+			topic: args,
+			scope: "topic",
+			maxDocs: 10,
+			memoryMode: "response_only",
+		}),
+	},
+	"/organize": {
+		tool: "organize_attachments",
+		requiresArgs: true,
+		noArgsMessage: "사용법: /organize <검색키워드>",
+		buildArgs: (args) => ({ keyword: args }),
+	},
+	"/genprop": {
+		tool: "generate_property",
+		requiresArgs: true,
+		noArgsMessage: '사용법: /genprop <파일명>\n예: /genprop "my-post.md"',
+		buildArgs: (args) => ({
+			filename: extractFilenameFromArgs(args),
+		}),
+	},
+};
+
+async function handleReadFallback(
+	args: string,
+	callTool: CallToolFn,
+): Promise<DispatchResult> {
+	const filename = extractFilenameFromArgs(args);
+	debugLogger.debug(
+		`[Dispatcher] Read failed, trying search fallback for: "${filename}"`,
+	);
+
+	try {
+		const searchResult = await callTool("vault", {
+			action: "search",
+			keyword: filename,
+			limit: 5,
+			includeContent: false,
+			compressionMode: "aggressive",
+		});
+
+		if (!searchResult.isError) {
+			const searchText = extractText(searchResult);
+			if (searchText && !searchText.includes("No results")) {
+				return {
+					type: "tool_result",
+					content: `"${filename}" 파일을 찾지 못했습니다.\n\n유사한 문서:\n${searchText}\n\n💡 정확한 파일명으로 다시 시도하세요: /read "파일명.md"`,
+				};
+			}
+		}
+	} catch {}
+
+	return {
+		type: "tool_result",
+		content: `"${filename}" 파일을 찾지 못했습니다.\n💡 /search ${filename} 으로 먼저 검색해보세요.`,
+	};
+}
+
+function isToolAvailable(
+	toolName: string,
+	availableTools: McpToolInfo[],
+): boolean {
+	return availableTools.some((t) => t.name === toolName);
+}
+
+function buildAvailableToolsHint(availableTools: McpToolInfo[]): string {
+	if (availableTools.length === 0) return "등록된 도구가 없습니다.";
+	return availableTools.map((t) => `  • ${t.name}`).join("\n");
+}
+
+function tryMatchDynamicTool(
+	command: string,
+	availableTools: McpToolInfo[],
+): McpToolInfo | undefined {
+	const toolName = command.slice(1);
+	return availableTools.find((t) => t.name === toolName);
+}
+
+function buildDynamicArgs(
+	rawArgs: string,
+	tool: McpToolInfo,
+): Record<string, unknown> {
+	if (!rawArgs) return {};
+
+	const kvArgs = parseKeyValueArgs(rawArgs);
+	if (Object.keys(kvArgs).length > 0) return kvArgs;
+
+	if (rawArgs.startsWith("{")) {
+		try {
+			return JSON.parse(rawArgs) as Record<string, unknown>;
+		} catch {}
+	}
+
+	const extractedIdentifier = extractFilenameFromArgs(rawArgs);
+	const isExtracted =
+		extractedIdentifier !== rawArgs &&
+		extractedIdentifier.length < rawArgs.length;
+
+	const schema = tool.inputSchema;
+	if (schema?.required?.length && schema.properties) {
+		for (const paramName of schema.required) {
+			const prop = schema.properties[paramName];
+			if (prop?.type === "string") {
+				const value = isExtracted ? extractedIdentifier : rawArgs;
+				debugLogger.debug(
+					`[Dispatcher] Schema-based arg mapping: "${paramName}" ← ${isExtracted ? `extracted "${value}"` : "raw text"}`,
+				);
+				return { [paramName]: value };
+			}
+		}
+	}
+
+	const commonParamNames = [
+		"filename",
+		"keyword",
+		"query",
+		"sourcePath",
+		"filePath",
+		"name",
+		"input",
+		"text",
+	];
+	if (schema?.properties) {
+		for (const name of commonParamNames) {
+			if (name in schema.properties) {
+				const value = isExtracted ? extractedIdentifier : rawArgs;
+				return { [name]: value };
+			}
+		}
+	}
+
+	return { input: isExtracted ? extractedIdentifier : rawArgs };
+}
 
 export interface UseDispatcherReturn {
 	handleDispatch: (
@@ -56,179 +230,150 @@ export interface UseDispatcherReturn {
 	) => Promise<DispatchResult>;
 }
 
-export function useDispatcher(): UseDispatcherReturn {
+export function useDispatcher(
+	availableTools: McpToolInfo[] = [],
+): UseDispatcherReturn {
 	const handleDispatch = useCallback(
 		async (text: string, callTool: CallToolFn): Promise<DispatchResult> => {
 			const trimmed = text.trim();
 			const [command, ...argParts] = trimmed.split(/\s+/);
 			const args = argParts.join(" ").trim();
 
-			debugLogger.log(`[Dispatcher] Command: ${command}, Args: "${args}"`);
+			debugLogger.debug(`[Dispatcher] Command: ${command}, Args: "${args}"`);
 
 			switch (command) {
-				case "/search": {
-					if (!args) {
-						return {
-							type: "tool_result",
-							content: "사용법: /search <검색어>",
-						};
-					}
-					const result = await callTool("vault", {
-						action: "search",
-						keyword: args,
-						limit: 10,
-						includeContent: true,
-						compressionMode: "balanced",
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `검색 실패: ${extractText(result)}`
-							: extractText(result) || "검색 결과가 없습니다.",
-					};
-				}
-
-				case "/read": {
-					if (!args) {
-						return {
-							type: "tool_result",
-							content:
-								'사용법: /read <파일명>\n예: /read "브라우저의 교차 출처 리소스 공유(CORS).md"',
-						};
-					}
-					const filename = extractFilenameFromArgs(args);
-					debugLogger.log(`[Dispatcher] Extracted filename: "${filename}"`);
-
-					const result = await callTool("vault", {
-						action: "read",
-						filename,
-					});
-
-					if (result.isError) {
-						// 파일을 찾지 못한 경우, 키워드 검색으로 폴백
-						debugLogger.log(
-							`[Dispatcher] Read failed, trying search fallback for: "${filename}"`,
-						);
-						const searchResult = await callTool("vault", {
-							action: "search",
-							keyword: filename,
-							limit: 5,
-							includeContent: false,
-							compressionMode: "aggressive",
-						});
-
-						if (!searchResult.isError) {
-							const searchText = extractText(searchResult);
-							if (searchText && !searchText.includes("No results")) {
-								return {
-									type: "tool_result",
-									content: `"${filename}" 파일을 찾지 못했습니다.\n\n유사한 문서:\n${searchText}\n\n💡 정확한 파일명으로 다시 시도하세요: /read "파일명.md"`,
-								};
-							}
-						}
-
-						return {
-							type: "tool_result",
-							content: `"${filename}" 파일을 찾지 못했습니다.\n💡 /search ${filename} 으로 먼저 검색해보세요.`,
-						};
-					}
-
-					return {
-						type: "tool_result",
-						content: extractText(result) || "문서를 찾을 수 없습니다.",
-					};
-				}
-
-				case "/semantic": {
-					if (!args) {
-						return {
-							type: "tool_result",
-							content: "사용법: /semantic <검색 쿼리>",
-						};
-					}
-					const result = await callTool("vault", {
-						action: "search_vault_by_semantic",
-						query: args,
-						limit: 5,
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `시맨틱 검색 실패: ${extractText(result)}`
-							: extractText(result) || "관련 문서를 찾을 수 없습니다.",
-					};
-				}
-
-				case "/stats": {
-					const result = await callTool("vault", {
-						action: "stats",
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `상태 조회 실패: ${extractText(result)}`
-							: extractText(result),
-					};
-				}
-
-				case "/index": {
-					const result = await callTool("vault", {
-						action: "index_vault_to_vectordb",
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `인덱싱 실패: ${extractText(result)}`
-							: extractText(result) || "벡터 DB 인덱싱이 완료되었습니다.",
-					};
-				}
-
-				case "/context": {
-					if (!args) {
-						return {
-							type: "tool_result",
-							content: "사용법: /context <토픽>",
-						};
-					}
-					const result = await callTool("vault", {
-						action: "collect_context",
-						topic: args,
-						scope: "topic",
-						maxDocs: 10,
-						memoryMode: "response_only",
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `컨텍스트 수집 실패: ${extractText(result)}`
-							: extractText(result) || "관련 컨텍스트를 찾을 수 없습니다.",
-					};
-				}
-
 				case "/help":
-					return { type: "local_action", content: HELP_TEXT };
-
+					return { type: "local_action", content: HELP_COMMAND_MARKER };
 				case "/clear":
-					return {
-						type: "local_action",
-						content: "__CLEAR_HISTORY__",
-					};
-
+					return { type: "local_action", content: "__CLEAR_HISTORY__" };
 				case "/tools":
-					return {
-						type: "local_action",
-						content: "__LIST_TOOLS__",
-					};
-
-				default:
-					return {
-						type: "unknown_command",
-						content: `알 수 없는 커맨드: ${command}\n/help 를 입력하여 사용 가능한 커맨드를 확인하세요.`,
-					};
+					return { type: "local_action", content: "__LIST_TOOLS__" };
 			}
+
+			const mapping = COMMAND_MAP[command];
+			if (mapping) {
+				if (
+					availableTools.length > 0 &&
+					!isToolAvailable(mapping.tool, availableTools)
+				) {
+					return {
+						type: "tool_result",
+						content:
+							`도구 "${mapping.tool}"이(가) 현재 연결된 MCP 서버에 등록되어 있지 않습니다.\n\n` +
+							`사용 가능한 도구:\n${buildAvailableToolsHint(availableTools)}`,
+					};
+				}
+
+				if (mapping.requiresArgs && !args) {
+					return {
+						type: "tool_result",
+						content: mapping.noArgsMessage ?? "인자가 필요합니다.",
+					};
+				}
+
+				const toolArgs = mapping.buildArgs(args);
+				return executeToolCall(
+					command,
+					mapping.tool,
+					toolArgs,
+					args,
+					callTool,
+					text,
+				);
+			}
+
+			const dynamicTool = tryMatchDynamicTool(command, availableTools);
+			if (dynamicTool) {
+				const toolArgs = buildDynamicArgs(args, dynamicTool);
+				debugLogger.debug(
+					`[Dispatcher] Dynamic tool dispatch: ${dynamicTool.name}`,
+					JSON.stringify(toolArgs).slice(0, 200),
+				);
+				return executeToolCall(
+					command,
+					dynamicTool.name,
+					toolArgs,
+					args,
+					callTool,
+					text,
+				);
+			}
+
+			const hint =
+				availableTools.length > 0
+					? `\n\n사용 가능한 도구 (/<tool_name> 형태로 직접 호출 가능):\n${buildAvailableToolsHint(availableTools)}`
+					: "";
+			return {
+				type: "unknown_command",
+				content: `알 수 없는 커맨드: ${command}\n/help 를 입력하여 사용 가능한 커맨드를 확인하세요.${hint}`,
+			};
 		},
-		[],
+		[availableTools],
 	);
 
 	return { handleDispatch };
+}
+
+async function executeToolCall(
+	command: string,
+	toolName: string,
+	toolArgs: Record<string, unknown>,
+	rawArgs: string,
+	callTool: CallToolFn,
+	userIntent?: string,
+): Promise<DispatchResult> {
+	try {
+		const result = await callTool(toolName, toolArgs);
+
+		if (result.isError) {
+			if (command === "/read") {
+				return handleReadFallback(rawArgs, callTool);
+			}
+			return {
+				type: "tool_result",
+				content: `실행 실패: ${extractText(result)}`,
+			};
+		}
+
+		const text = extractText(result);
+
+		if (isLlmInstructionPayload(text)) {
+			debugLogger.info(
+				`[Dispatcher] Tool "${toolName}" returned LLM instruction payload — routing to LLM`,
+			);
+			return {
+				type: "llm_required",
+				content: text,
+				userIntent: userIntent ?? rawArgs,
+			};
+		}
+
+		return {
+			type: "tool_result",
+			content: text || "결과가 없습니다.",
+		};
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		debugLogger.error(`[Dispatcher] Tool call failed:`, msg);
+		return {
+			type: "tool_result",
+			content: `도구 호출 오류: ${msg}`,
+		};
+	}
+}
+
+function isLlmInstructionPayload(text: string): boolean {
+	try {
+		const parsed = JSON.parse(text);
+		return (
+			parsed !== null &&
+			typeof parsed === "object" &&
+			"instructions" in parsed &&
+			typeof parsed.instructions === "object" &&
+			parsed.instructions !== null &&
+			("purpose" in parsed.instructions || "usage" in parsed.instructions)
+		);
+	} catch {
+		return false;
+	}
 }

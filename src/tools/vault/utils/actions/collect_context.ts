@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { debugLogger } from "@/cli/utils/debugLogger.js";
 import { createToolError } from "@/utils/createToolError.js";
+import { rerankerClient } from "@/utils/RerankerClient.js";
 import type { EnrichedDocument } from "../../../../utils/VaultManger/types.js";
 import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
@@ -757,9 +759,48 @@ export async function collectContext(
 			? vaultManager.getAllDocuments()
 			: vaultManager.searchDocuments(topic ?? ""),
 	]);
-	const orderedCandidates = [...matchedCandidates].sort((a, b) =>
+
+	let orderedCandidates = [...matchedCandidates].sort((a, b) =>
 		a.filePath.localeCompare(b.filePath),
 	);
+
+	// Apply Reranking if topic is present and we have candidates
+	if (topic && orderedCandidates.length > 0) {
+		// Only rerank a reasonable number of top candidates to preserve performance
+		const rerankCandidatesLimit = 30;
+		const candidatesToRerank = orderedCandidates.slice(
+			0,
+			rerankCandidatesLimit,
+		);
+
+		try {
+			// Fetch contents for these candidates to perform reranking
+			const candidateContents = await Promise.all(
+				candidatesToRerank.map(async (c) => {
+					const doc = await vaultManager.getDocumentInfo(c.filePath, {
+						maxContentPreview: 1000, // Sufficient for reranking
+					});
+					return doc?.content || "";
+				}),
+			);
+
+			const rerankedResults = await rerankerClient.rerank(
+				topic,
+				candidateContents,
+				maxDocs,
+			);
+
+			const reranked = rerankedResults.map(
+				(result) => candidatesToRerank[result.index],
+			);
+			const remaining = orderedCandidates.filter(
+				(c) => !reranked.some((r) => r.filePath === c.filePath),
+			);
+			orderedCandidates = [...reranked, ...remaining];
+		} catch (error) {
+			debugLogger.error("[CollectContext] Reranking failed:", error);
+		}
+	}
 
 	const emptyDocHash = buildCollectContextDocHash([]);
 	const emptyCacheKey = buildCollectContextCacheKey({

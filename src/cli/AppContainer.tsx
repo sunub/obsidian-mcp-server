@@ -1,26 +1,26 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Box, Text } from "ink";
-import { calculatePromptWidths, InputPrompt } from "./ui/InputPrompt.js";
-import { KeypressProvider } from "./context/KeypressContext.js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { InputContext } from "./context/InputContext.js";
-import { useTextBuffer } from "./key/text-buffer.js";
-import { useTerminalSize } from "./hooks/useTerminalSize.js";
-import { useInputHistoryStore } from "./hooks/useInputHistory.js";
-import { historyStorage } from "./utils/historyStorage.js";
+import { KeypressProvider } from "./context/KeypressContext.js";
 import { useDispatcher } from "./hooks/useDispatcher.js";
+import { useInputHistoryStore } from "./hooks/useInputHistory.js";
 import { useLlmStream } from "./hooks/useLlmStream.js";
-import { useMcpClient } from "./hooks/useMcpClient.js";
+import { useMcpManager } from "./hooks/useMcpManager.js";
 import { useRagContext } from "./hooks/useRagContext.js";
+import { useTerminalSize } from "./hooks/useTerminalSize.js";
+import { useTextBuffer } from "./key/text-buffer.js";
+import type { HistoryItem } from "./types.js";
+import { ConnectionStatus } from "./ui/ConnectionStatus.js";
+import { calculatePromptWidths, InputPrompt } from "./ui/InputPrompt.js";
 import { MainContent } from "./ui/MainContent.js";
 import { debugLogger } from "./utils/debugLogger.js";
-import type { HistoryItem } from "./types.js";
+import { historyStorage } from "./utils/historyStorage.js";
 
 export const AppContainer = () => {
 	const [shellModeActive] = useState(false);
 	const [copyModeEnabled] = useState(false);
 	const [showEscapePrompt] = useState(false);
 
-	// Layout context
 	const { columns: terminalWidth, rows: terminalHeight } = useTerminalSize();
 	const mainAreaWidth = terminalWidth;
 	const { inputWidth, suggestionsWidth } = useMemo(() => {
@@ -31,30 +31,29 @@ export const AppContainer = () => {
 
 	const availableTerminalHeight = Math.max(0, terminalHeight - 2);
 
-	// History & Storage
 	const { inputHistory, addInput, initializeFromLogger } =
 		useInputHistoryStore();
 
 	useEffect(() => {
-		// Initialize history from our 24h file storage on mount
 		void initializeFromLogger(historyStorage);
 	}, [initializeFromLogger]);
 
-	// Command dispatcher
-	const { handleDispatch } = useDispatcher();
-
-	// MCP Client — Obsidian Vault 연결
+	// MCP Manager — 다중 MCP 서버 연결 관리
 	const {
 		isConnected: mcpConnected,
+		connections: mcpConnections,
 		tools: mcpTools,
+		toolsByServer: mcpToolsByServer,
 		callTool,
-		error: mcpError,
-	} = useMcpClient();
+		errors: mcpErrors,
+		serverCount: mcpServerCount,
+		connectedCount: mcpConnectedCount,
+	} = useMcpManager();
 
-	// RAG Context — Vault 기반 컨텍스트 조회
+	const { handleDispatch } = useDispatcher(mcpTools);
+
 	const { fetchContext } = useRagContext(callTool, mcpConnected);
 
-	// Text buffer
 	const buffer = useTextBuffer({
 		initialText: "",
 		viewportWidth: inputWidth,
@@ -93,7 +92,7 @@ export const AppContainer = () => {
 		sendMessage,
 		reset,
 		clearHistory,
-	} = useLlmStream();
+	} = useLlmStream(callTool, mcpTools);
 
 	// 이관 Effect: 스트림 완료 → history로 이동
 	useEffect(() => {
@@ -152,12 +151,17 @@ export const AppContainer = () => {
 
 				if (result.content === "__LIST_TOOLS__") {
 					const toolsText = mcpConnected
-						? mcpTools
-								.map(
-									(t) =>
-										`  • ${t.name}${t.description ? ` — ${t.description}` : ""}`,
-								)
-								.join("\n")
+						? Array.from(mcpToolsByServer.entries())
+								.map(([serverName, serverTools]) => {
+									const toolList = serverTools
+										.map(
+											(t) =>
+												`  • ${t.name}${t.description ? ` — ${t.description}` : ""}`,
+										)
+										.join("\n");
+									return `[${serverName}] (${serverTools.length} tools)\n${toolList}`;
+								})
+								.join("\n\n")
 						: "MCP 서버에 연결되지 않았습니다.";
 					setHistory((prev) => [
 						...prev,
@@ -172,15 +176,30 @@ export const AppContainer = () => {
 				}
 
 				// 도구 결과 또는 일반 응답을 히스토리에 추가
-				setHistory((prev) => [
-					...prev,
-					{
-						id: nextIdRef.current++,
-						type: result.type === "unknown_command" ? "error" : "info",
-						content: result.content,
-						timestamp: Date.now(),
-					},
-				]);
+				if (result.type === "llm_required") {
+					// LLM 지시문 페이로드 → 사용자 입력을 히스토리에 표시 후 LLM으로 파이프
+					setHistory((prev) => [
+						...prev,
+						{
+							id: nextIdRef.current++,
+							type: "user",
+							content: result.userIntent ?? value,
+							timestamp: Date.now(),
+						},
+					]);
+					// 도구 결과(instructions + content_preview)를 RAG 컨텍스트처럼 LLM에 주입
+					void sendMessage(result.userIntent ?? value, result.content);
+				} else {
+					setHistory((prev) => [
+						...prev,
+						{
+							id: nextIdRef.current++,
+							type: result.type === "unknown_command" ? "error" : "info",
+							content: result.content,
+							timestamp: Date.now(),
+						},
+					]);
+				}
 			} else {
 				// 일반 텍스트 → RAG 컨텍스트 조회 → LLM 스트리밍
 				setHistory((prev) => [
@@ -210,20 +229,25 @@ export const AppContainer = () => {
 			handleDispatch,
 			isLoading,
 			mcpConnected,
-			mcpTools,
+			mcpToolsByServer,
 			sendMessage,
 		],
 	);
+
+	// 전체 서버 연결 중 여부 판별
+	const isAnyConnecting = Array.from(mcpConnections.values()).some(
+		(info) => info.state === "connecting",
+	);
+	const hasAnyError = mcpErrors.size > 0;
 
 	return (
 		<KeypressProvider>
 			<InputContext.Provider value={inputState}>
 				<Box flexDirection="column" width="100%">
-					{/* MCP 연결 상태 표시 */}
-					{/* <ConnectionStatus */}
-					{/* 	connectionState={mcpConnectionState} */}
-					{/* 	toolCount={mcpTools.length} */}
-					{/* /> */}
+					{/* MCP 연결 상태 표시 — 모두 연결되기 전까지 노출 */}
+					{!mcpConnected && (
+						<ConnectionStatus connections={mcpConnections} errors={mcpErrors} />
+					)}
 
 					<MainContent
 						history={history}
@@ -240,16 +264,27 @@ export const AppContainer = () => {
 							</Text>
 						</Box>
 					)}
-					{mcpError && !error && (
-						<Box paddingX={1} marginBottom={1}>
-							<Text color="yellow" bold>
-								⚠ MCP: {mcpError.message}
-							</Text>
+					{hasAnyError && !error && (
+						<Box paddingX={1} marginBottom={1} flexDirection="column">
+							{Array.from(mcpErrors.entries()).map(
+								([serverName, serverError]) => (
+									<Text key={serverName} color="yellow" bold>
+										⚠ MCP [{serverName}]: {serverError.message}
+									</Text>
+								),
+							)}
 						</Box>
 					)}
 					<InputPrompt
 						onSubmit={handleFinalSubmit}
-						focus={streamingState === "idle"}
+						focus={streamingState === "idle" && mcpConnected}
+						placeholder={
+							isAnyConnecting
+								? ` MCP 서버 연결 중... (${mcpConnectedCount}/${mcpServerCount})`
+								: hasAnyError && !mcpConnected
+									? " MCP 연결에 실패했습니다"
+									: " Type your message..."
+						}
 					/>
 				</Box>
 			</InputContext.Provider>

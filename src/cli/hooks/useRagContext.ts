@@ -1,15 +1,6 @@
-/**
- * useRagContext — Vault RAG 컨텍스트 조회 훅
- *
- * 사용자 질문에 대해 MCP 서버를 통해 Obsidian Vault에서
- * 관련 문서를 검색하고, 프롬프트 증강용 컨텍스트로 포맷합니다.
- *
- * 전략: 시맨틱 검색(벡터) → 키워드 검색(폴백)
- */
-
-import { useState, useCallback } from "react";
-import { debugLogger } from "../utils/debugLogger.js";
+import { useCallback, useState } from "react";
 import type { CallToolFn, McpToolResult } from "../types.js";
+import { debugLogger } from "../utils/debugLogger.js";
 
 export interface UseRagContextReturn {
 	fetchContext: (query: string) => Promise<string | null>;
@@ -65,14 +56,14 @@ export const useRagContext = (
 	const fetchContext = useCallback(
 		async (rawQuery: string): Promise<string | null> => {
 			if (!isConnected) {
-				debugLogger.log("[RAG] MCP not connected, skipping context fetch.");
+				debugLogger.debug("[RAG] MCP not connected, skipping context fetch.");
 				return null;
 			}
 
 			const query = stripAnsi(rawQuery).trim();
 
 			setIsFetching(true);
-			debugLogger.log(`[RAG] Fetching context for: "${query}"`);
+			debugLogger.debug(`[RAG] Fetching context for: "${query}"`);
 
 			try {
 				const semanticResult = await callTool("vault", {
@@ -83,17 +74,16 @@ export const useRagContext = (
 
 				if (hasValidResults(semanticResult)) {
 					const text = extractTextFromResult(semanticResult);
-					debugLogger.log(
+					debugLogger.debug(
 						`[RAG] Semantic search returned ${text.length} chars.`,
 					);
 					return formatAsContext(text);
 				}
 
-				debugLogger.log(
+				debugLogger.debug(
 					"[RAG] Semantic search empty, falling back to keyword search.",
 				);
 
-				// 2차: 키워드 검색 (폴백)
 				const keywordResult = await callTool("vault", {
 					action: "search",
 					keyword: query,
@@ -104,13 +94,13 @@ export const useRagContext = (
 
 				if (hasValidResults(keywordResult)) {
 					const text = extractTextFromResult(keywordResult);
-					debugLogger.log(
+					debugLogger.debug(
 						`[RAG] Keyword search returned ${text.length} chars.`,
 					);
 					return formatAsContext(text);
 				}
 
-				debugLogger.log("[RAG] No relevant context found in Vault.");
+				debugLogger.debug("[RAG] No relevant context found in Vault.");
 				return null;
 			} catch (err) {
 				debugLogger.error("[RAG] Context fetch failed:", err);

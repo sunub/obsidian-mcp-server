@@ -105,6 +105,11 @@ export const execute = async (
 	}
 };
 
+const shorthandDescription = {
+	ko: "지정된 마크다운 문서의 첨부 이미지들을 문서 제목 기반의 전용 폴더로 일괄 이동시키고, 문서 내 이미지 링크를 자동으로 업데이트합니다. Vault 내 에셋을 깔끔하게 정리할 때 사용합니다.",
+	en: "Organizes document attachments by moving linked images into a title-specific folder and automatically updating the Markdown links.",
+};
+
 export default {
 	name,
 	description,
@@ -112,4 +117,5 @@ export default {
 	inputSchema: organizeAttachmentsParamsSchema.shape,
 	execute,
 	register,
+	shorthandDescription,
 };

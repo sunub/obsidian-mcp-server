@@ -1,13 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { encodingForModel } from "js-tiktoken";
 import ora, { type Ora } from "ora";
 import { DirectoryWalker } from "./DirectoryWalker.js";
 import { llmClient } from "./LLMClient.js";
 import { parse as parseMatter } from "./processor/MatterParser.js";
 import { Semaphore } from "./semaphore.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
-import { encodingForModel } from "js-tiktoken";
 
 type HeadingEntry = { heading: string; pos: number; depth: number };
 
@@ -51,8 +51,8 @@ export class RAGIndexer {
 
 	constructor() {
 		this.splitter = new RecursiveCharacterTextSplitter({
-			chunkSize: 100,
-			chunkOverlap: 12,
+			chunkSize: 500,
+			chunkOverlap: 50,
 			lengthFunction: (text: string) => {
 				return this.enc.encode(text).length;
 			},
@@ -95,14 +95,13 @@ export class RAGIndexer {
 		);
 		const fileName = path.basename(filePath);
 
-		// Rule-based context: extract heading structure (no LLM call)
 		const headings = extractHeadingsWithPositions(body);
 		const titleFromBody = headings.find((h) => h.depth === 1)?.heading ?? null;
 		const docTitle = frontmatter.title || titleFromBody || fileName;
 		const docStructure = headings
 			.filter((h) => h.depth <= 2)
 			.slice(0, 4)
-			.map((h) => h.heading.slice(0, 25)); // 각 헤딩 25자 제한
+			.map((h) => h.heading.slice(0, 25));
 
 		const metadataPrefix = [
 			`Title: ${docTitle.slice(0, 50)}`,
@@ -134,11 +133,7 @@ export class RAGIndexer {
 				.filter(Boolean)
 				.join("\n\n");
 
-			// 임베딩 모델 입력 한도 초과 방지
-			// cl100k(gpt-3.5)과 nomic-embed-text 토크나이저 불일치:
-			// 한국어는 nomic이 cl100k 대비 최대 2.2배 토큰 생성 (실측값)
-			// 안전 상한: 512 / 2.2 = 233 → 200으로 보수적 설정
-			const MAX_EMBED_TOKENS = 200;
+			const MAX_EMBED_TOKENS = 500;
 			const combinedTokenCount = this.enc.encode(combined).length;
 			const safeText =
 				combinedTokenCount > MAX_EMBED_TOKENS
@@ -191,8 +186,9 @@ export class RAGIndexer {
 			const { records, mtime } = await this.buildFileRecords(filePath, content);
 			if (records.length > 0) {
 				await vectorDB.upsertChunks(records);
-				await vectorDB.updateFileMeta(filePath, mtime);
 			}
+			// 청크 생성 여부와 상관없이 파일 메타데이터(수정 시각)는 항상 업데이트
+			await vectorDB.updateFileMeta(filePath, mtime);
 		} catch (error) {
 			console.error(`\nError processing file for RAG: ${filePath}`, error);
 		} finally {

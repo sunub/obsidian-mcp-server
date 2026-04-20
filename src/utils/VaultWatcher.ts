@@ -1,10 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
-import { ragIndexer } from "./RAGIndexer.js";
-import { vectorDB } from "./VectorDB.js";
 import { DirectoryWalker } from "./DirectoryWalker.js";
+import { ragIndexer } from "./RAGIndexer.js";
 import { Semaphore } from "./semaphore.js";
+import { vectorDB } from "./VectorDB.js";
 
 export class VaultWatcher {
 	private watcher: FSWatcher | null = null;
@@ -33,8 +33,16 @@ export class VaultWatcher {
 				filesToProcess.push(filePath);
 			} else {
 				const stats = await fs.stat(filePath);
-				const storedMtime = await vectorDB.getFileMtime(filePath);
-				if (storedMtime !== stats.mtime.toISOString()) {
+				const storedMtimeStr = await vectorDB.getFileMtime(filePath);
+
+				if (storedMtimeStr) {
+					const storedTime = new Date(storedMtimeStr).getTime();
+					const fileTime = stats.mtime.getTime();
+
+					if (Math.abs(storedTime - fileTime) > 1000) {
+						filesToProcess.push(filePath);
+					}
+				} else {
 					filesToProcess.push(filePath);
 				}
 			}

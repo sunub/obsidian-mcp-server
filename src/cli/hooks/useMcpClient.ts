@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { configSchema } from "@/config.js";
 import {
 	McpClientService,
 	type McpConnectionOptions,
 	type McpToolInfo,
 } from "../services/McpClientService.js";
-import { debugLogger } from "../utils/debugLogger.js";
 import type { McpConnectionState, McpToolResult } from "../types.js";
-import { configSchema } from "@/config.js";
+import { debugLogger } from "../utils/debugLogger.js";
 
 export interface UseMcpClientReturn {
 	isConnected: boolean;
@@ -19,11 +19,8 @@ export interface UseMcpClientReturn {
 	error: Error | null;
 }
 
-/**
- * MCP 서버 연결 옵션을 환경 변수로부터 구성합니다.
- */
 function buildConnectionOptions(): McpConnectionOptions {
-	console.log(
+	console.error(
 		"[useMcpClient] Building MCP connection options from environment variables...",
 	);
 	const env = configSchema.parse({
@@ -67,7 +64,6 @@ export const useMcpClient = (): UseMcpClientReturn => {
 	const [error, setError] = useState<Error | null>(null);
 	const serviceRef = useRef<McpClientService | null>(null);
 
-	// 마운트 시 연결, 언마운트 시 정리
 	useEffect(() => {
 		const service = new McpClientService();
 		serviceRef.current = service;
@@ -88,11 +84,10 @@ export const useMcpClient = (): UseMcpClientReturn => {
 
 				setConnectionState("connected");
 
-				// 도구 목록 조회
 				const toolList = await service.listTools();
 				if (!cancelled) {
 					setTools(toolList);
-					debugLogger.log(
+					debugLogger.info(
 						`[useMcpClient] ${toolList.length} tools available:`,
 						toolList.map((t) => t.name).join(", "),
 					);

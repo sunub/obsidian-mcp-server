@@ -25,8 +25,12 @@ export interface HistoryItem {
  */
 export interface PendingItem {
 	type: "assistant";
-	/** 실시간으로 누적되는 텍스트 */
+	/** 실시간으로 누적되는 텍스트 (thinking 제외) */
 	content: string;
+	/** 생각하는 과정 텍스트 */
+	thinkingContent?: string;
+	/** 현재 thinking 블록 안에 있는지 */
+	isThinking?: boolean;
 	/** 스트림이 완료되었는지 */
 	isComplete: boolean;
 }
@@ -69,8 +73,10 @@ export type CallToolFn = (
 
 /** Dispatcher 슬래시 커맨드 처리 결과 */
 export interface DispatchResult {
-	type: "tool_result" | "local_action" | "unknown_command";
+	type: "tool_result" | "local_action" | "unknown_command" | "llm_required";
 	content: string;
+	/** llm_required 타입일 때 원본 사용자 입력 (LLM에게 보낼 의도) */
+	userIntent?: string;
 }
 
 /** MCP 클라이언트 연결 상태 */

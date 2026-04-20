@@ -5,22 +5,22 @@
  */
 
 import type React from "react";
-import { useCallback, useMemo, useEffect, useState } from "react";
-import type { Suggestion } from "../ui/SuggestionsDisplay.js";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CommandContext, SlashCommand } from "../commands/types.js";
 import type { TextBuffer } from "../key/text-buffer.js";
 import { logicalPosToOffset } from "../key/text-buffer.js";
-import { toCodePoints } from "../utils/textUtil.js";
+import type { Suggestion } from "../ui/SuggestionsDisplay.js";
 import { isSlashCommand } from "../utils/commandUtils.js";
+import { toCodePoints } from "../utils/textUtil.js";
 import { useAtCompletion } from "./useAtCompletion.js";
-import { useSlashCompletion } from "./useSlashCompletion.js";
-import { useShellCompletion } from "./useShellCompletion.js";
+import { useCompletion } from "./useCompletion.js";
 import {
-	usePromptCompletion,
 	PROMPT_COMPLETION_MIN_LENGTH,
 	type PromptCompletion,
+	usePromptCompletion,
 } from "./usePromptCompletion.js";
-import { useCompletion } from "./useCompletion.js";
+import { useShellCompletion } from "./useShellCompletion.js";
+import { useSlashCompletion } from "./useSlashCompletion.js";
 
 interface Config {
 	[key: string]: unknown;

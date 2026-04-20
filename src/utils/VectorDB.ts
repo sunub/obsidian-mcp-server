@@ -1,12 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { connect, Index } from "@lancedb/lancedb";
 import type { Connection } from "@lancedb/lancedb";
+import { connect, Index } from "@lancedb/lancedb";
 import * as arrow from "apache-arrow";
-import state from "../config.js";
 import { debugLogger } from "../cli/utils/debugLogger.js";
+import state from "../config.js";
 
-export const INDEX_VERSION = 5; // chunkSize 120, MAX_EMBED_TOKENS 200 for Korean tokenizer safety
+export const INDEX_VERSION = 5;
 
 const VECTOR_DIM = 768;
 
@@ -116,8 +116,6 @@ export class VectorDB {
 	}
 
 	async checkAndMigrateIfNeeded(): Promise<boolean> {
-		// 마이그레이션은 항상 신규 연결로 수행 후 캐시를 무효화합니다.
-		// 테이블이 삭제된 상태에서 캐시된 연결을 재사용하면 stale 참조가 남습니다.
 		const db = await this.connect();
 		const tableNames = await db.tableNames();
 		const currentEmbedModel = state.llmEmbeddingModel;
@@ -163,7 +161,7 @@ export class VectorDB {
 			return true;
 		}
 
-		debugLogger.log(
+		debugLogger.info(
 			`[VectorDB] Index is up-to-date (v${INDEX_VERSION}, ${currentEmbedModel}).`,
 		);
 
@@ -219,7 +217,7 @@ export class VectorDB {
 			}),
 		});
 
-		debugLogger.log(
+		debugLogger.info(
 			`[VectorDB] Created vector index with ${numPartitions} partitions for ${rowCount} rows.`,
 		);
 	}

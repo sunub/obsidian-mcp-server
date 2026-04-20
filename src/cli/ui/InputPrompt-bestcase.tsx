@@ -5,94 +5,94 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type React from "react";
-import {
-	useCallback,
-	useEffect,
-	useState,
-	useRef,
-	useMemo,
-	Fragment,
-} from "react";
-import clipboardy from "clipboardy";
-import { Box, Text, useStdout, type DOMElement } from "ink";
-import { SuggestionsDisplay, MAX_WIDTH } from "./SuggestionsDisplay.js";
-import { theme } from "../semantic-colors.js";
-import { useInputHistory } from "../hooks/useInputHistory.js";
-import { escapeAtSymbols } from "../hooks/atCommandProcessor.js";
-import {
-	ScrollableList,
-	type ScrollableListRef,
-} from "./shared/ScrollableList.js";
-import { HalfLinePaddedBox } from "./shared/HalfLinePaddedBox.js";
-import {
-	type TextBuffer,
-	logicalPosToOffset,
-	expandPastePlaceholders,
-	getTransformUnderCursor,
-	LARGE_PASTE_LINE_THRESHOLD,
-	LARGE_PASTE_CHAR_THRESHOLD,
-} from "./shared/text-buffer.js";
-import {
-	cpSlice,
-	cpLen,
-	toCodePoints,
-	cpIndexToOffset,
-} from "../utils/textUtils.js";
-import chalk from "chalk";
-import stringWidth from "string-width";
-import { useShellHistory } from "../hooks/useShellHistory.js";
-import { useReverseSearchCompletion } from "../hooks/useReverseSearchCompletion.js";
-import {
-	useCommandCompletion,
-	CompletionMode,
-} from "../hooks/useCommandCompletion.js";
-import { useKeypress, type Key } from "../hooks/useKeypress.js";
-import { Command } from "../key/keyMatchers.js";
-import { formatCommand } from "../key/keybindingUtils.js";
-import type { CommandContext, SlashCommand } from "../commands/types.js";
+import * as path from "node:path";
 import {
 	ApprovalMode,
+	type Config,
 	coreEvents,
 	debugLogger,
-	type Config,
 } from "@google/gemini-cli-core";
+import chalk from "chalk";
+import clipboardy from "clipboardy";
+import { Box, type DOMElement, Text, useStdout } from "ink";
+import type React from "react";
 import {
-	parseInputForHighlighting,
-	parseSegmentsFromTokens,
-} from "../utils/highlight.js";
+	Fragment,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import stringWidth from "string-width";
+import { parseSlashCommand } from "../../utils/commands.js";
+import {
+	AppEvent,
+	appEvents,
+	TransientMessageType,
+} from "../../utils/events.js";
+import type { CommandContext, SlashCommand } from "../commands/types.js";
+import { useInputState } from "../contexts/InputContext.js";
+import { type MouseEvent, useMouse } from "../contexts/MouseContext.js";
+import { useSettings } from "../contexts/SettingsContext.js";
+import { useShellFocusState } from "../contexts/ShellFocusContext.js";
+import { useUIActions } from "../contexts/UIActionsContext.js";
+import { useUIState } from "../contexts/UIStateContext.js";
+import { escapeAtSymbols } from "../hooks/atCommandProcessor.js";
+import { useAlternateBuffer } from "../hooks/useAlternateBuffer.js";
+import {
+	CompletionMode,
+	useCommandCompletion,
+} from "../hooks/useCommandCompletion.js";
+import { useInputHistory } from "../hooks/useInputHistory.js";
+import { useKeyMatchers } from "../hooks/useKeyMatchers.js";
+import { type Key, useKeypress } from "../hooks/useKeypress.js";
 import { useKittyKeyboardProtocol } from "../hooks/useKittyKeyboardProtocol.js";
+import { useMouseClick } from "../hooks/useMouseClick.js";
+import { useRepeatedKeyPress } from "../hooks/useRepeatedKeyPress.js";
+import { useReverseSearchCompletion } from "../hooks/useReverseSearchCompletion.js";
+import { useShellHistory } from "../hooks/useShellHistory.js";
+import { formatCommand } from "../key/keybindingUtils.js";
+import { Command } from "../key/keyMatchers.js";
+import { theme } from "../semantic-colors.js";
+import { SCREEN_READER_USER_PREFIX } from "../textConstants.js";
+import { getSafeLowColorBackground } from "../themes/color-utils.js";
+import { StreamingState } from "../types.js";
 import {
+	cleanupOldClipboardImages,
 	clipboardHasImage,
 	saveClipboardImage,
-	cleanupOldClipboardImages,
 } from "../utils/clipboardUtils.js";
 import {
 	isAutoExecutableCommand,
 	isSlashCommand,
 } from "../utils/commandUtils.js";
-import { parseSlashCommand } from "../../utils/commands.js";
-import * as path from "node:path";
-import { SCREEN_READER_USER_PREFIX } from "../textConstants.js";
-import { getSafeLowColorBackground } from "../themes/color-utils.js";
-import { isLowColorDepth } from "../utils/terminalUtils.js";
-import { useShellFocusState } from "../contexts/ShellFocusContext.js";
-import { useUIState } from "../contexts/UIStateContext.js";
-import { useInputState } from "../contexts/InputContext.js";
 import {
-	appEvents,
-	AppEvent,
-	TransientMessageType,
-} from "../../utils/events.js";
-import { useSettings } from "../contexts/SettingsContext.js";
-import { StreamingState } from "../types.js";
-import { useMouseClick } from "../hooks/useMouseClick.js";
-import { useMouse, type MouseEvent } from "../contexts/MouseContext.js";
-import { useUIActions } from "../contexts/UIActionsContext.js";
-import { useAlternateBuffer } from "../hooks/useAlternateBuffer.js";
+	parseInputForHighlighting,
+	parseSegmentsFromTokens,
+} from "../utils/highlight.js";
 import { useIsHelpDismissKey } from "../utils/shortcutsHelp.js";
-import { useRepeatedKeyPress } from "../hooks/useRepeatedKeyPress.js";
-import { useKeyMatchers } from "../hooks/useKeyMatchers.js";
+import { isLowColorDepth } from "../utils/terminalUtils.js";
+import {
+	cpIndexToOffset,
+	cpLen,
+	cpSlice,
+	toCodePoints,
+} from "../utils/textUtils.js";
+import { MAX_WIDTH, SuggestionsDisplay } from "./SuggestionsDisplay.js";
+import { HalfLinePaddedBox } from "./shared/HalfLinePaddedBox.js";
+import {
+	ScrollableList,
+	type ScrollableListRef,
+} from "./shared/ScrollableList.js";
+import {
+	expandPastePlaceholders,
+	getTransformUnderCursor,
+	LARGE_PASTE_CHAR_THRESHOLD,
+	LARGE_PASTE_LINE_THRESHOLD,
+	logicalPosToOffset,
+	type TextBuffer,
+} from "./shared/text-buffer.js";
 
 /**
  * Returns if the terminal can be trusted to handle paste events atomically

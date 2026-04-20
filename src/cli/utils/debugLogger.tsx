@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
-import * as util from "node:util";
 import { dirname } from "node:path";
+import * as util from "node:util";
+import chalk from "chalk";
 
 class DebugLogger {
 	private logStream: fs.WriteStream | undefined;
@@ -9,23 +10,22 @@ class DebugLogger {
 		const logFilePath = process.env["DEBUG_LOG_FILE"];
 
 		if (logFilePath) {
-			// 1. 파일이 위치할 디렉토리 경로 추출
 			const logDir = dirname(logFilePath);
 
-			// 2. 해당 디렉토리가 존재하는지 확인하고, 없다면 생성
-			// recursive: true 옵션을 주면 상위 폴더가 없어도 한 번에 생성해 줍니다.
 			if (!fs.existsSync(logDir)) {
 				fs.mkdirSync(logDir, { recursive: true });
 			}
 
-			// 3. 디렉토리가 확보된 상태에서 WriteStream 생성
 			this.logStream = fs.createWriteStream(logFilePath, {
 				flags: "a",
 			});
 		}
 
 		this.logStream?.on("error", (err) => {
-			console.error("Error writing to debug log stream:", err);
+			console.error(
+				chalk.red("[STREAM_ERROR]"),
+				chalk.gray(util.format("Error writing to debug log stream:", err)),
+			);
 		});
 	}
 
@@ -38,24 +38,29 @@ class DebugLogger {
 		}
 	}
 
+	info(...args: unknown[]): void {
+		this.writeToFile("INFO", args);
+		console.info(chalk.green("[INFO]"), chalk.gray(util.format(...args)));
+	}
+
 	log(...args: unknown[]): void {
 		this.writeToFile("LOG", args);
-		console.log(...args);
+		console.log(chalk.blue("[LOG]"), chalk.white(util.format(...args)));
 	}
 
 	warn(...args: unknown[]): void {
 		this.writeToFile("WARN", args);
-		console.warn(...args);
+		console.warn(chalk.yellow("[WARN]"), chalk.gray(util.format(...args)));
 	}
 
 	error(...args: unknown[]): void {
 		this.writeToFile("ERROR", args);
-		console.error(...args);
+		console.error(chalk.red("[ERROR]"), chalk.gray(util.format(...args)));
 	}
 
 	debug(...args: unknown[]): void {
 		this.writeToFile("DEBUG", args);
-		console.debug(...args);
+		console.debug(chalk.magenta("[DEBUG]"), chalk.gray(util.format(...args)));
 	}
 }
 

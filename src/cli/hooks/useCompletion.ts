@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import {
 	MAX_SUGGESTIONS_TO_SHOW,

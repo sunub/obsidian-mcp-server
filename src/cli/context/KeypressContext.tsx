@@ -1,3 +1,5 @@
+import { useStdin } from "ink";
+import { MultiMap } from "mnemonist";
 import type React from "react";
 import {
 	createContext,
@@ -7,9 +9,7 @@ import {
 	useMemo,
 	useRef,
 } from "react";
-import { useStdin } from "ink";
-import { MultiMap } from "mnemonist";
-import { nonKeyboardEventFilter, emitKeys } from "./KeypressContext.util.js";
+import { emitKeys, nonKeyboardEventFilter } from "./KeypressContext.util.js";
 
 export const BACKSLASH_ENTER_TIMEOUT = 5;
 export const ESC_TIMEOUT = 50;
@@ -50,18 +50,14 @@ export type KeypressHandler = (key: Key) => boolean | undefined;
 function bufferBackslashEnter(
 	keypressHandler: KeypressHandler,
 ): KeypressHandler {
-	const bufferer = (function* (): Generator<
-		boolean | undefined,
-		void,
-		Key | null
-	> {
+	const bufferer = (function* (): Generator<void, void, Key | null> {
 		while (true) {
-			const key = yield undefined;
+			const key = yield;
 
 			if (key == null) {
 				continue;
 			} else if (key.sequence !== "\\") {
-				yield keypressHandler(key);
+				keypressHandler(key);
 				continue;
 			}
 
@@ -69,7 +65,7 @@ function bufferBackslashEnter(
 				() => bufferer.next(null),
 				BACKSLASH_ENTER_TIMEOUT,
 			);
-			const nextKey = yield true;
+			const nextKey = yield;
 			clearTimeout(timeoutId);
 
 			if (nextKey === null) {
@@ -78,7 +74,7 @@ function bufferBackslashEnter(
 				keypressHandler({
 					...nextKey,
 					shift: true,
-					sequence: "\r", // Corrected escaping for newline
+					sequence: "\r",
 				});
 			} else {
 				keypressHandler(key);
@@ -90,7 +86,8 @@ function bufferBackslashEnter(
 	bufferer.next(); // prime the generator so it starts listening.
 
 	return (key: Key) => {
-		return bufferer.next(key).value as boolean | undefined;
+		bufferer.next(key);
+		return undefined;
 	};
 }
 
@@ -100,29 +97,24 @@ function bufferBackslashEnter(
  * when a null key is received.
  */
 function bufferPaste(keypressHandler: KeypressHandler): KeypressHandler {
-	const bufferer = (function* (): Generator<
-		boolean | undefined,
-		void,
-		Key | null
-	> {
+	const bufferer = (function* (): Generator<void, void, Key | null> {
 		while (true) {
-			let key = yield undefined;
+			let key = yield;
 
 			if (key === null) {
 				continue;
 			} else if (key.name !== "paste-start") {
-				yield keypressHandler(key);
+				keypressHandler(key);
 				continue;
 			}
 
 			let buffer = "";
 			while (true) {
 				const timeoutId = setTimeout(() => bufferer.next(null), PASTE_TIMEOUT);
-				key = yield true;
+				key = yield;
 				clearTimeout(timeoutId);
 
 				if (key === null) {
-					// appEvents.emit(AppEvent.PasteTimeout);
 					break;
 				}
 
@@ -148,7 +140,8 @@ function bufferPaste(keypressHandler: KeypressHandler): KeypressHandler {
 	bufferer.next(); // prime the generator so it starts listening.
 
 	return (key: Key) => {
-		return bufferer.next(key).value as boolean | undefined;
+		bufferer.next(key);
+		return undefined;
 	};
 }
 

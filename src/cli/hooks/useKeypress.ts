@@ -6,10 +6,10 @@
 
 import { useEffect } from "react";
 import {
-	useKeypressContext,
-	type KeypressHandler,
 	type Key,
+	type KeypressHandler,
 	type KeypressPriority,
+	useKeypressContext,
 } from "../context/KeypressContext.js";
 
 export type { Key };

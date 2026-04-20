@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { debugLogger } from "../utils/debugLogger.js";
 import type { McpToolResult } from "../types.js";
+import { debugLogger } from "../utils/debugLogger.js";
 
 export interface McpConnectionOptions {
 	command: string;
@@ -10,9 +10,16 @@ export interface McpConnectionOptions {
 	cwd?: string;
 }
 
+export interface McpToolInputSchema {
+	type: string;
+	properties?: Record<string, { type?: string; description?: string }>;
+	required?: string[];
+}
+
 export interface McpToolInfo {
 	name: string;
 	description?: string;
+	inputSchema?: McpToolInputSchema;
 }
 
 const MAX_RETRIES = 3;
@@ -29,7 +36,7 @@ export class McpClientService {
 
 	async connect(options: McpConnectionOptions): Promise<void> {
 		if (this._isConnected) {
-			debugLogger.log("[McpClient] Already connected, skipping.");
+			debugLogger.debug("[McpClient] Already connected, skipping.");
 			return;
 		}
 
@@ -37,7 +44,7 @@ export class McpClientService {
 
 		for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
 			try {
-				debugLogger.log(
+				debugLogger.debug(
 					`[McpClient] Connection attempt ${attempt}/${MAX_RETRIES}...`,
 				);
 
@@ -68,14 +75,14 @@ export class McpClientService {
 						!text.startsWith("File added:") &&
 						!text.startsWith("Frontmatter")
 					) {
-						debugLogger.log(`[McpServer:stderr] ${text}`);
+						debugLogger.debug(`[McpServer:stderr] ${text}`);
 					}
 				});
 
 				await this.client.connect(this.transport);
 				this._isConnected = true;
 
-				debugLogger.log("[McpClient] Successfully connected to MCP server.");
+				debugLogger.info("[McpClient] Successfully connected to MCP server.");
 				return;
 			} catch (err) {
 				lastError = err instanceof Error ? err : new Error(String(err));
@@ -105,6 +112,7 @@ export class McpClientService {
 		return result.tools.map((tool) => ({
 			name: tool.name,
 			description: tool.description,
+			inputSchema: tool.inputSchema as McpToolInputSchema | undefined,
 		}));
 	}
 
@@ -115,7 +123,7 @@ export class McpClientService {
 		this.ensureConnected();
 		const client = this.client as Client;
 
-		debugLogger.log(
+		debugLogger.debug(
 			`[McpClient] Calling tool: ${name}`,
 			JSON.stringify(args).slice(0, 200),
 		);
@@ -123,7 +131,7 @@ export class McpClientService {
 		try {
 			const result = await client.callTool({ name, arguments: args });
 
-			debugLogger.log(
+			debugLogger.debug(
 				`[McpClient] Tool ${name} completed (isError: ${result.isError ?? false})`,
 			);
 
@@ -146,7 +154,7 @@ export class McpClientService {
 	}
 
 	async disconnect(): Promise<void> {
-		debugLogger.log("[McpClient] Disconnecting...");
+		debugLogger.info("[McpClient] Disconnecting...");
 
 		try {
 			if (this.client) {
@@ -157,7 +165,7 @@ export class McpClientService {
 		}
 
 		await this.cleanupResources();
-		debugLogger.log("[McpClient] Disconnected.");
+		debugLogger.info("[McpClient] Disconnected.");
 	}
 
 	private ensureConnected(): void {
@@ -173,9 +181,7 @@ export class McpClientService {
 			if (this.transport) {
 				await this.transport.close();
 			}
-		} catch {
-			// 정리 중 에러 무시
-		}
+		} catch {}
 		this.client = null;
 		this.transport = null;
 		this._isConnected = false;

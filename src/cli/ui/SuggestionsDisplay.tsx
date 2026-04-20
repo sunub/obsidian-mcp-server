@@ -1,9 +1,9 @@
 import { Box, Text } from "ink";
-import { theme } from "../theme/semantic-colors.js";
-import { ExpandableText, MAX_WIDTH } from "./shared/ExpandableText.js";
-import { CommandKind } from "../commands/types.js";
 import { Colors } from "../colors.js";
+import { CommandKind } from "../commands/types.js";
+import { theme } from "../theme/semantic-colors.js";
 import { sanitizeForDisplay } from "../utils/textUtil.js";
+import { ExpandableText, MAX_WIDTH } from "./shared/ExpandableText.js";
 
 export interface Suggestion {
 	label: string;

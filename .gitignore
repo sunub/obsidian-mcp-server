@@ -7,5 +7,9 @@ build
 .vscode
 package-lock.json
 
+# MCP 서버 설정 (사용자별 환경 의존)
+mcp-servers.json
+.mcp-servers.json
+
 .github/agents/*
 .github/prompts/*

@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import stripAnsi from "strip-ansi";
-import ansiRegex from "ansi-regex";
 import { stripVTControlCharacters } from "node:util";
-import stringWidth from "string-width";
+import ansiRegex from "ansi-regex";
 import { LRUCache } from "mnemonist";
+import stringWidth from "string-width";
+import stripAnsi from "strip-ansi";
 import { LRU_BUFFER_PERF_CACHE_LIMIT } from "../constants.js";
 
 /**
