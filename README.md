@@ -6,7 +6,7 @@
 
 MCP 클라이언트에 연결해 에이전트에게 **토큰 사용량을 제어하면서** Vault 내용을 조회할 수 있게 합니다.
 
-[llama.cpp](https://github.com/ggml-org/llama.cpp) 기반 로컬 LLM(임베딩·채팅·리랭킹)과 연동하면 **외부 API 없이 로컬에서** Obsidian Vault 를 RAG으로 구축하여 구동할 수 있습니다.
+llama.cpp 기반 로컬 LLM(임베딩·채팅·리랭킹)과 연동하면 **외부 API 없이 완전히 로컬에서** Vault RAG를 구축하고 구동할 수 있습니다.
 
 ## 무엇을 할 수 있나
 
