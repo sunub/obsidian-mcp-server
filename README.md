@@ -257,6 +257,7 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
     }
   }
 }
+
 ```json
 {
   "mcpServers": {
@@ -282,82 +283,6 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
 ```
 
 > 각 변수의 역할과 기본값은 [사전 주의사항 → 환경변수 전체 설정 예시](#환경변수-전체-설정-예시)를 참고하세요.
-
-## 시맨틱 검색 (RAG) 설정
-
-키워드 검색 외에 **의미 기반 벡터 검색**을 사용하려면 임베딩 서버가 필요합니다.
-
-### 활성화 조건
-
-`LLM_EMBEDDING_API_URL`이 가리키는 서버가 실행 중이어야 합니다.  
-없으면 `search_vault_by_semantic`과 `index_vault_to_vectordb`가 동작하지 않고,  
-`useRagContext`는 자동으로 키워드 검색으로 폴백됩니다.
-
-```bash
-# ecosystem.config.cjs 기준 — 임베딩 서버 단독 시작
-pm2 start ecosystem.config.cjs --only llama-embedding-server
-```
-
-### 초기 색인 실행
-
-서버 연결 후 처음 한 번은 전체 색인을 직접 트리거해야 합니다.
-
-```text
-"Vault 전체를 재색인해줘."
-```
-
-내부 동작:
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "vault",
-    "arguments": { "action": "index_vault_to_vectordb" }
-  }
-}
-```
-
-이후에는 파일 변경 시 **VaultWatcher가 자동으로 증분 색인**합니다 (mtime 기반).
-
-### 색인 저장 위치
-
-```
-{VAULT_DIR_PATH}/.obsidian/vector_cache/   ← LanceDB 데이터 디렉터리
-```
-
-- 직접 삭제해도 무방합니다. 다음 `index_vault_to_vectordb` 호출 시 재생성됩니다.
-- `LLM_EMBEDDING_MODEL`을 변경하면 서버 시작 시 **자동으로 전체 재색인**이 발생합니다 (INDEX_VERSION 또는 모델명 불일치 감지).
-
-### 검색 전략 흐름
-
-```
-사용자 질문
-    │
-    ▼
-search_vault_by_semantic  (벡터 유사도 검색 → 리랭킹)
-    │ 결과 없음
-    ▼
-vault.search              (키워드 폴백)
-    │ 결과 없음
-    ▼
-컨텍스트 없이 LLM 응답
-```
-
-<details>
-<summary>청크·토큰 파라미터 (파워유저용)</summary>
-
-| 항목 | 값 | 비고 |
-|---|---|---|
-| 청크 크기 | 500 tokens | tiktoken cl100k 기준 |
-| 청크 오버랩 | 50 tokens | |
-| 임베딩 최대 토큰 | 500 tokens | 초과 시 비례 잘라냄 |
-| 임베딩 접두어 | `search_document: {text}` | nomic-embed-text 형식 |
-| 벡터 차원 | 768 | nomic-embed-text 출력 크기 |
-| IVF-PQ 인덱스 생성 | 256개 문서 이상 | 미만이면 브루트포스로 동작 |
-| 동시 임베딩 요청 | 최대 3 | Semaphore 제한 |
-
-</details>
 
 ## 시작 후 빠른 검증
 
