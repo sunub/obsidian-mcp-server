@@ -4,8 +4,6 @@ import type { CallToolFn, DispatchResult, McpToolResult } from "../types.js";
 import { debugLogger } from "../utils/debugLogger.js";
 import { HELP_COMMAND_MARKER } from "../constants.js";
 
-// ─── Helpers ────────────────────────────────────────────────
-
 function extractText(result: McpToolResult): string {
 	return result.content
 		.filter((c) => c.type === "text" && c.text)
@@ -24,11 +22,6 @@ function extractFilenameFromArgs(args: string): string {
 	return args;
 }
 
-/**
- * CLI 인자 문자열을 key=value 쌍으로 파싱.
- * 예: 'keyword="test" quiet=true' → { keyword: "test", quiet: "true" }
- * key=value가 아닌 토큰은 무시.
- */
 function parseKeyValueArgs(args: string): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
 	const regex = /(\w+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g;
@@ -45,8 +38,6 @@ function parseKeyValueArgs(args: string): Record<string, unknown> {
 	return result;
 }
 
-// ─── Command Mapping (UX shortcuts → MCP tool calls) ────────
-
 interface CommandMapping {
 	tool: string;
 	buildArgs: (args: string) => Record<string, unknown>;
@@ -54,14 +45,7 @@ interface CommandMapping {
 	noArgsMessage?: string;
 }
 
-/**
- * 슬래시 커맨드 → MCP 도구 매핑 테이블.
- *
- * `tool` 값은 MCP 서버가 동적으로 등록한 도구 이름과 일치해야 합니다.
- * 디스패치 시 실제 toolRegistry에 존재하는지 검증합니다.
- */
 const COMMAND_MAP: Record<string, CommandMapping> = {
-	// ── vault tool actions ──
 	"/search": {
 		tool: "vault",
 		requiresArgs: true,
@@ -114,14 +98,12 @@ const COMMAND_MAP: Record<string, CommandMapping> = {
 			memoryMode: "response_only",
 		}),
 	},
-	// ── organize_attachments tool ──
 	"/organize": {
 		tool: "organize_attachments",
 		requiresArgs: true,
 		noArgsMessage: "사용법: /organize <검색키워드>",
 		buildArgs: (args) => ({ keyword: args }),
 	},
-	// ── generate_property tool ──
 	"/genprop": {
 		tool: "generate_property",
 		requiresArgs: true,
@@ -131,8 +113,6 @@ const COMMAND_MAP: Record<string, CommandMapping> = {
 		}),
 	},
 };
-
-// ─── Read fallback ──────────────────────────────────────────
 
 async function handleReadFallback(
 	args: string,
@@ -171,8 +151,6 @@ async function handleReadFallback(
 	};
 }
 
-// ─── Tool existence check ───────────────────────────────────
-
 function isToolAvailable(
 	toolName: string,
 	availableTools: McpToolInfo[],
@@ -185,18 +163,75 @@ function buildAvailableToolsHint(availableTools: McpToolInfo[]): string {
 	return availableTools.map((t) => `  • ${t.name}`).join("\n");
 }
 
-// ─── Dynamic tool dispatch (for tools not in COMMAND_MAP) ───
-
 function tryMatchDynamicTool(
 	command: string,
 	availableTools: McpToolInfo[],
 ): McpToolInfo | undefined {
-	// /tool_name → "tool_name"
 	const toolName = command.slice(1);
 	return availableTools.find((t) => t.name === toolName);
 }
 
-// ─── Hook ───────────────────────────────────────────────────
+/**
+ * 동적 도구 호출 시 인자를 빌드하는 전략:
+ * 1. key=value 구문으로 파싱 시도
+ * 2. 빈 결과이면 도구의 inputSchema에서 첫 번째 required string 파라미터를 찾아
+ *    raw text 전체를 해당 파라미터 값으로 매핑
+ */
+function buildDynamicArgs(
+	rawArgs: string,
+	tool: McpToolInfo,
+): Record<string, unknown> {
+	if (!rawArgs) return {};
+
+	// 1차: key=value 파싱
+	const kvArgs = parseKeyValueArgs(rawArgs);
+	if (Object.keys(kvArgs).length > 0) return kvArgs;
+
+	// 2차: JSON 직접 파싱 시도
+	if (rawArgs.startsWith("{")) {
+		try {
+			return JSON.parse(rawArgs) as Record<string, unknown>;
+		} catch {
+			// fall through
+		}
+	}
+
+	// 3차: 스키마 기반 — 첫 번째 required string 파라미터에 전체 텍스트 할당
+	const schema = tool.inputSchema;
+	if (schema?.required?.length && schema.properties) {
+		for (const paramName of schema.required) {
+			const prop = schema.properties[paramName];
+			if (prop?.type === "string") {
+				debugLogger.log(
+					`[Dispatcher] Schema-based arg mapping: "${paramName}" ← raw text`,
+				);
+				return { [paramName]: rawArgs };
+			}
+		}
+	}
+
+	// 최후 폴백: 일반적인 파라미터 이름에 매핑 시도
+	const commonParamNames = [
+		"filename",
+		"keyword",
+		"query",
+		"sourcePath",
+		"filePath",
+		"name",
+		"input",
+		"text",
+	];
+	if (schema?.properties) {
+		for (const name of commonParamNames) {
+			if (name in schema.properties) {
+				return { [name]: rawArgs };
+			}
+		}
+	}
+
+	// 어떤 매핑도 못 찾으면 raw text를 반환 (서버가 거부할 수 있음)
+	return { input: rawArgs };
+}
 
 export interface UseDispatcherReturn {
 	handleDispatch: (
@@ -205,13 +240,6 @@ export interface UseDispatcherReturn {
 	) => Promise<DispatchResult>;
 }
 
-/**
- * 슬래시 커맨드 디스패처.
- *
- * @param availableTools - MCP 서버에서 동적으로 등록된 도구 목록.
- *   COMMAND_MAP의 도구 참조를 런타임에 검증하고,
- *   COMMAND_MAP에 없는 도구도 /<tool_name> 형태로 직접 호출 가능.
- */
 export function useDispatcher(
 	availableTools: McpToolInfo[] = [],
 ): UseDispatcherReturn {
@@ -223,7 +251,6 @@ export function useDispatcher(
 
 			debugLogger.log(`[Dispatcher] Command: ${command}, Args: "${args}"`);
 
-			// ── Local actions (no MCP call) ──
 			switch (command) {
 				case "/help":
 					return { type: "local_action", content: HELP_COMMAND_MARKER };
@@ -233,10 +260,8 @@ export function useDispatcher(
 					return { type: "local_action", content: "__LIST_TOOLS__" };
 			}
 
-			// ── COMMAND_MAP: curated slash command shortcuts ──
 			const mapping = COMMAND_MAP[command];
 			if (mapping) {
-				// 도구가 실제 레지스트리에 존재하는지 검증
 				if (
 					availableTools.length > 0 &&
 					!isToolAvailable(mapping.tool, availableTools)
@@ -260,14 +285,12 @@ export function useDispatcher(
 				return executeToolCall(command, mapping.tool, toolArgs, args, callTool);
 			}
 
-			// ── Dynamic fallthrough: /<tool_name> key=value ... ──
 			const dynamicTool = tryMatchDynamicTool(command, availableTools);
 			if (dynamicTool) {
-				const toolArgs = args
-					? parseKeyValueArgs(args)
-					: {};
+				const toolArgs = buildDynamicArgs(args, dynamicTool);
 				debugLogger.log(
 					`[Dispatcher] Dynamic tool dispatch: ${dynamicTool.name}`,
+					JSON.stringify(toolArgs).slice(0, 200),
 				);
 				return executeToolCall(
 					command,
@@ -278,7 +301,6 @@ export function useDispatcher(
 				);
 			}
 
-			// ── Unknown command ──
 			const hint =
 				availableTools.length > 0
 					? `\n\n사용 가능한 도구 (/<tool_name> 형태로 직접 호출 가능):\n${buildAvailableToolsHint(availableTools)}`
@@ -293,8 +315,6 @@ export function useDispatcher(
 
 	return { handleDispatch };
 }
-
-// ─── Shared tool execution ──────────────────────────────────
 
 async function executeToolCall(
 	command: string,

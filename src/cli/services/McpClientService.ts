@@ -10,9 +10,16 @@ export interface McpConnectionOptions {
 	cwd?: string;
 }
 
+export interface McpToolInputSchema {
+	type: string;
+	properties?: Record<string, { type?: string; description?: string }>;
+	required?: string[];
+}
+
 export interface McpToolInfo {
 	name: string;
 	description?: string;
+	inputSchema?: McpToolInputSchema;
 }
 
 const MAX_RETRIES = 3;
@@ -105,6 +112,7 @@ export class McpClientService {
 		return result.tools.map((tool) => ({
 			name: tool.name,
 			description: tool.description,
+			inputSchema: tool.inputSchema as McpToolInputSchema | undefined,
 		}));
 	}
 
