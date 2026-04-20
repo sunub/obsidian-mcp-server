@@ -23,7 +23,7 @@ export interface UseMcpClientReturn {
  * MCP 서버 연결 옵션을 환경 변수로부터 구성합니다.
  */
 function buildConnectionOptions(): McpConnectionOptions {
-	console.log(
+	console.error(
 		"[useMcpClient] Building MCP connection options from environment variables...",
 	);
 	const env = configSchema.parse({
@@ -60,6 +60,11 @@ function buildConnectionOptions(): McpConnectionOptions {
 	};
 }
 
+/**
+ * @deprecated useMcpManager를 사용하세요.
+ * 이 훅은 단일 MCP 서버만 지원합니다.
+ * 다중 서버 지원이 필요하면 useMcpManager로 마이그레이션하세요.
+ */
 export const useMcpClient = (): UseMcpClientReturn => {
 	const [connectionState, setConnectionState] =
 		useState<McpConnectionState>("disconnected");

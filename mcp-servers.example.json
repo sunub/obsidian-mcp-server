@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "node",
+      "args": ["build/index.js"],
+      "env": {
+        "VAULT_DIR_PATH": "${VAULT_DIR_PATH}",
+        "LLM_API_URL": "${LLM_API_URL:-http://127.0.0.1:8080}",
+        "LLM_EMBEDDING_API_URL": "${LLM_EMBEDDING_API_URL:-http://127.0.0.1:8081}",
+        "LLM_EMBEDDING_MODEL": "${LLM_EMBEDDING_MODEL:-nomic-embed-text}",
+        "LLM_CHAT_MODEL": "${LLM_CHAT_MODEL:-llama3}",
+        "LOGGING_LEVEL": "${LOGGING_LEVEL:-info}"
+      }
+    }
+  }
+}
