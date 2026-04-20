@@ -6,7 +6,7 @@
 
 MCP 클라이언트에 연결해 에이전트에게 **토큰 사용량을 제어하면서** Vault 내용을 조회할 수 있게 합니다.
 
-llama.cpp 기반 로컬 LLM(임베딩·채팅·리랭킹)과 연동하면 **외부 API 없이 완전히 로컬에서** Vault RAG를 구축하고 구동할 수 있습니다.
+[llama.cpp](https://github.com/ggml-org/llama.cpp) 기반 로컬 LLM(임베딩·채팅·리랭킹)과 연동하면 **외부 API 없이 로컬에서** Obsidian Vault 를 RAG으로 구축하여 구동할 수 있습니다.
 
 ## 무엇을 할 수 있나
 
@@ -251,27 +251,6 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
         "LLM_API_URL": "http://127.0.0.1:8080",
         "LLM_EMBEDDING_API_URL": "http://127.0.0.1:8081",
         "LLM_EMBEDDING_MODEL": "nomic-embed-text",
-        "LLM_CHAT_MODEL": "llama3"
-      }
-    }
-  }
-}
-```json
-{
-  "mcpServers": {
-    "obsidian": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@sunub/obsidian-mcp-server@latest"
-      ],
-      "env": {
-        "VAULT_DIR_PATH": "/path/to/obsidian-vault",
-        "VAULT_METRICS_LOG_PATH": "/path/to/vault-metrics.ndjson",
-        "LOGGING_LEVEL": "info",
-        "LLM_API_URL": "http://127.0.0.1:8080",
-        "LLM_EMBEDDING_API_URL": "http://127.0.0.1:8081",
-        "LLM_EMBEDDING_MODEL": "nomic-embed-text",
         "LLM_CHAT_MODEL": "llama3",
         "LLM_RERANKER_API_URL": "http://127.0.0.1:8082"
       }
@@ -282,6 +261,14 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
 
 > 각 변수의 역할과 기본값은 [사전 주의사항 → 환경변수 전체 설정 예시](#환경변수-전체-설정-예시)를 참고하세요.
 
+### 5) CLI Agent (실험적)
+
+> **현재 상태:** RAG 기반 시맨틱 검색은 동작하지만, MCP 서버와의 연결은 아직 완성되지 않았습니다.  
+> 일반 사용 목적이라면 위의 MCP 클라이언트 연동 방식을 사용하세요.
+
+Ink(React) 기반 터미널 UI로 Vault를 탐색하는 CLI Agent가 포함되어 있습니다.  
+llama.cpp 임베딩 서버(`LLM_EMBEDDING_API_URL`)가 실행 중이면 입력 쿼리를 벡터 검색해 컨텍스트를 구성합니다.
+
 ## 시맨틱 검색 (RAG) 설정
 
 키워드 검색 외에 **의미 기반 벡터 검색**을 사용하려면 임베딩 서버가 필요합니다.
@@ -290,7 +277,7 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
 
 `LLM_EMBEDDING_API_URL`이 가리키는 서버가 실행 중이어야 합니다.  
 없으면 `search_vault_by_semantic`과 `index_vault_to_vectordb`가 동작하지 않고,  
-`useRagContext`는 자동으로 키워드 검색으로 폴백됩니다.
+시맨틱 검색은 자동으로 키워드 검색으로 폴백됩니다.
 
 ```bash
 # ecosystem.config.cjs 기준 — 임베딩 서버 단독 시작
@@ -340,7 +327,7 @@ search_vault_by_semantic  (벡터 유사도 검색 → 리랭킹)
 vault.search              (키워드 폴백)
     │ 결과 없음
     ▼
-컨텍스트 없이 LLM 응답
+AI 에이전트가 Vault 컨텍스트 없이 응답
 ```
 
 <details>
