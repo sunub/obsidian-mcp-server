@@ -1,6 +1,6 @@
-import type React from "react";
 import { Box, Text } from "ink";
-import type { HistoryItem, ContentRenderer } from "../types.js";
+import type React from "react";
+import type { ContentRenderer, HistoryItem } from "../types.js";
 
 type HISTORY_DISPLAY_TYPE = "user" | "assistant" | "error" | "info";
 

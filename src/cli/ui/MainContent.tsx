@@ -1,10 +1,10 @@
-import type React from "react";
 import { Box, Static, Text } from "ink";
+import type React from "react";
+import { HELP_COMMAND_MARKER } from "../constants.js";
 import type { HistoryItem, PendingItem, StreamingState } from "../types.js";
+import { HelpCommands } from "./HelpCommands.js";
 import { HistoryItemDisplay } from "./HistoryItemDisplay.js";
 import { ThinkingIndicator } from "./ThinkingIndicator.js";
-import { HelpCommands } from "./HelpCommands.js";
-import { HELP_COMMAND_MARKER } from "../constants.js";
 
 interface MainContentProps {
 	history: HistoryItem[];
@@ -18,7 +18,10 @@ const MAX_THINKING_LINES = 6;
 function ThinkingBlock({
 	content,
 	isActive,
-}: { content: string; isActive: boolean }) {
+}: {
+	content: string;
+	isActive: boolean;
+}) {
 	const lines = content.split("\n").filter((l) => l.trim());
 	const displayLines = isActive ? lines : lines.slice(0, MAX_THINKING_LINES);
 	const truncated = !isActive && lines.length > MAX_THINKING_LINES;

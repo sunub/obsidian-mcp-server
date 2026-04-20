@@ -1,13 +1,12 @@
-import { useCallback, useRef } from "react";
-import { Box, Text } from "ink";
 import chalk from "chalk";
-
-import { theme } from "../theme/semantic-colors.js";
-import { useInputHistory } from "../hooks/useInputHistory.js";
-import { useKeypress, type Key } from "../hooks/useKeypress.js";
-import { Command } from "../key/keyMatchers.js";
-import { useKeyMatchers } from "../hooks/useKeyMatchers.js";
+import { Box, Text } from "ink";
+import { useCallback, useRef } from "react";
 import { useInputState } from "../context/InputContext.js";
+import { useInputHistory } from "../hooks/useInputHistory.js";
+import { useKeyMatchers } from "../hooks/useKeyMatchers.js";
+import { type Key, useKeypress } from "../hooks/useKeypress.js";
+import { Command } from "../key/keyMatchers.js";
+import { theme } from "../theme/semantic-colors.js";
 import { cpLen, cpSlice } from "../utils/textUtil.js";
 
 export interface InputPromptProps {
@@ -213,12 +212,14 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 			flexGrow={1}
 			flexDirection="row"
 			paddingX={1}
-			borderColor={theme.border.default}
 			marginTop={1}
+			borderStyle={"bold"}
 			borderTop={true}
 			borderBottom={true}
-			borderTopColor={theme.text.primary}
-			borderBottomColor={theme.text.primary}
+			borderLeft={false}
+			borderRight={false}
+			borderTopColor={theme.text.accent}
+			borderBottomColor={theme.text.accent}
 		>
 			<Text color={theme.text.accent}>{"> "} </Text>
 			<Box flexGrow={1} flexDirection="column" ref={innerBoxRef}>
