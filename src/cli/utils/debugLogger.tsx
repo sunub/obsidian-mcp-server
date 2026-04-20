@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
-import * as util from "node:util";
 import { dirname } from "node:path";
+import * as util from "node:util";
 import chalk from "chalk";
 
 class DebugLogger {
