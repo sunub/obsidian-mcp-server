@@ -105,5 +105,10 @@ jobs:
           name: build-artifacts
           path: build/
 
+      - name: Create test vault directory
+        run: mkdir -p test-vault
+
       - name: Test
         run: bun run test
+        env:
+          VAULT_DIR_PATH: ${{ github.workspace }}/test-vault
