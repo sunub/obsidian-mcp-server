@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { debugLogger } from "../utils/debugLogger.js";
-import type { PendingItem, StreamingState, OllamaMessage } from "../types.js";
+import type { PendingItem, StreamingState, CallToolFn } from "../types.js";
+import type { McpToolInfo } from "../services/McpClientService.js";
 import state from "../../config.js";
 
 const ANSI_RE =
@@ -10,17 +11,97 @@ function stripAnsi(text: string): string {
 	return text.replace(ANSI_RE, "");
 }
 
-export interface LlmStreamState {
-	pendingItem: PendingItem | null;
-	streamingState: StreamingState;
-	isLoading: boolean;
-	error: Error | null;
-	sendMessage: (text: string, ragContext?: string | null) => Promise<void>;
-	reset: () => void;
-	clearHistory: () => void;
+// ─── Agentic loop types ───────────────────────────────────────────────────────
+
+interface OpenAITool {
+	type: "function";
+	function: {
+		name: string;
+		description?: string;
+		parameters: Record<string, unknown>;
+	};
 }
 
-async function* generateLLMStream(messages: OllamaMessage[]) {
+interface ToolCall {
+	id: string;
+	type: "function";
+	function: { name: string; arguments: string };
+}
+
+/** OpenAI-compatible conversation message — superset of OllamaMessage */
+type ConversationMessage =
+	| { role: "system"; content: string }
+	| { role: "user"; content: string }
+	| { role: "assistant"; content: string; tool_calls?: ToolCall[] }
+	| { role: "tool"; content: string; tool_call_id: string };
+
+interface LLMResponse {
+	content: string;
+	finish_reason: string;
+	tool_calls?: ToolCall[];
+}
+
+const MAX_AGENTIC_ITERATIONS = 10;
+/** MCP 도구 결과를 LLM 컨텍스트 창 초과 방지를 위해 잘라냄 */
+const MAX_TOOL_RESULT_CHARS = 8000;
+
+function mcpToolsToOpenAI(tools: McpToolInfo[]): OpenAITool[] {
+	return tools.map((t) => ({
+		type: "function" as const,
+		function: {
+			name: t.name,
+			description: t.description,
+			parameters: (t.inputSchema as unknown as Record<string, unknown>) ?? {
+				type: "object",
+				properties: {},
+			},
+		},
+	}));
+}
+
+/** 도구 호출 중간 단계에서 사용하는 non-streaming LLM 호출 */
+async function callLLMNonStreaming(
+	messages: ConversationMessage[],
+	tools?: OpenAITool[],
+): Promise<LLMResponse> {
+	const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
+	const body: Record<string, unknown> = {
+		model: state.llmChatModel,
+		messages,
+		stream: false,
+	};
+	if (tools && tools.length > 0) {
+		body["tools"] = tools;
+		body["tool_choice"] = "auto";
+	}
+
+	const response = await fetch(url, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`LLM API Error (${response.status}): ${errorText}`);
+	}
+
+	const json = (await response.json()) as {
+		choices?: Array<{
+			message?: { content?: string | null; tool_calls?: ToolCall[] };
+			finish_reason?: string;
+		}>;
+	};
+	const choice = json.choices?.[0];
+	return {
+		content: choice?.message?.content ?? "",
+		finish_reason: choice?.finish_reason ?? "stop",
+		tool_calls: choice?.message?.tool_calls,
+	};
+}
+
+/** 최종 텍스트 응답에 사용하는 streaming LLM 호출 */
+async function* generateLLMStream(messages: ConversationMessage[]) {
 	const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
 
 	const response = await fetch(url, {
@@ -57,7 +138,12 @@ async function* generateLLMStream(messages: OllamaMessage[]) {
 			if (!cleanedLine || cleanedLine === "[DONE]") continue;
 
 			try {
-				const parsed = JSON.parse(cleanedLine);
+				const parsed = JSON.parse(cleanedLine) as {
+					choices?: Array<{
+						delta?: { content?: string };
+						finish_reason?: string;
+					}>;
+				};
 				const content = parsed.choices?.[0]?.delta?.content;
 				if (content) yield content;
 			} catch (_e) {
@@ -67,12 +153,27 @@ async function* generateLLMStream(messages: OllamaMessage[]) {
 	}
 }
 
-export const useLlmStream = (): LlmStreamState => {
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
+export interface LlmStreamState {
+	pendingItem: PendingItem | null;
+	streamingState: StreamingState;
+	isLoading: boolean;
+	error: Error | null;
+	sendMessage: (text: string, ragContext?: string | null) => Promise<void>;
+	reset: () => void;
+	clearHistory: () => void;
+}
+
+export const useLlmStream = (
+	callTool?: CallToolFn,
+	availableTools: McpToolInfo[] = [],
+): LlmStreamState => {
 	const [pendingItem, setPendingItem] = useState<PendingItem | null>(null);
 	const [streamingState, setStreamingState] = useState<StreamingState>("idle");
 	const [error, setError] = useState<Error | null>(null);
 
-	const conversationRef = useRef<OllamaMessage[]>([]);
+	const conversationRef = useRef<ConversationMessage[]>([]);
 	const isLoading = useMemo(() => streamingState !== "idle", [streamingState]);
 
 	// 부팅 시 연결 확인
@@ -87,7 +188,6 @@ export const useLlmStream = (): LlmStreamState => {
 				debugLogger.warn(
 					`[CLI] Could not reach LLM Server at ${state.llmApiUrl}`,
 				);
-				// 8080 포트가 필수가 아닐 수도 있으므로 즉시 종료는 하지 않음
 			}
 		}
 		void bootCheck();
@@ -101,41 +201,141 @@ export const useLlmStream = (): LlmStreamState => {
 			setError(null);
 
 			try {
-				const messagesForRequest: OllamaMessage[] = [];
-
+				const messages: ConversationMessage[] = [];
 				if (ragContext) {
-					messagesForRequest.push({
-						role: "system",
-						content: ragContext,
-					});
+					messages.push({ role: "system", content: ragContext });
 				}
+				messages.push(...conversationRef.current);
 
-				messagesForRequest.push(...conversationRef.current);
-				const userMessage: OllamaMessage = { role: "user", content: text };
-				messagesForRequest.push(userMessage);
+				const userMessage: ConversationMessage = {
+					role: "user",
+					content: text,
+				};
+				messages.push(userMessage);
 				conversationRef.current.push(userMessage);
 
-				const stream = generateLLMStream(messagesForRequest);
-				let isFirstChunk = true;
-				let fullResponse = "";
+				const hasTools = Boolean(callTool) && availableTools.length > 0;
 
-				for await (const chunk of stream) {
-					if (isFirstChunk) {
-						setStreamingState("streaming");
-						isFirstChunk = false;
+				if (hasTools && callTool) {
+					// ── Agentic loop: non-streaming for tool turns ──────────────────
+					const openAITools = mcpToolsToOpenAI(availableTools);
+					let progressLog = "";
+					let finalContent = "";
+
+					for (let iter = 0; iter < MAX_AGENTIC_ITERATIONS; iter++) {
+						const response = await callLLMNonStreaming(messages, openAITools);
+						debugLogger.log(
+							`[LLM] iter=${iter} finish_reason=${response.finish_reason} tool_calls=${response.tool_calls?.length ?? 0}`,
+						);
+
+						// tool_calls 존재 여부를 최우선 신호로 사용
+						// (Ollama 버전에 따라 finish_reason이 "stop"으로 올 수 있음)
+						const wantsTools =
+							response.tool_calls != null && response.tool_calls.length > 0;
+
+						if (wantsTools && response.tool_calls) {
+							setStreamingState("streaming");
+
+							// 어시스턴트 tool_calls 메시지를 컨텍스트에 추가
+							messages.push({
+								role: "assistant",
+								content: response.content,
+								tool_calls: response.tool_calls,
+							});
+
+							// 각 도구 순차 실행
+							for (const tc of response.tool_calls) {
+								let args: Record<string, unknown> = {};
+								try {
+									args = JSON.parse(tc.function.arguments) as Record<
+										string,
+										unknown
+									>;
+								} catch {
+									/* 빈 args 유지 */
+								}
+
+								const argSummary = Object.entries(args)
+									.map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 30)}`)
+									.join(", ");
+
+								progressLog += `🔧 ${tc.function.name}(${argSummary})\n`;
+								setPendingItem({
+									type: "assistant",
+									content: progressLog,
+									isComplete: false,
+								});
+
+								const result = await callTool(tc.function.name, args);
+								const resultText = result.content
+									.map((c) => c.text ?? "")
+									.join("")
+									.slice(0, MAX_TOOL_RESULT_CHARS);
+
+								progressLog += `  ✓ 완료\n`;
+								setPendingItem({
+									type: "assistant",
+									content: progressLog,
+									isComplete: false,
+								});
+
+								messages.push({
+									role: "tool",
+									tool_call_id: tc.id,
+									content: resultText,
+								});
+							}
+						} else {
+							// finish_reason === "stop" → 최종 답변
+							finalContent = response.content;
+							break;
+						}
 					}
-					fullResponse += chunk;
+
+					if (!finalContent) {
+						finalContent =
+							"최대 도구 호출 횟수에 도달했습니다. 작업이 완료되지 않았을 수 있습니다.";
+					}
+
+					const displayContent = progressLog
+						? `${progressLog}\n${finalContent}`
+						: finalContent;
+
+					conversationRef.current.push({
+						role: "assistant",
+						content: finalContent,
+					});
+					setStreamingState("streaming");
+					setPendingItem({
+						type: "assistant",
+						content: displayContent,
+						isComplete: true,
+					});
+				} else {
+					// ── 도구 없음: 기존 streaming path ──────────────────────────────
+					const stream = generateLLMStream(messages);
+					let isFirstChunk = true;
+					let fullResponse = "";
+
+					for await (const chunk of stream) {
+						if (isFirstChunk) {
+							setStreamingState("streaming");
+							isFirstChunk = false;
+						}
+						fullResponse += chunk;
+						setPendingItem((prev) =>
+							prev ? { ...prev, content: prev.content + chunk } : null,
+						);
+					}
+
+					conversationRef.current.push({
+						role: "assistant",
+						content: fullResponse,
+					});
 					setPendingItem((prev) =>
-						prev ? { ...prev, content: prev.content + chunk } : null,
+						prev ? { ...prev, isComplete: true } : null,
 					);
 				}
-
-				conversationRef.current.push({
-					role: "assistant",
-					content: fullResponse,
-				});
-
-				setPendingItem((prev) => (prev ? { ...prev, isComplete: true } : null));
 			} catch (err: unknown) {
 				debugLogger.error("Stream Error:", err);
 				setStreamingState("error");
@@ -145,7 +345,7 @@ export const useLlmStream = (): LlmStreamState => {
 				setPendingItem(null);
 			}
 		},
-		[],
+		[callTool, availableTools],
 	);
 
 	const reset = useCallback(() => {

@@ -92,7 +92,7 @@ export const AppContainer = () => {
 		sendMessage,
 		reset,
 		clearHistory,
-	} = useLlmStream();
+	} = useLlmStream(callTool, mcpTools);
 
 	// 이관 Effect: 스트림 완료 → history로 이동
 	useEffect(() => {
