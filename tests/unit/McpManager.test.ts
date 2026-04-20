@@ -1,7 +1,7 @@
-import { describe, expect, test, vi, beforeEach } from "vitest";
-import { McpManager } from "../../src/cli/services/McpManager";
-import { McpClientService } from "../../src/cli/services/McpClientService";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { McpServerConfig } from "../../src/cli/config/mcpServersConfig";
+import { McpClientService } from "../../src/cli/services/McpClientService";
+import { McpManager } from "../../src/cli/services/McpManager";
 
 // McpClientService를 모킹
 vi.mock("../../src/cli/services/McpClientService", () => {

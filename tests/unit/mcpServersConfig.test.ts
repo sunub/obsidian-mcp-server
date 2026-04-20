@@ -1,5 +1,5 @@
-import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // config.ts의 모듈 수준 파싱 부작용(configSchema.parse)을 방지하기 위해 모킹.
 // vite-tsconfig-paths가 @/ 별칭을 해석하므로 소스 경로로 모킹한다.
@@ -99,6 +99,7 @@ describe("mcpServersConfig", () => {
 	});
 
 	describe("환경변수 치환", () => {
+		// biome-ignore lint/suspicious/noTemplateCurlyInString: test pattern
 		test("${VAR} 패턴을 process.env에서 치환한다", () => {
 			process.env["MY_PATH"] = "/custom/path";
 
@@ -107,6 +108,7 @@ describe("mcpServersConfig", () => {
 					test: {
 						command: "node",
 						args: ["server.js"],
+						// biome-ignore lint/suspicious/noTemplateCurlyInString: test pattern
 						env: { VAULT: "${MY_PATH}" },
 					},
 				},
@@ -120,6 +122,7 @@ describe("mcpServersConfig", () => {
 			expect(configs[0]?.env["VAULT"]).toBe("/custom/path");
 		});
 
+		// biome-ignore lint/suspicious/noTemplateCurlyInString: test pattern
 		test("${VAR:-default} 패턴의 기본값을 지원한다", () => {
 			// MY_MISSING_VAR은 설정하지 않음
 			delete process.env["MY_MISSING_VAR"];
@@ -129,6 +132,7 @@ describe("mcpServersConfig", () => {
 					test: {
 						command: "node",
 						args: ["server.js"],
+						// biome-ignore lint/suspicious/noTemplateCurlyInString: test pattern
 						env: { URL: "${MY_MISSING_VAR:-http://localhost:8080}" },
 					},
 				},
@@ -150,6 +154,7 @@ describe("mcpServersConfig", () => {
 					test: {
 						command: "node",
 						args: ["server.js"],
+						// biome-ignore lint/suspicious/noTemplateCurlyInString: test pattern
 						env: { URL: "${MY_URL:-http://localhost:8080}" },
 					},
 				},
@@ -171,6 +176,7 @@ describe("mcpServersConfig", () => {
 					test: {
 						command: "node",
 						args: ["server.js"],
+						// biome-ignore lint/suspicious/noTemplateCurlyInString: test pattern
 						env: { EMPTY: "${NONEXISTENT_VAR}" },
 					},
 				},
