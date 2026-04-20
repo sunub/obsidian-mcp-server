@@ -69,8 +69,10 @@ export type CallToolFn = (
 
 /** Dispatcher 슬래시 커맨드 처리 결과 */
 export interface DispatchResult {
-	type: "tool_result" | "local_action" | "unknown_command";
+	type: "tool_result" | "local_action" | "unknown_command" | "llm_required";
 	content: string;
+	/** llm_required 타입일 때 원본 사용자 입력 (LLM에게 보낼 의도) */
+	userIntent?: string;
 }
 
 /** MCP 클라이언트 연결 상태 */

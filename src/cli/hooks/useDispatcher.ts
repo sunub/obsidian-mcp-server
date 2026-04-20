@@ -296,7 +296,7 @@ export function useDispatcher(
 				}
 
 				const toolArgs = mapping.buildArgs(args);
-				return executeToolCall(command, mapping.tool, toolArgs, args, callTool);
+				return executeToolCall(command, mapping.tool, toolArgs, args, callTool, text);
 			}
 
 			const dynamicTool = tryMatchDynamicTool(command, availableTools);
@@ -312,6 +312,7 @@ export function useDispatcher(
 					toolArgs,
 					args,
 					callTool,
+						text,
 				);
 			}
 
@@ -336,6 +337,7 @@ async function executeToolCall(
 	toolArgs: Record<string, unknown>,
 	rawArgs: string,
 	callTool: CallToolFn,
+	userIntent?: string,
 ): Promise<DispatchResult> {
 	try {
 		const result = await callTool(toolName, toolArgs);
@@ -350,9 +352,24 @@ async function executeToolCall(
 			};
 		}
 
+		const text = extractText(result);
+
+		// 도구 결과가 LLM 지시문 형식인지 감지
+		// (instructions 키를 포함한 JSON → LLM이 처리해야 함)
+		if (isLlmInstructionPayload(text)) {
+			debugLogger.log(
+				`[Dispatcher] Tool "${toolName}" returned LLM instruction payload — routing to LLM`,
+			);
+			return {
+				type: "llm_required",
+				content: text,
+				userIntent: userIntent ?? rawArgs,
+			};
+		}
+
 		return {
 			type: "tool_result",
-			content: extractText(result) || "결과가 없습니다.",
+			content: text || "결과가 없습니다.",
 		};
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
@@ -361,5 +378,22 @@ async function executeToolCall(
 			type: "tool_result",
 			content: `도구 호출 오류: ${msg}`,
 		};
+	}
+}
+
+/** 도구 결과가 LLM 지시문 형식(generate_property 등)인지 감지 */
+function isLlmInstructionPayload(text: string): boolean {
+	try {
+		const parsed = JSON.parse(text);
+		return (
+			parsed !== null &&
+			typeof parsed === "object" &&
+			"instructions" in parsed &&
+			typeof parsed.instructions === "object" &&
+			parsed.instructions !== null &&
+			("purpose" in parsed.instructions || "usage" in parsed.instructions)
+		);
+	} catch {
+		return false;
 	}
 }

@@ -50,7 +50,6 @@ export const AppContainer = () => {
 		connectedCount: mcpConnectedCount,
 	} = useMcpManager();
 
-	// Command dispatcher — MCP 도구 레지스트리 기반 검증
 	const { handleDispatch } = useDispatcher(mcpTools);
 
 	const { fetchContext } = useRagContext(callTool, mcpConnected);
@@ -177,15 +176,30 @@ export const AppContainer = () => {
 				}
 
 				// 도구 결과 또는 일반 응답을 히스토리에 추가
-				setHistory((prev) => [
-					...prev,
-					{
-						id: nextIdRef.current++,
-						type: result.type === "unknown_command" ? "error" : "info",
-						content: result.content,
-						timestamp: Date.now(),
-					},
-				]);
+				if (result.type === "llm_required") {
+					// LLM 지시문 페이로드 → 사용자 입력을 히스토리에 표시 후 LLM으로 파이프
+					setHistory((prev) => [
+						...prev,
+						{
+							id: nextIdRef.current++,
+							type: "user",
+							content: result.userIntent ?? value,
+							timestamp: Date.now(),
+						},
+					]);
+					// 도구 결과(instructions + content_preview)를 RAG 컨텍스트처럼 LLM에 주입
+					void sendMessage(result.userIntent ?? value, result.content);
+				} else {
+					setHistory((prev) => [
+						...prev,
+						{
+							id: nextIdRef.current++,
+							type: result.type === "unknown_command" ? "error" : "info",
+							content: result.content,
+							timestamp: Date.now(),
+						},
+					]);
+				}
 			} else {
 				// 일반 텍스트 → RAG 컨텍스트 조회 → LLM 스트리밍
 				setHistory((prev) => [
