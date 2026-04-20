@@ -55,9 +55,28 @@ function mcpToolsToOpenAI(tools: McpToolInfo[]): OpenAITool[] {
 	}));
 }
 
+function cleanMessagesForNoTools(
+	messages: ConversationMessage[],
+): ConversationMessage[] {
+	return messages.reduce<ConversationMessage[]>((acc, msg) => {
+		if (msg.role === "tool") {
+			acc.push({
+				role: "user",
+				content: `[도구 실행 결과]: ${msg.content}`,
+			});
+		} else if (msg.role === "assistant" && msg.tool_calls?.length) {
+			acc.push({ role: "assistant", content: msg.content || "" });
+		} else {
+			acc.push(msg);
+		}
+		return acc;
+	}, []);
+}
+
 async function* callLLMStreaming(
 	messages: ConversationMessage[],
 	tools?: OpenAITool[],
+	allowFallback = true,
 ): AsyncGenerator<StreamEvent> {
 	const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
 
@@ -84,13 +103,24 @@ async function* callLLMStreaming(
 		if (
 			response.status >= 500 &&
 			effectiveTools &&
-			effectiveTools.length > 0
+			effectiveTools.length > 0 &&
+			allowFallback
 		) {
-			toolCallingSupportedCache = false;
-			debugLogger.warn(
-				"[LLM] Tool calling not supported by server, falling back to no-tools mode",
+			const hasDirtyHistory = messages.some(
+				(m) =>
+					m.role === "tool" ||
+					(m.role === "assistant" && m.tool_calls && m.tool_calls.length > 0),
 			);
-			yield* callLLMStreaming(messages, undefined);
+			if (!hasDirtyHistory) {
+				toolCallingSupportedCache = false;
+			}
+			debugLogger.warn(
+				hasDirtyHistory
+					? "[LLM] Tool history caused server error, retrying with cleaned messages"
+					: "[LLM] Tool calling not supported by server, falling back to no-tools mode",
+			);
+			const cleanMessages = cleanMessagesForNoTools(messages);
+			yield* callLLMStreaming(cleanMessages, undefined, false);
 			return;
 		}
 		const errorText = await response.text();
