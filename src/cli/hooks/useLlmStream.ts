@@ -4,6 +4,8 @@ import type { PendingItem, StreamingState, CallToolFn } from "../types.js";
 import type { McpToolInfo } from "../services/McpClientService.js";
 import state from "../../config.js";
 
+let toolCallingSupportedCache: boolean | null = null;
+
 const ANSI_RE =
 	// biome-ignore lint/suspicious/noControlCharactersInRegex:터미널 입력을 파싱하기 위한 정규식입니다.
 	/[\u001b\u009b][[()#;?]*(?:\d{1,4}(?:;\d{0,4})*)?[A-Za-z0-9=><~]/g;
@@ -32,11 +34,9 @@ type ConversationMessage =
 	| { role: "assistant"; content: string; tool_calls?: ToolCall[] }
 	| { role: "tool"; content: string; tool_call_id: string };
 
-interface LLMResponse {
-	content: string;
-	finish_reason: string;
-	tool_calls?: ToolCall[];
-}
+type StreamEvent =
+	| { type: "content"; chunk: string }
+	| { type: "tool_calls"; calls: ToolCall[] };
 
 const MAX_AGENTIC_ITERATIONS = 10;
 const MAX_TOOL_RESULT_CHARS = 8000;
@@ -55,18 +55,22 @@ function mcpToolsToOpenAI(tools: McpToolInfo[]): OpenAITool[] {
 	}));
 }
 
-async function callLLMNonStreaming(
+async function* callLLMStreaming(
 	messages: ConversationMessage[],
 	tools?: OpenAITool[],
-): Promise<LLMResponse> {
+): AsyncGenerator<StreamEvent> {
 	const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
+
+	const effectiveTools =
+		toolCallingSupportedCache === false ? undefined : tools;
+
 	const body: Record<string, unknown> = {
 		model: state.llmChatModel,
 		messages,
-		stream: false,
+		stream: true,
 	};
-	if (tools && tools.length > 0) {
-		body["tools"] = tools;
+	if (effectiveTools && effectiveTools.length > 0) {
+		body["tools"] = effectiveTools;
 		body["tool_choice"] = "auto";
 	}
 
@@ -77,40 +81,24 @@ async function callLLMNonStreaming(
 	});
 
 	if (!response.ok) {
+		if (
+			response.status >= 500 &&
+			effectiveTools &&
+			effectiveTools.length > 0
+		) {
+			toolCallingSupportedCache = false;
+			debugLogger.warn(
+				"[LLM] Tool calling not supported by server, falling back to no-tools mode",
+			);
+			yield* callLLMStreaming(messages, undefined);
+			return;
+		}
 		const errorText = await response.text();
 		throw new Error(`LLM API Error (${response.status}): ${errorText}`);
 	}
 
-	const json = (await response.json()) as {
-		choices?: Array<{
-			message?: { content?: string | null; tool_calls?: ToolCall[] };
-			finish_reason?: string;
-		}>;
-	};
-	const choice = json.choices?.[0];
-	return {
-		content: choice?.message?.content ?? "",
-		finish_reason: choice?.finish_reason ?? "stop",
-		tool_calls: choice?.message?.tool_calls,
-	};
-}
-
-async function* generateLLMStream(messages: ConversationMessage[]) {
-	const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
-
-	const response = await fetch(url, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-			model: state.llmChatModel,
-			messages,
-			stream: true,
-		}),
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`LLM API Error (${response.status}): ${errorText}`);
+	if (effectiveTools && effectiveTools.length > 0) {
+		toolCallingSupportedCache = true;
 	}
 
 	const reader = response.body?.getReader();
@@ -118,6 +106,10 @@ async function* generateLLMStream(messages: ConversationMessage[]) {
 
 	const decoder = new TextDecoder();
 	let buffer = "";
+	const toolCallAccum = new Map<
+		number,
+		{ id: string; name: string; arguments: string }
+	>();
 
 	while (true) {
 		const { done, value } = await reader.read();
@@ -125,21 +117,70 @@ async function* generateLLMStream(messages: ConversationMessage[]) {
 
 		buffer += decoder.decode(value, { stream: true });
 		const lines = buffer.split("\n");
-		buffer = lines.pop() || "";
+		buffer = lines.pop() ?? "";
 
 		for (const line of lines) {
-			const cleanedLine = line.replace(/^data: /, "").trim();
-			if (!cleanedLine || cleanedLine === "[DONE]") continue;
+			const trimmed = line.replace(/^data: /, "").trim();
+			if (!trimmed || trimmed === "[DONE]") continue;
 
 			try {
-				const parsed = JSON.parse(cleanedLine) as {
+				const parsed = JSON.parse(trimmed) as {
 					choices?: Array<{
-						delta?: { content?: string };
-						finish_reason?: string;
+						delta?: {
+							content?: string | null;
+							tool_calls?: Array<{
+								index: number;
+								id?: string;
+								function?: { name?: string; arguments?: string };
+							}>;
+						};
+						finish_reason?: string | null;
 					}>;
 				};
-				const content = parsed.choices?.[0]?.delta?.content;
-				if (content) yield content;
+
+				const choice = parsed.choices?.[0];
+				if (!choice) continue;
+
+				const delta = choice.delta;
+
+				if (delta?.content) {
+					yield { type: "content", chunk: delta.content };
+				}
+
+				if (delta?.tool_calls) {
+					for (const tc of delta.tool_calls) {
+						const existing = toolCallAccum.get(tc.index);
+						if (!existing) {
+							toolCallAccum.set(tc.index, {
+								id: tc.id ?? "",
+								name: tc.function?.name ?? "",
+								arguments: tc.function?.arguments ?? "",
+							});
+						} else {
+							if (tc.id) existing.id = tc.id;
+							if (tc.function?.name) existing.name += tc.function.name;
+							if (tc.function?.arguments)
+								existing.arguments += tc.function.arguments;
+						}
+					}
+				}
+
+				const finishedWithTools =
+					(choice.finish_reason === "tool_calls" ||
+						choice.finish_reason === "stop") &&
+					toolCallAccum.size > 0;
+
+				if (finishedWithTools) {
+					const calls: ToolCall[] = Array.from(toolCallAccum.entries())
+						.sort(([a], [b]) => a - b)
+						.map(([, tc]) => ({
+							id: tc.id,
+							type: "function" as const,
+							function: { name: tc.name, arguments: tc.arguments },
+						}));
+					yield { type: "tool_calls", calls };
+					return;
+				}
 			} catch (_e) {
 			}
 		}
@@ -169,16 +210,24 @@ export const useLlmStream = (
 
 	useEffect(() => {
 		async function bootCheck() {
-			const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/models`;
-			try {
-				const resp = await fetch(url);
-				if (!resp.ok) throw new Error("API Check Failed");
-				debugLogger.info(`[CLI] LLM Server verified at ${state.llmApiUrl}`);
-			} catch (_err) {
-				debugLogger.warn(
-					`[CLI] Could not reach LLM Server at ${state.llmApiUrl}`,
-				);
+			const base = state.llmApiUrl.replace(/\/$/, "");
+			const endpoints = [`${base}/health`, `${base}/v1/models`];
+			for (const url of endpoints) {
+				try {
+					const resp = await fetch(url, {
+						signal: AbortSignal.timeout(3000),
+					});
+					if (resp.ok) {
+						debugLogger.info(`[CLI] LLM Server verified at ${state.llmApiUrl}`);
+						return;
+					}
+				} catch {
+					continue;
+				}
 			}
+			debugLogger.warn(
+				`[CLI] Could not reach LLM Server at ${state.llmApiUrl}`,
+			);
 		}
 		void bootCheck();
 	}, []);
@@ -204,119 +253,121 @@ export const useLlmStream = (
 				messages.push(userMessage);
 				conversationRef.current.push(userMessage);
 
-				const hasTools = Boolean(callTool) && availableTools.length > 0;
+				const openAITools =
+					callTool && availableTools.length > 0
+						? mcpToolsToOpenAI(availableTools)
+						: undefined;
 
-				if (hasTools && callTool) {
-					const openAITools = mcpToolsToOpenAI(availableTools);
-					let progressLog = "";
-					let finalContent = "";
+				let progressLog = "";
 
-					for (let iter = 0; iter < MAX_AGENTIC_ITERATIONS; iter++) {
-						const response = await callLLMNonStreaming(messages, openAITools);
+				for (let iter = 0; iter < MAX_AGENTIC_ITERATIONS; iter++) {
+					let contentAccum = "";
+					let toolCallsReceived: ToolCall[] | null = null;
+					let firstEventReceived = false;
+
+					for await (const event of callLLMStreaming(messages, openAITools)) {
+						if (!firstEventReceived) {
+							setStreamingState("streaming");
+							firstEventReceived = true;
+						}
+
+						if (event.type === "content") {
+							contentAccum += event.chunk;
+							const display = progressLog
+								? `${progressLog}\n${contentAccum}`
+								: contentAccum;
+							setPendingItem({
+								type: "assistant",
+								content: display,
+								isComplete: false,
+							});
+						} else if (event.type === "tool_calls") {
+							toolCallsReceived = event.calls;
+						}
+					}
+
+					if (toolCallsReceived && toolCallsReceived.length > 0 && callTool) {
 						debugLogger.debug(
-							`[LLM] iter=${iter} finish_reason=${response.finish_reason} tool_calls=${response.tool_calls?.length ?? 0}`,
+							`[LLM] iter=${iter} executing ${toolCallsReceived.length} tool(s)`,
 						);
 
-						const wantsTools =
-							response.tool_calls != null && response.tool_calls.length > 0;
+						messages.push({
+							role: "assistant",
+							content: contentAccum,
+							tool_calls: toolCallsReceived,
+						});
 
-						if (wantsTools && response.tool_calls) {
-							setStreamingState("streaming");
+						for (const tc of toolCallsReceived) {
+							let args: Record<string, unknown> = {};
+							try {
+								args = JSON.parse(tc.function.arguments) as Record<
+									string,
+									unknown
+								>;
+							} catch {
+							}
 
-							messages.push({
-								role: "assistant",
-								content: response.content,
-								tool_calls: response.tool_calls,
+							const argSummary = Object.entries(args)
+								.map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 30)}`)
+								.join(", ");
+
+							progressLog += `🔧 ${tc.function.name}(${argSummary})\n`;
+							setPendingItem({
+								type: "assistant",
+								content: progressLog,
+								isComplete: false,
 							});
 
-							for (const tc of response.tool_calls) {
-								let args: Record<string, unknown> = {};
-								try {
-									args = JSON.parse(tc.function.arguments) as Record<
-										string,
-										unknown
-									>;
-								} catch {
-								}
+							const result = await callTool(tc.function.name, args);
+							const resultText = result.content
+								.map((c) => c.text ?? "")
+								.join("")
+								.slice(0, MAX_TOOL_RESULT_CHARS);
 
-								const argSummary = Object.entries(args)
-									.map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 30)}`)
-									.join(", ");
+							progressLog += `  ✓ 완료\n`;
+							setPendingItem({
+								type: "assistant",
+								content: progressLog,
+								isComplete: false,
+							});
 
-								progressLog += `🔧 ${tc.function.name}(${argSummary})\n`;
-								setPendingItem({
-									type: "assistant",
-									content: progressLog,
-									isComplete: false,
-								});
-
-								const result = await callTool(tc.function.name, args);
-								const resultText = result.content
-									.map((c) => c.text ?? "")
-									.join("")
-									.slice(0, MAX_TOOL_RESULT_CHARS);
-
-								progressLog += `  ✓ 완료\n`;
-								setPendingItem({
-									type: "assistant",
-									content: progressLog,
-									isComplete: false,
-								});
-
-								messages.push({
-									role: "tool",
-									tool_call_id: tc.id,
-									content: resultText,
-								});
-							}
-						} else {
-							finalContent = response.content;
-							break;
+							messages.push({
+								role: "tool",
+								tool_call_id: tc.id,
+								content: resultText,
+							});
 						}
+					} else {
+						conversationRef.current.push({
+							role: "assistant",
+							content: contentAccum,
+						});
+
+						const display = progressLog
+							? `${progressLog}\n${contentAccum}`
+							: contentAccum;
+
+						setPendingItem({
+							type: "assistant",
+							content: display,
+							isComplete: true,
+						});
+						break;
 					}
 
-					if (!finalContent) {
-						finalContent =
+					if (iter === MAX_AGENTIC_ITERATIONS - 1) {
+						const fallback =
 							"최대 도구 호출 횟수에 도달했습니다. 작업이 완료되지 않았을 수 있습니다.";
+						conversationRef.current.push({
+							role: "assistant",
+							content: fallback,
+						});
+						setPendingItem({
+							type: "assistant",
+							content: progressLog ? `${progressLog}\n${fallback}` : fallback,
+							isComplete: true,
+						});
 					}
-
-					const displayContent = progressLog
-						? `${progressLog}\n${finalContent}`
-						: finalContent;
-
-					conversationRef.current.push({
-						role: "assistant",
-						content: finalContent,
-					});
-					setStreamingState("streaming");
-					setPendingItem({
-						type: "assistant",
-						content: displayContent,
-						isComplete: true,
-					});
-				} else {
-					const stream = generateLLMStream(messages);
-					let isFirstChunk = true;
-					let fullResponse = "";
-
-					for await (const chunk of stream) {
-						if (isFirstChunk) {
-							setStreamingState("streaming");
-							isFirstChunk = false;
-						}
-						fullResponse += chunk;
-						setPendingItem((prev) =>
-							prev ? { ...prev, content: prev.content + chunk } : null,
-						);
-					}
-
-					conversationRef.current.push({
-						role: "assistant",
-						content: fullResponse,
-					});
-					setPendingItem((prev) =>
-						prev ? { ...prev, isComplete: true } : null,
-					);
 				}
 			} catch (err: unknown) {
 				debugLogger.error("Stream Error:", err);
