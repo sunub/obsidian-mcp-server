@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
-import { debugLogger } from "../utils/debugLogger.js";
+import { useCallback, useState } from "react";
 import type { CallToolFn, McpToolResult } from "../types.js";
+import { debugLogger } from "../utils/debugLogger.js";
 
 export interface UseRagContextReturn {
 	fetchContext: (query: string) => Promise<string | null>;

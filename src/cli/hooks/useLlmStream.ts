@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { debugLogger } from "../utils/debugLogger.js";
-import type { PendingItem, StreamingState, CallToolFn } from "../types.js";
-import type { McpToolInfo } from "../services/McpClientService.js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import state from "../../config.js";
+import type { McpToolInfo } from "../services/McpClientService.js";
+import type { CallToolFn, PendingItem, StreamingState } from "../types.js";
+import { debugLogger } from "../utils/debugLogger.js";
 
 let toolCallingSupportedCache: boolean | null = null;
 
@@ -51,7 +51,11 @@ function parseThinkingContent(raw: string): {
 		}
 	}
 
-	return { thinking: thinking.trim(), main: main.trim(), isThinking: inThinking };
+	return {
+		thinking: thinking.trim(),
+		main: main.trim(),
+		isThinking: inThinking,
+	};
 }
 
 const ANSI_RE =
@@ -259,8 +263,7 @@ async function* callLLMStreaming(
 					yield { type: "tool_calls", calls };
 					return;
 				}
-			} catch (_e) {
-			}
+			} catch (_e) {}
 		}
 	}
 }
@@ -299,9 +302,7 @@ export const useLlmStream = (
 						debugLogger.info(`[CLI] LLM Server verified at ${state.llmApiUrl}`);
 						return;
 					}
-				} catch {
-					continue;
-				}
+				} catch {}
 			}
 			debugLogger.warn(
 				`[CLI] Could not reach LLM Server at ${state.llmApiUrl}`,
@@ -384,8 +385,7 @@ export const useLlmStream = (
 									string,
 									unknown
 								>;
-							} catch {
-							}
+							} catch {}
 
 							const argSummary = Object.entries(args)
 								.map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 30)}`)

@@ -1,8 +1,8 @@
 import { useCallback } from "react";
+import { HELP_COMMAND_MARKER } from "../constants.js";
 import type { McpToolInfo } from "../services/McpClientService.js";
 import type { CallToolFn, DispatchResult, McpToolResult } from "../types.js";
 import { debugLogger } from "../utils/debugLogger.js";
-import { HELP_COMMAND_MARKER } from "../constants.js";
 
 function extractText(result: McpToolResult): string {
 	return result.content
@@ -25,8 +25,7 @@ function extractFilenameFromArgs(args: string): string {
 function parseKeyValueArgs(args: string): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
 	const regex = /(\w+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g;
-	let match: RegExpExecArray | null;
-	while ((match = regex.exec(args)) !== null) {
+	for (const match of args.matchAll(regex)) {
 		const key = match[1];
 		const value = match[2] ?? match[3] ?? match[4];
 		if (value === "true") result[key] = true;
@@ -140,8 +139,7 @@ async function handleReadFallback(
 				};
 			}
 		}
-	} catch {
-	}
+	} catch {}
 
 	return {
 		type: "tool_result",
@@ -181,8 +179,7 @@ function buildDynamicArgs(
 	if (rawArgs.startsWith("{")) {
 		try {
 			return JSON.parse(rawArgs) as Record<string, unknown>;
-		} catch {
-		}
+		} catch {}
 	}
 
 	const extractedIdentifier = extractFilenameFromArgs(rawArgs);
