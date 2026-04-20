@@ -39,9 +39,9 @@ export const configSchema = z.object({
 
 export type ObsidianMcpConfig = z.infer<typeof configSchema>;
 
-const state: ObsidianMcpConfig = configSchema.parse({
+const _rawConfig = {
 	vaultPath: process.env["VAULT_DIR_PATH"] || "",
-	loggingLevel: "info",
+	loggingLevel: "info" as const,
 	llmApiUrl: process.env["LLM_API_URL"] || "http://127.0.0.1:8080",
 	llmEmbeddingApiUrl:
 		process.env["LLM_EMBEDDING_API_URL"] || "http://127.0.0.1:8081",
@@ -49,7 +49,16 @@ const state: ObsidianMcpConfig = configSchema.parse({
 	llmChatModel: process.env["LLM_CHAT_MODEL"] || "llama3",
 	llmRerankerApiUrl:
 		process.env["LLM_RERANKER_API_URL"] || "http://127.0.0.1:8082",
-});
+};
+
+const _parseResult = configSchema.safeParse(_rawConfig);
+
+// safeParse를 사용하여 모듈 로드 시점에 throw하지 않는다.
+// 유효한 환경(프로덕션 CLI)에서는 getOptions()가 전체 검증을 수행한다.
+// 테스트 환경에서는 beforeAll에서 state.vaultPath를 직접 할당한다.
+const state: ObsidianMcpConfig = _parseResult.success
+	? _parseResult.data
+	: (_rawConfig as unknown as ObsidianMcpConfig);
 
 export function getOptions(): ObsidianMcpConfig | false {
 	const program = new Command()
