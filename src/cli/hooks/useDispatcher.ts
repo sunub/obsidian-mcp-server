@@ -174,8 +174,11 @@ function tryMatchDynamicTool(
 /**
  * 동적 도구 호출 시 인자를 빌드하는 전략:
  * 1. key=value 구문으로 파싱 시도
- * 2. 빈 결과이면 도구의 inputSchema에서 첫 번째 required string 파라미터를 찾아
- *    raw text 전체를 해당 파라미터 값으로 매핑
+ * 2. JSON 직접 파싱 시도
+ * 3. 스키마 기반 — 첫 번째 required string 파라미터에 값 매핑
+ *    이때 raw text에 따옴표로 감싼 단어가 있으면 그것을 추출해서 사용
+ *    (예: "VectorDB 문서를 읽어줘" → "VectorDB")
+ * 4. 공통 파라미터명 폴백
  */
 function buildDynamicArgs(
 	rawArgs: string,
@@ -196,16 +199,26 @@ function buildDynamicArgs(
 		}
 	}
 
-	// 3차: 스키마 기반 — 첫 번째 required string 파라미터에 전체 텍스트 할당
+	// 따옴표로 감싼 키워드 추출 시도 (자연어 입력에서 핵심 식별자 추출)
+	// 예: '현재 vault에서 "VectorDB" 문서를 ...' → "VectorDB"
+	const extractedIdentifier = extractFilenameFromArgs(rawArgs);
+	// extractFilenameFromArgs는 따옴표가 없으면 rawArgs 전체를 반환하므로
+	// 실제로 따옴표에서 추출된 경우만 사용 (더 짧고, 공백이 없거나 적음)
+	const isExtracted =
+		extractedIdentifier !== rawArgs &&
+		extractedIdentifier.length < rawArgs.length;
+
+	// 3차: 스키마 기반 — 첫 번째 required string 파라미터에 매핑
 	const schema = tool.inputSchema;
 	if (schema?.required?.length && schema.properties) {
 		for (const paramName of schema.required) {
 			const prop = schema.properties[paramName];
 			if (prop?.type === "string") {
+				const value = isExtracted ? extractedIdentifier : rawArgs;
 				debugLogger.log(
-					`[Dispatcher] Schema-based arg mapping: "${paramName}" ← raw text`,
+					`[Dispatcher] Schema-based arg mapping: "${paramName}" ← ${isExtracted ? `extracted "${value}"` : "raw text"}`,
 				);
-				return { [paramName]: rawArgs };
+				return { [paramName]: value };
 			}
 		}
 	}
@@ -224,13 +237,14 @@ function buildDynamicArgs(
 	if (schema?.properties) {
 		for (const name of commonParamNames) {
 			if (name in schema.properties) {
-				return { [name]: rawArgs };
+				const value = isExtracted ? extractedIdentifier : rawArgs;
+				return { [name]: value };
 			}
 		}
 	}
 
-	// 어떤 매핑도 못 찾으면 raw text를 반환 (서버가 거부할 수 있음)
-	return { input: rawArgs };
+	// 어떤 매핑도 못 찾으면 추출값 또는 raw text 반환
+	return { input: isExtracted ? extractedIdentifier : rawArgs };
 }
 
 export interface UseDispatcherReturn {
