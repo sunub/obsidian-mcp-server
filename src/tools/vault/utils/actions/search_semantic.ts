@@ -1,8 +1,8 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { llmClient } from "@/utils/LLMClient.js";
+import { rerankerClient } from "@/utils/RerankerClient.js";
 import { type ChunkMetadata, vectorDB } from "@/utils/VectorDB.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
-import { rerankerClient } from "@/utils/RerankerClient.js";
 
 function genereateFormattedResult(
 	res: ChunkMetadata & { relevance_score: number },

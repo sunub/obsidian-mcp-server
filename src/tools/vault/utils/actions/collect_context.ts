@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { createToolError } from "@/utils/createToolError.js";
 import { debugLogger } from "@/cli/utils/debugLogger.js";
+import { createToolError } from "@/utils/createToolError.js";
+import { rerankerClient } from "@/utils/RerankerClient.js";
 import type { EnrichedDocument } from "../../../../utils/VaultManger/types.js";
 import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
-import { rerankerClient } from "@/utils/RerankerClient.js";
 import {
 	type CollectContextDocument,
 	type CollectContextMemoryMode,
