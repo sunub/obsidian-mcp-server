@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { debugLogger } from "../utils/debugLogger.js";
 import type { McpToolResult } from "../types.js";
+import { debugLogger } from "../utils/debugLogger.js";
 
 export interface McpConnectionOptions {
 	command: string;
@@ -181,8 +181,7 @@ export class McpClientService {
 			if (this.transport) {
 				await this.transport.close();
 			}
-		} catch {
-		}
+		} catch {}
 		this.client = null;
 		this.transport = null;
 		this._isConnected = false;
