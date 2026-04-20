@@ -21,7 +21,6 @@ export const AppContainer = () => {
 	const [copyModeEnabled] = useState(false);
 	const [showEscapePrompt] = useState(false);
 
-	// Layout context
 	const { columns: terminalWidth, rows: terminalHeight } = useTerminalSize();
 	const mainAreaWidth = terminalWidth;
 	const { inputWidth, suggestionsWidth } = useMemo(() => {
@@ -32,22 +31,18 @@ export const AppContainer = () => {
 
 	const availableTerminalHeight = Math.max(0, terminalHeight - 2);
 
-	// History & Storage
 	const { inputHistory, addInput, initializeFromLogger } =
 		useInputHistoryStore();
 
 	useEffect(() => {
-		// Initialize history from our 24h file storage on mount
 		void initializeFromLogger(historyStorage);
 	}, [initializeFromLogger]);
-
-	// Command dispatcher
-	const { handleDispatch } = useDispatcher();
 
 	// MCP Manager — 다중 MCP 서버 연결 관리
 	const {
 		isConnected: mcpConnected,
 		connections: mcpConnections,
+		tools: mcpTools,
 		toolsByServer: mcpToolsByServer,
 		callTool,
 		errors: mcpErrors,
@@ -55,10 +50,11 @@ export const AppContainer = () => {
 		connectedCount: mcpConnectedCount,
 	} = useMcpManager();
 
-	// RAG Context — Vault 기반 컨텍스트 조회
+	// Command dispatcher — MCP 도구 레지스트리 기반 검증
+	const { handleDispatch } = useDispatcher(mcpTools);
+
 	const { fetchContext } = useRagContext(callTool, mcpConnected);
 
-	// Text buffer
 	const buffer = useTextBuffer({
 		initialText: "",
 		viewportWidth: inputWidth,
