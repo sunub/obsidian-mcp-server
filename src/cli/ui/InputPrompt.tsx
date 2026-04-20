@@ -136,6 +136,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 
 			if (keyMatchers[Command.MOVE_LEFT](key)) {
 				buffer.move("left");
+				return true;
 			}
 
 			// Default Buffer Handling
