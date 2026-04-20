@@ -32,24 +32,90 @@ MCP 클라이언트에 연결해 에이전트에게 **토큰 사용량을 제어
 
 ### 설정 확인사항
 
-1. Vault 경로: VAULT_DIR_PATH에는 반드시 절대 경로를 입력해야 합니다.
+**1. Vault 경로: `VAULT_DIR_PATH`에는 반드시 절대 경로를 입력해야 합니다.**
 
-```plaintext
-// ✅ 올바른 예시
-"VAULT_DIR_PATH": "/Users/username/Documents/MyVault"
-"VAULT_DIR_PATH": "C:\\Users\\username\\Documents\\MyVault"  // Windows
-"VAULT_DIR_PATH": "/mnt/c/Users/username/Documents/MyVault"  // WSL
+```bash
+# ✅ 올바른 예시 (macOS / Linux)
+VAULT_DIR_PATH="/Users/username/Documents/MyVault"
 
-// ❌ 잘못된 예시
-"VAULT_DIR_PATH": "~/Documents/MyVault"  // 상대 경로 사용 불가
-"VAULT_DIR_PATH": "./vault"              // 상대 경로 사용 불가
+# ✅ 올바른 예시 (Windows — 역슬래시 이스케이프)
+VAULT_DIR_PATH="C:\\Users\\username\\Documents\\MyVault"
+
+# ✅ 올바른 예시 (WSL)
+VAULT_DIR_PATH="/mnt/c/Users/username/Documents/MyVault"
+
+# ❌ 잘못된 예시 — 상대 경로는 서버 시작 시 오류 발생
+VAULT_DIR_PATH="~/Documents/MyVault"
+VAULT_DIR_PATH="./vault"
 ```
 
-1. Node.js 요구사항: Node.js 22 이상이 설치되어 있어야 합니다.
+**2. Node.js 요구사항: Node.js 22 이상이 설치되어 있어야 합니다.**
 
 ```bash
 node --version  # v22.0.0 이상 확인
 ```
+
+---
+
+### 환경변수 전체 설정 예시
+
+MCP 클라이언트 설정(`mcpServers.env`) 또는 셸 환경변수로 주입합니다.  
+시맨틱 검색·리랭킹 기능을 사용하지 않을 경우 `VAULT_DIR_PATH`만 필수입니다.
+
+**최소 설정 (기본 도구만 사용)**
+
+```json
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "npx",
+      "args": ["-y", "@sunub/obsidian-mcp-server@latest"],
+      "env": {
+        "VAULT_DIR_PATH": "/abs/path/to/your/vault"
+      }
+    }
+  }
+}
+```
+
+**전체 설정 (시맨틱 검색 + 리랭킹 포함)**
+
+```json
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "npx",
+      "args": ["-y", "@sunub/obsidian-mcp-server@latest"],
+      "env": {
+        "VAULT_DIR_PATH": "/abs/path/to/your/vault",
+        "LOGGING_LEVEL": "info",
+        "LLM_API_URL": "http://127.0.0.1:8080",
+        "LLM_EMBEDDING_API_URL": "http://127.0.0.1:8081",
+        "LLM_EMBEDDING_MODEL": "nomic-embed-text",
+        "LLM_CHAT_MODEL": "llama3",
+        "LLM_RERANKER_API_URL": "http://127.0.0.1:8082",
+        "VAULT_METRICS_LOG_PATH": "/abs/path/to/vault-metrics.ndjson"
+      }
+    }
+  }
+}
+```
+
+각 변수가 연결되는 서버는 아래와 같습니다:
+
+| 환경변수 | 기본값 | 역할 | 필수 여부 |
+|---|---|---|---|
+| `VAULT_DIR_PATH` | — | Obsidian Vault 절대 경로 | **필수** |
+| `LOGGING_LEVEL` | `info` | 로그 수준 (`debug` / `info` / `warn` / `error`) | 선택 |
+| `LLM_API_URL` | `http://127.0.0.1:8080` | llama-server 채팅 엔드포인트 | 선택 |
+| `LLM_EMBEDDING_API_URL` | `http://127.0.0.1:8081` | llama-server 임베딩 엔드포인트 (벡터 색인 필수) | 선택 |
+| `LLM_EMBEDDING_MODEL` | `nomic-embed-text` | 임베딩 모델명 | 선택 |
+| `LLM_CHAT_MODEL` | `llama3` | 채팅 모델명 | 선택 |
+| `LLM_RERANKER_API_URL` | `http://127.0.0.1:8082` | llama-server 리랭커 엔드포인트 (미설정 시 폴백) | 선택 |
+| `VAULT_METRICS_LOG_PATH` | — | 응답 압축·토큰 메트릭 JSONL 기록 경로 | 선택 |
+
+> `LLM_EMBEDDING_API_URL`이 없으면 `search_vault_by_semantic`과 `index_vault_to_vectordb`가 동작하지 않습니다.  
+> `LLM_RERANKER_API_URL`에 서버가 없으면 오류 없이 폴백(원래 정렬 유지)됩니다.
 
 ## 시작하기 (빠른 설정)
 
@@ -191,17 +257,31 @@ npx -y @sunub/obsidian-mcp-server@latest --vault-path /abs/path/to/your/vault --
     }
   }
 }
+```json
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@sunub/obsidian-mcp-server@latest"
+      ],
+      "env": {
+        "VAULT_DIR_PATH": "/path/to/obsidian-vault",
+        "VAULT_METRICS_LOG_PATH": "/path/to/vault-metrics.ndjson",
+        "LOGGING_LEVEL": "info",
+        "LLM_API_URL": "http://127.0.0.1:8080",
+        "LLM_EMBEDDING_API_URL": "http://127.0.0.1:8081",
+        "LLM_EMBEDDING_MODEL": "nomic-embed-text",
+        "LLM_CHAT_MODEL": "llama3",
+        "LLM_RERANKER_API_URL": "http://127.0.0.1:8082"
+      }
+    }
+  }
+}
 ```
 
-## 환경 변수 설정
-
-- `VAULT_DIR_PATH` (필수): Obsidian Vault 절대 경로
-- `VAULT_METRICS_LOG_PATH` (선택): 액션 응답 압축/토큰 메트릭을 JSONL로 기록
-- `LOGGING_LEVEL` (선택): `debug` | `info` | `warn` | `error`
-- `LLM_API_URL` (선택): llama.cpp 채팅 서버 주소 (기본값: `http://127.0.0.1:8080`)
-- `LLM_EMBEDDING_API_URL` (선택): llama.cpp 임베딩 서버 주소 (기본값: `http://127.0.0.1:8081`)
-- `LLM_EMBEDDING_MODEL` (선택): 임베딩용 모델명 (기본값: `nomic-embed-text`)
-- `LLM_CHAT_MODEL` (선택): 문맥 생성용 모델명 (기본값: `llama3`)
+> 각 변수의 역할과 기본값은 [사전 주의사항 → 환경변수 전체 설정 예시](#환경변수-전체-설정-예시)를 참고하세요.
 
 ## 시작 후 빠른 검증
 
