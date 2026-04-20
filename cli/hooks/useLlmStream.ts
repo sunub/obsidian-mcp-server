@@ -1,12 +1,14 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { debugLogger } from "../utils/debugLogger.ts";
-import ollama from "ollama";
 import { useApp } from "ink";
-import type { PendingItem, StreamingState, OllamaMessage } from "../types.ts";
+import ollama from "ollama";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { OllamaMessage, PendingItem, StreamingState } from "../types.ts";
+import { debugLogger } from "../utils/debugLogger.ts";
 
 /** ANSI 이스케이프 시퀀스 제거 */
-// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences intentionally matched
-const ANSI_RE = /[\u001b\u009b][[()#;?]*(?:\d{1,4}(?:;\d{0,4})*)?[A-Za-z0-9=><~]/g;
+const ANSI_RE = new RegExp(
+	"[\u001b\u009b][[()#;?]*(?:\\d{1,4}(?:;\\d{0,4})*)?[A-Za-z0-9=><~]",
+	"g",
+);
 function stripAnsi(text: string): string {
 	return text.replace(ANSI_RE, "");
 }

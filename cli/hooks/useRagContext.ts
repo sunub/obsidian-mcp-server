@@ -7,9 +7,9 @@
  * 전략: 시맨틱 검색(벡터) → 키워드 검색(폴백)
  */
 
-import { useState, useCallback } from "react";
-import { debugLogger } from "../utils/debugLogger.ts";
+import { useCallback, useState } from "react";
 import type { CallToolFn, McpToolResult } from "../types.ts";
+import { debugLogger } from "../utils/debugLogger.ts";
 
 export interface UseRagContextReturn {
 	fetchContext: (query: string) => Promise<string | null>;
@@ -20,8 +20,10 @@ export interface UseRagContextReturn {
 const MAX_CONTEXT_CHARS = 4000;
 
 /** ANSI 이스케이프 시퀀스 제거 (터미널 제어 코드가 임베딩을 오염시키는 것 방지) */
-// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences intentionally matched
-const ANSI_RE = /[\u001b\u009b][[()#;?]*(?:\d{1,4}(?:;\d{0,4})*)?[A-Za-z0-9=><~]/g;
+const ANSI_RE = new RegExp(
+	"[\u001b\u009b][[()#;?]*(?:\\d{1,4}(?:;\\d{0,4})*)?[A-Za-z0-9=><~]",
+	"g",
+);
 function stripAnsi(text: string): string {
 	return text.replace(ANSI_RE, "");
 }
@@ -31,7 +33,9 @@ function stripAnsi(text: string): string {
  */
 function extractTextFromResult(result: McpToolResult): string {
 	return result.content
-		.filter((c): c is { type: "text"; text: string } => c.type === "text" && !!c.text)
+		.filter(
+			(c): c is { type: "text"; text: string } => c.type === "text" && !!c.text,
+		)
 		.map((c) => c.text)
 		.join("\n");
 }

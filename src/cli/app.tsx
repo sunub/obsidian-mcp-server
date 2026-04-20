@@ -1,4 +1,4 @@
-import { render, Box, Text } from "ink";
+import { Box, render, Text } from "ink";
 
 function HistoryPrompt({
 	color = "blue",
