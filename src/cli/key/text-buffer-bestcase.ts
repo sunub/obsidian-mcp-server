@@ -7,31 +7,30 @@
 
 import fs from "node:fs";
 import os from "node:os";
-import pathMod from "node:path";
-import * as path from "node:path";
-import { useState, useCallback, useEffect, useMemo, useReducer } from "react";
-import { LRUCache } from "mnemonist";
+import pathMod, * as path from "node:path";
 import {
 	coreEvents,
 	debugLogger,
-	unescapePath,
 	type EditorType,
+	unescapePath,
 } from "@google/gemini-cli-core";
+import { LRUCache } from "mnemonist";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { LRU_BUFFER_PERF_CACHE_LIMIT } from "../../constants.js";
+import type { Key } from "../../contexts/KeypressContext.js";
+import { useKeyMatchers } from "../../hooks/useKeyMatchers.js";
+import { Command } from "../../key/keyMatchers.js";
+import { parsePastedPaths } from "../../utils/clipboardUtils.js";
+import { openFileInEditor } from "../../utils/editorUtils.js";
 import {
-	toCodePoints,
 	cpLen,
 	cpSlice,
-	stripUnsafeCharacters,
 	getCachedStringWidth,
+	stripUnsafeCharacters,
+	toCodePoints,
 } from "../../utils/textUtils.js";
-import { parsePastedPaths } from "../../utils/clipboardUtils.js";
-import type { Key } from "../../contexts/KeypressContext.js";
-import { Command } from "../../key/keyMatchers.js";
 import type { VimAction } from "./vim-buffer-actions.js";
 import { handleVimAction } from "./vim-buffer-actions.js";
-import { LRU_BUFFER_PERF_CACHE_LIMIT } from "../../constants.js";
-import { openFileInEditor } from "../../utils/editorUtils.js";
-import { useKeyMatchers } from "../../hooks/useKeyMatchers.js";
 
 export const LARGE_PASTE_LINE_THRESHOLD = 5;
 export const LARGE_PASTE_CHAR_THRESHOLD = 500;

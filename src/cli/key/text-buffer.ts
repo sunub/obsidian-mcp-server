@@ -1,14 +1,13 @@
-import { useReducer, useCallback, useMemo, useEffect } from "react";
+import { LRUCache } from "mnemonist";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
+import { LRU_BUFFER_PERF_CACHE_LIMIT } from "../constants.js";
+import type { Key } from "../context/KeypressContext.js";
 import {
 	cpLen,
 	cpSlice,
 	getCachedStringWidth,
 	toCodePoints,
 } from "../utils/textUtil.js";
-
-import type { Key } from "../context/KeypressContext.js";
-import { LRUCache } from "mnemonist";
-import { LRU_BUFFER_PERF_CACHE_LIMIT } from "../constants.js";
 
 export const PASTED_TEXT_PLACEHOLDER_REGEX =
 	/\[Pasted Text: \d+ (?:lines|chars)(?: #\d+)?\]/g;
