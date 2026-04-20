@@ -1,17 +1,10 @@
-/**
- * useDispatcher — 슬래시 커맨드 라우터
- *
- * 사용자가 `/` 로 시작하는 커맨드를 입력하면
- * MCP 도구 호출 또는 로컬 액션으로 분기합니다.
- */
-
 import { useCallback } from "react";
 import { debugLogger } from "../utils/debugLogger.js";
 import type { CallToolFn, DispatchResult, McpToolResult } from "../types.js";
+import { HELP_COMMAND_MARKER } from "../constants.js";
 
-/**
- * MCP 도구 응답에서 텍스트를 추출합니다.
- */
+// ─── Helpers ────────────────────────────────────────────────
+
 function extractText(result: McpToolResult): string {
 	return result.content
 		.filter((c) => c.type === "text" && c.text)
@@ -19,35 +12,121 @@ function extractText(result: McpToolResult): string {
 		.join("\n");
 }
 
-/**
- * 자연어 문장에서 따옴표로 감싼 파일명을 추출합니다.
- * 예: '내가 작성한 "CORS와 SOP" 문서를 읽어줘' → 'CORS와 SOP'
- * 따옴표가 없으면 원본 인자를 그대로 반환합니다.
- */
 function extractFilenameFromArgs(args: string): string {
-	// 큰따옴표 또는 겹낫표(「」) 안의 텍스트 추출
 	const quoted =
-		args.match(/[""]([^""]+)[""]/) ??
+		args.match(/[\u201C"]([^\u201D"]+)[\u201D"]/) ??
 		args.match(/"([^"]+)"/) ??
-		args.match(/「([^」]+)」/);
+		args.match(/\u300C([^\u300D]+)\u300D/);
 	if (quoted?.[1]) {
 		return quoted[1].trim();
 	}
 	return args;
 }
 
-const HELP_TEXT = `사용 가능한 커맨드:
-  /search <keyword>   — Vault 키워드 검색
-  /read <filename>    — 문서 읽기 (따옴표로 파일명 감싸기 권장)
-  /semantic <query>   — 시맨틱(벡터) 검색
-  /stats              — Vault 상태 정보
-  /index              — 벡터 DB 인덱싱 실행
-  /context <topic>    — 토픽 기반 컨텍스트 수집
-  /tools              — 사용 가능한 MCP 도구 목록
-  /clear              — 대화 히스토리 초기화
-  /help               — 이 도움말 표시
+// ─── Command → Tool Mapping ─────────────────────────────────
 
-💡 자연어 질문은 슬래시 없이 입력하면 RAG 기반으로 답변합니다.`;
+interface CommandMapping {
+	tool: string;
+	buildArgs: (args: string) => Record<string, unknown>;
+	requiresArgs?: boolean;
+	noArgsMessage?: string;
+}
+
+const COMMAND_MAP: Record<string, CommandMapping> = {
+	"/search": {
+		tool: "vault",
+		requiresArgs: true,
+		noArgsMessage: "사용법: /search <검색어>",
+		buildArgs: (args) => ({
+			action: "search",
+			keyword: args,
+			limit: 10,
+			includeContent: true,
+			compressionMode: "balanced",
+		}),
+	},
+	"/read": {
+		tool: "vault",
+		requiresArgs: true,
+		noArgsMessage:
+			'사용법: /read <파일명>\n예: /read "브라우저의 교차 출처 리소스 공유(CORS).md"',
+		buildArgs: (args) => ({
+			action: "read",
+			filename: extractFilenameFromArgs(args),
+		}),
+	},
+	"/semantic": {
+		tool: "vault",
+		requiresArgs: true,
+		noArgsMessage: "사용법: /semantic <검색 쿼리>",
+		buildArgs: (args) => ({
+			action: "search_vault_by_semantic",
+			query: args,
+			limit: 5,
+		}),
+	},
+	"/stats": {
+		tool: "vault",
+		buildArgs: () => ({ action: "stats" }),
+	},
+	"/index": {
+		tool: "vault",
+		buildArgs: () => ({ action: "index_vault_to_vectordb" }),
+	},
+	"/context": {
+		tool: "vault",
+		requiresArgs: true,
+		noArgsMessage: "사용법: /context <토픽>",
+		buildArgs: (args) => ({
+			action: "collect_context",
+			topic: args,
+			scope: "topic",
+			maxDocs: 10,
+			memoryMode: "response_only",
+		}),
+	},
+};
+
+// ─── /read Fallback (search when file not found) ────────────
+
+async function handleReadFallback(
+	args: string,
+	callTool: CallToolFn,
+): Promise<DispatchResult> {
+	const filename = extractFilenameFromArgs(args);
+	debugLogger.log(
+		`[Dispatcher] Read failed, trying search fallback for: "${filename}"`,
+	);
+
+	try {
+		const searchResult = await callTool("vault", {
+			action: "search",
+			keyword: filename,
+			limit: 5,
+			includeContent: false,
+			compressionMode: "aggressive",
+		});
+
+		if (!searchResult.isError) {
+			const searchText = extractText(searchResult);
+			if (searchText && !searchText.includes("No results")) {
+				return {
+					type: "tool_result",
+					content: `"${filename}" 파일을 찾지 못했습니다.\n\n유사한 문서:\n${searchText}\n\n💡 정확한 파일명으로 다시 시도하세요: /read "파일명.md"`,
+				};
+			}
+		}
+	} catch {
+		// Fallback search failed — return generic message below
+	}
+
+	return {
+		type: "tool_result",
+		content: `"${filename}" 파일을 찾지 못했습니다.\n💡 /search ${filename} 으로 먼저 검색해보세요.`,
+	};
+}
+
+// ─── Hook ───────────────────────────────────────────────────
 
 export interface UseDispatcherReturn {
 	handleDispatch: (
@@ -65,166 +144,60 @@ export function useDispatcher(): UseDispatcherReturn {
 
 			debugLogger.log(`[Dispatcher] Command: ${command}, Args: "${args}"`);
 
+			// ① Local actions — no MCP call needed
 			switch (command) {
-				case "/search": {
-					if (!args) {
-						return {
-							type: "tool_result",
-							content: "사용법: /search <검색어>",
-						};
-					}
-					const result = await callTool("vault", {
-						action: "search",
-						keyword: args,
-						limit: 10,
-						includeContent: true,
-						compressionMode: "balanced",
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `검색 실패: ${extractText(result)}`
-							: extractText(result) || "검색 결과가 없습니다.",
-					};
-				}
-
-				case "/read": {
-					if (!args) {
-						return {
-							type: "tool_result",
-							content:
-								'사용법: /read <파일명>\n예: /read "브라우저의 교차 출처 리소스 공유(CORS).md"',
-						};
-					}
-					const filename = extractFilenameFromArgs(args);
-					debugLogger.log(`[Dispatcher] Extracted filename: "${filename}"`);
-
-					const result = await callTool("vault", {
-						action: "read",
-						filename,
-					});
-
-					if (result.isError) {
-						// 파일을 찾지 못한 경우, 키워드 검색으로 폴백
-						debugLogger.log(
-							`[Dispatcher] Read failed, trying search fallback for: "${filename}"`,
-						);
-						const searchResult = await callTool("vault", {
-							action: "search",
-							keyword: filename,
-							limit: 5,
-							includeContent: false,
-							compressionMode: "aggressive",
-						});
-
-						if (!searchResult.isError) {
-							const searchText = extractText(searchResult);
-							if (searchText && !searchText.includes("No results")) {
-								return {
-									type: "tool_result",
-									content: `"${filename}" 파일을 찾지 못했습니다.\n\n유사한 문서:\n${searchText}\n\n💡 정확한 파일명으로 다시 시도하세요: /read "파일명.md"`,
-								};
-							}
-						}
-
-						return {
-							type: "tool_result",
-							content: `"${filename}" 파일을 찾지 못했습니다.\n💡 /search ${filename} 으로 먼저 검색해보세요.`,
-						};
-					}
-
-					return {
-						type: "tool_result",
-						content: extractText(result) || "문서를 찾을 수 없습니다.",
-					};
-				}
-
-				case "/semantic": {
-					if (!args) {
-						return {
-							type: "tool_result",
-							content: "사용법: /semantic <검색 쿼리>",
-						};
-					}
-					const result = await callTool("vault", {
-						action: "search_vault_by_semantic",
-						query: args,
-						limit: 5,
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `시맨틱 검색 실패: ${extractText(result)}`
-							: extractText(result) || "관련 문서를 찾을 수 없습니다.",
-					};
-				}
-
-				case "/stats": {
-					const result = await callTool("vault", {
-						action: "stats",
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `상태 조회 실패: ${extractText(result)}`
-							: extractText(result),
-					};
-				}
-
-				case "/index": {
-					const result = await callTool("vault", {
-						action: "index_vault_to_vectordb",
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `인덱싱 실패: ${extractText(result)}`
-							: extractText(result) || "벡터 DB 인덱싱이 완료되었습니다.",
-					};
-				}
-
-				case "/context": {
-					if (!args) {
-						return {
-							type: "tool_result",
-							content: "사용법: /context <토픽>",
-						};
-					}
-					const result = await callTool("vault", {
-						action: "collect_context",
-						topic: args,
-						scope: "topic",
-						maxDocs: 10,
-						memoryMode: "response_only",
-					});
-					return {
-						type: "tool_result",
-						content: result.isError
-							? `컨텍스트 수집 실패: ${extractText(result)}`
-							: extractText(result) || "관련 컨텍스트를 찾을 수 없습니다.",
-					};
-				}
-
 				case "/help":
-					return { type: "local_action", content: HELP_TEXT };
-
+					return { type: "local_action", content: HELP_COMMAND_MARKER };
 				case "/clear":
-					return {
-						type: "local_action",
-						content: "__CLEAR_HISTORY__",
-					};
-
+					return { type: "local_action", content: "__CLEAR_HISTORY__" };
 				case "/tools":
-					return {
-						type: "local_action",
-						content: "__LIST_TOOLS__",
-					};
+					return { type: "local_action", content: "__LIST_TOOLS__" };
+			}
 
-				default:
+			// ② Lookup command in mapping table
+			const mapping = COMMAND_MAP[command];
+			if (!mapping) {
+				return {
+					type: "unknown_command",
+					content: `알 수 없는 커맨드: ${command}\n/help 를 입력하여 사용 가능한 커맨드를 확인하세요.`,
+				};
+			}
+
+			// ③ Validate required args
+			if (mapping.requiresArgs && !args) {
+				return {
+					type: "tool_result",
+					content: mapping.noArgsMessage ?? "인자가 필요합니다.",
+				};
+			}
+
+			// ④ Build structured args & call tool
+			const toolArgs = mapping.buildArgs(args);
+
+			try {
+				const result = await callTool(mapping.tool, toolArgs);
+
+				if (result.isError) {
+					if (command === "/read") {
+						return handleReadFallback(args, callTool);
+					}
 					return {
-						type: "unknown_command",
-						content: `알 수 없는 커맨드: ${command}\n/help 를 입력하여 사용 가능한 커맨드를 확인하세요.`,
+						type: "tool_result",
+						content: `실행 실패: ${extractText(result)}`,
 					};
+				}
+
+				return {
+					type: "tool_result",
+					content: extractText(result) || "결과가 없습니다.",
+				};
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err);
+				debugLogger.error(`[Dispatcher] Tool call failed:`, msg);
+				return {
+					type: "tool_result",
+					content: `도구 호출 오류: ${msg}`,
+				};
 			}
 		},
 		[],
