@@ -1,4 +1,4 @@
-import { z } from "zod/v4";
+import { z } from "zod";
 import { debugLogger } from "@/cli/utils/debugLogger.js";
 import state from "../config.js";
 
@@ -54,6 +54,7 @@ class RerankerClient {
 					documents,
 					top_n: topN,
 				}),
+				signal: AbortSignal.timeout(15000), // 15초 타임아웃
 			});
 
 			if (!response.ok) {
