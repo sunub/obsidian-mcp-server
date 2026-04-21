@@ -12,8 +12,10 @@ async function main() {
 	}
 
 	try {
-		// Start vault watcher for RAG sync
-		await vaultWatcher.start(options.vaultPath);
+		// Start vault watcher for RAG sync in the background
+		vaultWatcher.start(options.vaultPath).catch((error) => {
+			console.error("[VaultWatcher] Background indexing error:", error);
+		});
 
 		const server = createMcpServer();
 		const transport = new StdioServerTransport();
