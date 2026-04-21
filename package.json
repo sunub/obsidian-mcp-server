@@ -32,7 +32,8 @@
 		"inspector": "npx -y @modelcontextprotocol/inspector node ./build/index.js",
 		"format": "npx biome format --write",
 		"lint": "npx biome lint --write",
-		"check": "npx biome check --write"
+		"check": "npx biome check --write",
+		"cli": "npx tsx src/cli/index.tsx"
 	},
 	"author": "sunub",
 	"license": "ISC",
