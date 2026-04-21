@@ -2,12 +2,15 @@ import * as fs from "node:fs";
 import { dirname } from "node:path";
 import * as util from "node:util";
 import chalk from "chalk";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 class DebugLogger {
 	private logStream: fs.WriteStream | undefined;
 
 	constructor() {
-		const logFilePath = process.env["DEBUG_LOG_FILE"];
+		const logFilePath = process.env["DEBUG_LOG_FILE"] || "logs/debug.log";
 
 		if (logFilePath) {
 			const logDir = dirname(logFilePath);
@@ -40,17 +43,17 @@ class DebugLogger {
 
 	info(...args: unknown[]): void {
 		this.writeToFile("INFO", args);
-		console.info(chalk.green("[INFO]"), chalk.green(util.format(...args)));
+		console.error(chalk.green("[INFO]"), chalk.green(util.format(...args)));
 	}
 
 	log(...args: unknown[]): void {
 		this.writeToFile("LOG", args);
-		console.log(chalk.blue("[LOG]"), chalk.gray(util.format(...args)));
+		console.error(chalk.blue("[LOG]"), chalk.gray(util.format(...args)));
 	}
 
 	warn(...args: unknown[]): void {
 		this.writeToFile("WARN", args);
-		console.warn(chalk.yellow("[WARN]"), chalk.yellow(util.format(...args)));
+		console.error(chalk.yellow("[WARN]"), chalk.yellow(util.format(...args)));
 	}
 
 	error(...args: unknown[]): void {
@@ -60,7 +63,7 @@ class DebugLogger {
 
 	debug(...args: unknown[]): void {
 		this.writeToFile("DEBUG", args);
-		console.debug(
+		console.error(
 			chalk.magenta("[DEBUG]"),
 			chalk.magenta(util.format(...args)),
 		);
