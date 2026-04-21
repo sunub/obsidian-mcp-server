@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { DirectoryWalker } from "./DirectoryWalker.js";
+import { llmClient } from "./LLMClient.js";
 import { ragIndexer } from "./RAGIndexer.js";
 import { Semaphore } from "./semaphore.js";
 import { vectorDB } from "./VectorDB.js";
@@ -22,43 +23,50 @@ export class VaultWatcher {
 			);
 		}
 
-		const walker = new DirectoryWalker();
-		const ioSemaphore = new Semaphore(10);
-		const allFiles = await walker.walk(vaultPath, ioSemaphore);
-		const markdownFiles = allFiles.filter((f) => this.isMarkdown(f));
+		const isHealthy = await llmClient.isEmbeddingServerHealthy();
+		if (!isHealthy) {
+			console.error(
+				"[VaultWatcher] Embedding server is unavailable. Skipping initial RAG indexing.",
+			);
+		} else {
+			const walker = new DirectoryWalker();
+			const ioSemaphore = new Semaphore(10);
+			const allFiles = await walker.walk(vaultPath, ioSemaphore);
+			const markdownFiles = allFiles.filter((f) => this.isMarkdown(f));
 
-		const filesToProcess: string[] = [];
-		for (const filePath of markdownFiles) {
-			if (this.forceReindex) {
-				filesToProcess.push(filePath);
-			} else {
-				const stats = await fs.stat(filePath);
-				const storedMtimeStr = await vectorDB.getFileMtime(filePath);
+			const filesToProcess: string[] = [];
+			for (const filePath of markdownFiles) {
+				if (this.forceReindex) {
+					filesToProcess.push(filePath);
+				} else {
+					const stats = await fs.stat(filePath);
+					const storedMtimeStr = await vectorDB.getFileMtime(filePath);
 
-				if (storedMtimeStr) {
-					const storedTime = new Date(storedMtimeStr).getTime();
-					const fileTime = stats.mtime.getTime();
+					if (storedMtimeStr) {
+						const storedTime = new Date(storedMtimeStr).getTime();
+						const fileTime = stats.mtime.getTime();
 
-					if (Math.abs(storedTime - fileTime) > 1000) {
+						if (Math.abs(storedTime - fileTime) > 1000) {
+							filesToProcess.push(filePath);
+						}
+					} else {
 						filesToProcess.push(filePath);
 					}
-				} else {
-					filesToProcess.push(filePath);
 				}
 			}
-		}
 
-		if (filesToProcess.length > 0) {
-			console.error(
-				`[VaultWatcher] Found ${filesToProcess.length} files to index.`,
-			);
-			ragIndexer.setSpinner(filesToProcess.length);
-			for (const filePath of filesToProcess) {
-				await ragIndexer.processFile(filePath);
+			if (filesToProcess.length > 0) {
+				console.error(
+					`[VaultWatcher] Found ${filesToProcess.length} files to index.`,
+				);
+				ragIndexer.setSpinner(filesToProcess.length);
+				for (const filePath of filesToProcess) {
+					await ragIndexer.processFile(filePath);
+				}
+				await vectorDB.createVectorIndex();
+			} else {
+				console.error("[VaultWatcher] No files need indexing.");
 			}
-			await vectorDB.createVectorIndex();
-		} else {
-			console.error("[VaultWatcher] No files need indexing.");
 		}
 
 		this.forceReindex = false;

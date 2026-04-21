@@ -42,9 +42,16 @@ export class LLMClient {
 		return state.llmChatModel;
 	}
 
-	/**
-	 * 청크의 문맥(Context)을 생성합니다. (OpenAI Chat Completion 호환)
-	 */
+	async isEmbeddingServerHealthy(): Promise<boolean> {
+		const url = `${this.embeddingApiUrl}/v1/models`;
+		try {
+			const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
+			return response.ok;
+		} catch (_error) {
+			return false;
+		}
+	}
+
 	async generateContext(
 		documentContext: string,
 		chunkContent: string,
@@ -71,6 +78,7 @@ ${chunkContent}
 					temperature: 0,
 					stream: false,
 				}),
+				signal: AbortSignal.timeout(10000), // 10초 타임아웃
 			});
 
 			if (!response.ok) {
@@ -83,7 +91,11 @@ ${chunkContent}
 			const data = (await response.json()) as LLMChatResponse;
 			return data.choices[0].message.content.trim();
 		} catch (error) {
-			console.error(`Error generating context from LLM at ${url}:`, error);
+			if (error instanceof Error && error.name === "AbortError") {
+				console.error(`LLM API timeout at ${url}`);
+			} else {
+				console.error(`Error generating context from LLM at ${url}:`, error);
+			}
 			return "";
 		}
 	}
@@ -98,6 +110,7 @@ ${chunkContent}
 					model: this.embeddingModel,
 					input: text,
 				}),
+				signal: AbortSignal.timeout(5000), // 임베딩은 더 짧게 5초 타임아웃
 			});
 
 			if (!response.ok) {

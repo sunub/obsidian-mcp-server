@@ -44,16 +44,28 @@ export const searchSemantic = async (
 			};
 		}
 
-		const rerankedResults = await rerankerClient.rerank(
-			query,
-			candidates.map((c) => c.content),
-			limit,
-		);
+		let finalResults = candidates
+			.slice(0, limit)
+			.map((c) => ({ ...c, relevance_score: 0 }));
 
-		const finalResults = rerankedResults.map((r) => ({
-			...candidates[r.index],
-			relevance_score: r.relevance_score,
-		}));
+		try {
+			const rerankedResults = await rerankerClient.rerank(
+				query,
+				candidates.map((c) => c.content),
+				limit,
+			);
+
+			finalResults = rerankedResults.map((r) => ({
+				...candidates[r.index],
+				relevance_score: r.relevance_score,
+			}));
+		} catch (rerankError) {
+			console.error(
+				"Reranking failed, falling back to vector search results:",
+				rerankError,
+			);
+			// Reranking fails, keep vector search results
+		}
 
 		const formattedResults = finalResults
 			.map((res, i) => genereateFormattedResult(res, i))
@@ -69,6 +81,14 @@ export const searchSemantic = async (
 		};
 	} catch (error) {
 		console.error("Semantic search failed:", error);
-		throw error;
+		return {
+			content: [
+				{
+					type: "text",
+					text: `Semantic search is currently unavailable. Please check if your embedding server (e.g., Ollama or llama.cpp) is running.\nError: ${error instanceof Error ? error.message : String(error)}`,
+				},
+			],
+			isError: true,
+		};
 	}
 };

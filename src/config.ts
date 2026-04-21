@@ -2,7 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import dotenv from "dotenv";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 dotenv.config({ debug: false, quiet: true });
 
