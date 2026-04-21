@@ -308,12 +308,27 @@ pm2 start ecosystem.config.cjs --only llama-embedding-server
 
 내부 동작:
 
+
 ```json
 {
-  "method": "tools/call",
-  "params": {
-    "name": "vault",
-    "arguments": { "action": "index_vault_to_vectordb" }
+  "mcpServers": {
+    "obsidian": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@sunub/obsidian-mcp-server@latest"
+      ],
+      "env": {
+        "VAULT_DIR_PATH": "/path/to/obsidian-vault",
+        "VAULT_METRICS_LOG_PATH": "/path/to/vault-metrics.ndjson",
+        "LOGGING_LEVEL": "info",
+        "LLM_API_URL": "http://127.0.0.1:8080",
+        "LLM_EMBEDDING_API_URL": "http://127.0.0.1:8081",
+        "LLM_EMBEDDING_MODEL": "nomic-embed-text",
+        "LLM_CHAT_MODEL": "llama3",
+        "LLM_RERANKER_API_URL": "http://127.0.0.1:8082"
+      }
+    }
   }
 }
 ```
