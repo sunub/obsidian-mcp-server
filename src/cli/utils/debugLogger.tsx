@@ -2,12 +2,15 @@ import * as fs from "node:fs";
 import { dirname } from "node:path";
 import * as util from "node:util";
 import chalk from "chalk";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 class DebugLogger {
 	private logStream: fs.WriteStream | undefined;
 
 	constructor() {
-		const logFilePath = process.env["DEBUG_LOG_FILE"];
+		const logFilePath = process.env["DEBUG_LOG_FILE"] || "logs/debug.log";
 
 		if (logFilePath) {
 			const logDir = dirname(logFilePath);
