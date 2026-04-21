@@ -27,6 +27,7 @@
 		"test:watch": "vitest --watch",
 		"metrics:report": "node scripts/vault-metrics-report.mjs",
 		"prepare": "npm run format && npm run build",
+		"prepublishOnly": "npm run build",
 		"build": "tsc && tsc-alias && shx chmod +x build/index.js",
 		"inspector": "npx -y @modelcontextprotocol/inspector node ./build/index.js",
 		"format": "npx biome format --write",

@@ -13,3 +13,6 @@ mcp-servers.json
 
 .github/agents/*
 .github/prompts/*
+
+logs/*
+tsconfig.tsbuildinfo
