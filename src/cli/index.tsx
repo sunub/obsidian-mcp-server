@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { render } from "ink";
 import { AppContainer } from "./AppContainer.js";
 import { debugLogger } from "./utils/debugLogger.js";
@@ -35,6 +36,17 @@ async function start() {
 	if (isHealthy) {
 		const { waitUntilExit } = render(<AppContainer />);
 		await waitUntilExit();
+
+		console.log(chalk.yellow("\n[Notice] CLI Agent has exited."));
+		console.log(
+			chalk.gray(
+				"If you have LLM or MCP servers running via PM2, you can manage them with:",
+			),
+		);
+		console.log(chalk.cyan("  pm2 status          # Check process status"));
+		console.log(chalk.cyan("  pm2 stop all        # Stop all processes"));
+
+		debugLogger.info("App exited gracefully.");
 	}
 }
 
