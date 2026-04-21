@@ -40,17 +40,17 @@ class DebugLogger {
 
 	info(...args: unknown[]): void {
 		this.writeToFile("INFO", args);
-		console.info(chalk.green("[INFO]"), chalk.green(util.format(...args)));
+		console.error(chalk.green("[INFO]"), chalk.green(util.format(...args)));
 	}
 
 	log(...args: unknown[]): void {
 		this.writeToFile("LOG", args);
-		console.log(chalk.blue("[LOG]"), chalk.gray(util.format(...args)));
+		console.error(chalk.blue("[LOG]"), chalk.gray(util.format(...args)));
 	}
 
 	warn(...args: unknown[]): void {
 		this.writeToFile("WARN", args);
-		console.warn(chalk.yellow("[WARN]"), chalk.yellow(util.format(...args)));
+		console.error(chalk.yellow("[WARN]"), chalk.yellow(util.format(...args)));
 	}
 
 	error(...args: unknown[]): void {
@@ -60,7 +60,7 @@ class DebugLogger {
 
 	debug(...args: unknown[]): void {
 		this.writeToFile("DEBUG", args);
-		console.debug(
+		console.error(
 			chalk.magenta("[DEBUG]"),
 			chalk.magenta(util.format(...args)),
 		);
