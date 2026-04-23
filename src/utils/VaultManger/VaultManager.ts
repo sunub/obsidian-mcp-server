@@ -158,7 +158,10 @@ export class VaultManager {
 		};
 	}
 
-	private async safeSemanticSearch(query: string, limit: number): Promise<any[]> {
+	private async safeSemanticSearch(
+		query: string,
+		limit: number,
+	): Promise<any[]> {
 		try {
 			const queryVector = await llmClient.generateEmbedding(
 				`search_query: ${query}`,

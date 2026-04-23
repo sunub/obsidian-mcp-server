@@ -4,16 +4,18 @@ import {
 	env,
 	pipeline,
 } from "@huggingface/transformers";
-import { join } from "node:path";
 import ora from "ora";
+import { MODELS_DIR, ensureAppDataDirs } from "../utils/constants.js";
 
 async function setup() {
 	console.log("🚀 Starting Obsidian MCP Server Local Model Setup...");
 
+	ensureAppDataDirs();
+	console.log(`📂 Storage directory: ${MODELS_DIR}`);
+
 	// 1. 환경 설정: 원격 다운로드 허용 및 로컬 경로 지정
 	env.allowRemoteModels = true;
-	const modelPath = join(process.cwd(), "models");
-	env.localModelPath = modelPath;
+	env.localModelPath = MODELS_DIR;
 
 	const models = [
 		{ name: "Xenova/bge-reranker-base", type: "text-classification" },
@@ -40,7 +42,9 @@ async function setup() {
 		}
 	}
 
-	console.log("\n✅ Setup complete! Local models are now available in ./models");
+	console.log(
+		"\n✅ Setup complete! Local models are now available in ./models",
+	);
 	console.log(
 		"You can now run the MCP server with high-performance local Reranking and Embedding.",
 	);
