@@ -17,7 +17,10 @@ export class VaultWatcher {
 		}
 
 		await this.vaultManager.initialize();
-		await this.vaultManager.syncMissingRagIndices();
+		// RAG 인덱싱은 백그라운드에서 실행 (await 하지 않음)
+		this.vaultManager.syncMissingRagIndices().catch((error) => {
+			console.error("[VaultManager] Background RAG sync error:", error);
+		});
 
 		console.error(`Starting Vault Watcher for real-time sync: ${vaultPath}`);
 		this.watcher = chokidar.watch(vaultPath, {

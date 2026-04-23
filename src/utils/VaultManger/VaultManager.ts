@@ -27,6 +27,7 @@ import { VaultPathError } from "./VaultPathError.js";
 export class VaultManager {
 	private vaultPath: string;
 	private isInitialized: boolean = false;
+	private initPromise: Promise<void> | null = null;
 	private isLocalAIReady: boolean = false;
 	private walker: DirectoryWalker;
 	private indexer: Indexer;
@@ -41,19 +42,25 @@ export class VaultManager {
 	}
 
 	async initialize(): Promise<void> {
-		if (this.isInitialized) {
-			return;
+		if (this.initPromise) {
+			return this.initPromise;
 		}
-		if (!existsSync(this.vaultPath)) {
-			throw new Error(`Vault 경로가 존재하지 않습니다: ${this.vaultPath}`);
-		}
-		
-		// 1. AI 가용성 체크 (Embedder와 Reranker가 로컬에 모두 있는지 확인)
-		await this.checkAIAvailability();
 
-		const filePaths = await this.walker.walk(this.vaultPath, this.ioSemaphore);
-		await this.indexer.build(filePaths, this.ioSemaphore);
-		this.isInitialized = true;
+		this.initPromise = (async () => {
+			if (!existsSync(this.vaultPath)) {
+				throw new Error(`Vault 경로가 존재하지 않습니다: ${this.vaultPath}`);
+			}
+
+			// 1. AI 가용성 체크 (Embedder와 Reranker가 로컬에 모두 있는지 확인)
+			await this.checkAIAvailability();
+
+			// 2. 빠른 키워드 인덱싱 빌드
+			const filePaths = await this.walker.walk(this.vaultPath, this.ioSemaphore);
+			await this.indexer.build(filePaths, this.ioSemaphore);
+			this.isInitialized = true;
+		})();
+
+		return this.initPromise;
 	}
 
 	private async checkAIAvailability(): Promise<void> {
@@ -87,6 +94,15 @@ export class VaultManager {
 				diagnostic_message =
 					"💡 [검색 품질 안내] 현재 로컬 모델이 설치되어 있지 않아 기본 키워드 검색으로 동작했습니다. 터미널에서 `bunx obsidian-mcp-setup`을 실행하시면 고성능 하이브리드 검색을 사용할 수 있습니다.";
 				this.hasNotifiedMissingModels = true;
+			}
+
+			// 인덱싱 상태 추가
+			const ragStatus = this.getRagIndexingStatus();
+			if (ragStatus.isIndexing) {
+				const indexingMsg = `⏳ [인덱싱 진행 중] 백그라운드에서 의미 기반 검색 인덱싱이 진행 중입니다 (${ragStatus.progress}% - ${ragStatus.processed}/${ragStatus.total}). 검색 결과가 일부 누락될 수 있습니다.`;
+				diagnostic_message = diagnostic_message
+					? `${diagnostic_message}\n\n${indexingMsg}`
+					: indexingMsg;
 			}
 
 			return {
@@ -184,8 +200,16 @@ export class VaultManager {
 			console.error("[VaultManager] Reranking failed:", error);
 		}
 
+		// AI가 준비된 상태에서도 인덱싱이 진행 중이면 메시지 추가
+		let diagnostic_message: string | undefined;
+		const ragStatus = this.getRagIndexingStatus();
+		if (ragStatus.isIndexing) {
+			diagnostic_message = `⏳ [인덱싱 진행 중] 백그라운드에서 의미 기반 검색 인덱싱이 진행 중입니다 (${ragStatus.progress}% - ${ragStatus.processed}/${ragStatus.total}). 최근 변경된 파일은 검색 결과에 즉시 반영되지 않을 수 있습니다.`;
+		}
+
 		return {
 			results: finalResults.slice(0, limit),
+			diagnostic_message,
 		};
 	}
 
@@ -248,11 +272,16 @@ export class VaultManager {
 			console.error(
 				`[VaultManager] Found ${filesToProcess.length} files to index for RAG.`,
 			);
+			ragIndexer.startIndexing(filesToProcess.length);
 			ragIndexer.setSpinner(filesToProcess.length);
-			for (const filePath of filesToProcess) {
-				await ragIndexer.processFile(filePath);
+			try {
+				for (const filePath of filesToProcess) {
+					await ragIndexer.processFile(filePath);
+				}
+				await vectorDB.createVectorIndex();
+			} finally {
+				ragIndexer.stopIndexing();
 			}
-			await vectorDB.createVectorIndex();
 		}
 	}
 
@@ -385,7 +414,12 @@ export class VaultManager {
 			totalFiles: this.indexer.totalFiles,
 			isInitialized: this.isInitialized,
 			vaultPath: this.vaultPath,
+			ragStatus: this.getRagIndexingStatus(),
 		};
+	}
+
+	public getRagIndexingStatus() {
+		return ragIndexer.getStatus();
 	}
 
 	private parseFilenameToFullPath(filename: string): string {
