@@ -24,10 +24,10 @@ class Reranker {
 	private initPromise: Promise<void> | null = null;
 
 	constructor() {
-		env.allowRemoteModels = false;
-		env.localModelPath = MODELS_DIR;
+	  env.allowRemoteModels = false;
+	  env.localModelPath = MODELS_DIR;
+	  env.cacheDir = MODELS_DIR;
 	}
-
 	public async checkModelPresence(): Promise<boolean> {
 		try {
 			// 로드 시도하지 않고 토크나이저 설정만 확인하여 존재 여부 파악

@@ -11,6 +11,7 @@ class EmbedderService {
 	constructor() {
 		env.allowRemoteModels = false;
 		env.localModelPath = MODELS_DIR;
+		env.cacheDir = MODELS_DIR;
 	}
 
 	public async checkModelPresence(): Promise<boolean> {
