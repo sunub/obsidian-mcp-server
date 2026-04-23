@@ -1,6 +1,4 @@
 import { env, pipeline } from "@huggingface/transformers";
-import { join } from "node:path";
-import { existsSync } from "node:fs";
 import { MODELS_DIR } from "./constants.js";
 
 class EmbedderService {
@@ -15,12 +13,16 @@ class EmbedderService {
 	}
 
 	public async checkModelPresence(): Promise<boolean> {
-		const modelPath = join(
-			MODELS_DIR,
-			"Xenova/paraphrase-multilingual-MiniLM-L12-v2",
-		);
-		return existsSync(modelPath);
+		try {
+			await pipeline("feature-extraction", this.modelName, {
+				local_files_only: true,
+			});
+			return true;
+		} catch (e) {
+			return false;
+		}
 	}
+
 	public async init(): Promise<void> {
 		if (this.initPromise) return this.initPromise;
 

@@ -84,19 +84,29 @@ export async function searchDocuments(
 	const documentsData = await Promise.all(
 		searchResults.map(async (res) => {
 			const doc = res.document;
+			let formatted;
+			
 			if (params.includeContent) {
 				const fullDoc = await getDocumentContent(
 					vaultManager,
 					doc.filePath,
 					effectiveExcerptLength,
 				);
-				return formatDocument(
+				formatted = formatDocument(
 					{ ...doc, ...fullDoc },
 					true,
 					effectiveExcerptLength,
 				);
+			} else {
+				formatted = formatDocument(doc, false);
 			}
-			return formatDocument(doc, false);
+
+			// 하이브리드 검색 정보 추가
+			return {
+				...formatted,
+				relevance_score: res.finalScore ?? res.score,
+				best_match_chunk: res.matchedChunks?.[0]?.content || undefined,
+			};
 		}),
 	);
 

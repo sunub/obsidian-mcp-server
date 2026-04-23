@@ -13,6 +13,7 @@ import {
 import matter from "gray-matter";
 
 import { llmClient } from "../LLMClient.js";
+import { localEmbedder } from "../Embedder.js";
 import { localReranker } from "../LocalReranker.js";
 import { ragIndexer } from "../RAGIndexer.js";
 import { vectorDB } from "../VectorDB.js";
@@ -26,6 +27,7 @@ import { VaultPathError } from "./VaultPathError.js";
 export class VaultManager {
 	private vaultPath: string;
 	private isInitialized: boolean = false;
+	private isLocalAIReady: boolean = false;
 	private walker: DirectoryWalker;
 	private indexer: Indexer;
 	private ioSemaphore: Semaphore;
@@ -45,9 +47,26 @@ export class VaultManager {
 		if (!existsSync(this.vaultPath)) {
 			throw new Error(`Vault 경로가 존재하지 않습니다: ${this.vaultPath}`);
 		}
+		
+		// 1. AI 가용성 체크 (Embedder와 Reranker가 로컬에 모두 있는지 확인)
+		await this.checkAIAvailability();
+
 		const filePaths = await this.walker.walk(this.vaultPath, this.ioSemaphore);
 		await this.indexer.build(filePaths, this.ioSemaphore);
 		this.isInitialized = true;
+	}
+
+	private async checkAIAvailability(): Promise<void> {
+		try {
+			const [embedderReady, rerankerReady] = await Promise.all([
+				localEmbedder.checkModelPresence(),
+				localReranker.checkModelPresence(),
+			]);
+			this.isLocalAIReady = embedderReady && rerankerReady;
+		} catch (error) {
+			console.error("[VaultManager] AI 가용성 체크 중 오류:", error);
+			this.isLocalAIReady = false;
+		}
 	}
 
 	/**
@@ -59,13 +78,35 @@ export class VaultManager {
 	): Promise<{ results: any[]; diagnostic_message?: string }> {
 		await this.initialize();
 
-		// 1. 병렬 검색 수행
+		// 1. AI 가용성 확인 및 Fallback 처리
+		if (!this.isLocalAIReady) {
+			const keywordResults = this.indexer.search(query);
+			let diagnostic_message: string | undefined;
+
+			if (!this.hasNotifiedMissingModels) {
+				diagnostic_message =
+					"💡 [검색 품질 안내] 현재 로컬 모델이 설치되어 있지 않아 기본 키워드 검색으로 동작했습니다. 터미널에서 `bunx obsidian-mcp-setup`을 실행하시면 고성능 하이브리드 검색을 사용할 수 있습니다.";
+				this.hasNotifiedMissingModels = true;
+			}
+
+			return {
+				results: keywordResults.slice(0, limit).map((doc) => ({
+					score: 1.0,
+					document: doc,
+					matchedChunks: [],
+					finalScore: 1.0,
+				})),
+				diagnostic_message,
+			};
+		}
+
+		// 2. 병렬 검색 수행 (하이브리드)
 		const [keywordResults, semanticResults] = await Promise.all([
 			this.indexer.search(query),
 			this.safeSemanticSearch(query, limit * 3),
 		]);
 
-		// 2. RRF (Reciprocal Rank Fusion) 스코어 계산
+		// 3. RRF (Reciprocal Rank Fusion) 스코어 계산
 		const rrfScores = new Map<
 			string,
 			{ score: number; document: DocumentIndex; matchedChunks: any[] }
@@ -110,51 +151,41 @@ export class VaultManager {
 			}
 		}
 
-		// 3. 융합 결과 정렬
+		// 4. 융합 결과 정렬
 		const fusedResults = Array.from(rrfScores.values())
 			.sort((a, b) => b.score - a.score)
 			.slice(0, limit * 2);
 
-		// 4. Reranker 최적화 및 진단 메시지 처리
+		// 5. Reranker 최적화
 		let finalResults = fusedResults.map((f) => ({ ...f, finalScore: f.score }));
-		let diagnostic_message: string | undefined;
 
-		const rerankerAvailable = await localReranker.checkModelPresence();
+		try {
+			const rerankDocs = fusedResults.map((item) => {
+				// 청크가 있으면 청크 내용, 없으면 요약이나 파일명 사용
+				return (
+					item.matchedChunks[0]?.content ||
+					item.document.frontmatter.summary ||
+					item.document.filePath
+				);
+			});
 
-		if (rerankerAvailable) {
-			try {
-				const rerankDocs = fusedResults.map((item) => {
-					// 청크가 있으면 청크 내용, 없으면 요약이나 파일명 사용
-					return (
-						item.matchedChunks[0]?.content ||
-						item.document.frontmatter.summary ||
-						item.document.filePath
-					);
+			const reranked = await localReranker.rerank(query, rerankDocs);
+			finalResults = reranked.map((r) => {
+				const original = fusedResults.find((f) => {
+					const content =
+						f.matchedChunks[0]?.content ||
+						f.document.frontmatter.summary ||
+						f.document.filePath;
+					return content === r.document;
 				});
-
-				const reranked = await localReranker.rerank(query, rerankDocs);
-				finalResults = reranked.map((r) => {
-					const original = fusedResults.find((f) => {
-						const content =
-							f.matchedChunks[0]?.content ||
-							f.document.frontmatter.summary ||
-							f.document.filePath;
-						return content === r.document;
-					});
-					return { ...original!, finalScore: r.score };
-				});
-			} catch (error) {
-				console.error("[VaultManager] Reranking failed:", error);
-			}
-		} else if (!this.hasNotifiedMissingModels) {
-			diagnostic_message =
-				"💡 [검색 품질 안내] 현재 로컬 Reranker 모델이 설치되어 있지 않아 기본 하이브리드 검색으로 동작했습니다. 터미널에서 `npx obsidian-mcp-setup`을 실행하시면 검색 정확도가 비약적으로 향상됩니다.";
-			this.hasNotifiedMissingModels = true;
+				return { ...original!, finalScore: r.score };
+			});
+		} catch (error) {
+			console.error("[VaultManager] Reranking failed:", error);
 		}
 
 		return {
 			results: finalResults.slice(0, limit),
-			diagnostic_message,
 		};
 	}
 
@@ -162,6 +193,9 @@ export class VaultManager {
 		query: string,
 		limit: number,
 	): Promise<any[]> {
+		if (!this.isLocalAIReady) {
+			return [];
+		}
 		try {
 			const queryVector = await llmClient.generateEmbedding(
 				`search_query: ${query}`,
@@ -173,6 +207,9 @@ export class VaultManager {
 	}
 
 	public async syncMissingRagIndices(): Promise<void> {
+		if (!this.isLocalAIReady) {
+			return;
+		}
 		const isHealthy = await llmClient.isEmbeddingServerHealthy();
 		if (!isHealthy) {
 			console.error(
@@ -215,6 +252,10 @@ export class VaultManager {
 
 	public async upsertDocument(filePath: string): Promise<void> {
 		await this.indexer.upsertFile(filePath, this.ioSemaphore);
+
+		if (!this.isLocalAIReady) {
+			return;
+		}
 
 		const isHealthy = await llmClient.isEmbeddingServerHealthy();
 		if (isHealthy) {
