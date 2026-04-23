@@ -4,7 +4,7 @@ import { InputContext } from "./context/InputContext.js";
 import { KeypressProvider } from "./context/KeypressContext.js";
 import { useDispatcher } from "./hooks/useDispatcher.js";
 import { useInputHistoryStore } from "./hooks/useInputHistory.js";
-import { useLlmStream } from "./hooks/useLlmStream.js";
+import { useLlmStream } from "./hooks/useLlmStream/index.js";
 import { useMcpManager } from "./hooks/useMcpManager.js";
 import { useRagContext } from "./hooks/useRagContext.js";
 import { useTerminalSize } from "./hooks/useTerminalSize.js";

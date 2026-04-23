@@ -37,14 +37,14 @@ async function start() {
 		const { waitUntilExit } = render(<AppContainer />);
 		await waitUntilExit();
 
-		console.log(chalk.yellow("\n[Notice] CLI Agent has exited."));
-		console.log(
+		debugLogger.log(chalk.yellow("\n[Notice] CLI Agent has exited."));
+		debugLogger.log(
 			chalk.gray(
 				"If you have LLM or MCP servers running via PM2, you can manage them with:",
 			),
 		);
-		console.log(chalk.cyan("  pm2 status          # Check process status"));
-		console.log(chalk.cyan("  pm2 stop all        # Stop all processes"));
+		debugLogger.log(chalk.cyan("  pm2 status          # Check process status"));
+		debugLogger.log(chalk.cyan("  pm2 stop all        # Stop all processes"));
 
 		debugLogger.info("App exited gracefully.");
 	}

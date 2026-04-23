@@ -114,6 +114,7 @@ const KEY_INFO_MAP: Record<
 	"[6^": { name: "pagedown", ctrl: true },
 	"[7^": { name: "home", ctrl: true },
 	"[8^": { name: "end", ctrl: true },
+	"[13u": { name: "enter", shift: true },
 };
 
 const MAC_ALT_KEY_CHARACTER_MAP: Record<string, string> = {
@@ -323,6 +324,7 @@ export function* emitKeys(
 
 				if (match) {
 					if (match[1] === "27" && match[3] && match[4] === "~") {
+						console.log("Detected modifyOtherKeys format");
 						// modifyOtherKeys format: CSI 27 ; modifier ; key ~
 						// Treat as CSI u: key + 'u'
 						code += `${match[3]}u`;

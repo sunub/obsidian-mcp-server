@@ -8,7 +8,6 @@ import {
 	jsonCharLength,
 	resolveCompressionMode,
 	SEARCH_DEFAULT_EXCERPT,
-	SEARCH_DEFAULT_LIMIT,
 } from "../shared.js";
 
 function clampSearchPayloadByOutputChars<
@@ -55,9 +54,10 @@ export async function searchDocuments(
 ): Promise<CallToolResult> {
 	await vaultManager.initialize();
 	const mode = resolveCompressionMode(params);
-	const searchResults = await vaultManager.searchDocuments(
-		params.keyword || "",
-	);
+
+	// 하이브리드 검색 수행
+	const { results: searchResults, diagnostic_message } =
+		await vaultManager.hybridSearch(params.keyword || "", params.limit ?? 10);
 
 	if (params.quiet) {
 		return {
@@ -68,7 +68,8 @@ export async function searchDocuments(
 					text: JSON.stringify({
 						found: searchResults.length,
 						filenames: searchResults.map(
-							(doc) => doc.filePath.split("/").pop() || doc.filePath,
+							(res) =>
+								res.document.filePath.split("/").pop() || res.document.filePath,
 						),
 					}),
 				},
@@ -76,17 +77,13 @@ export async function searchDocuments(
 		};
 	}
 
-	const defaultLimit =
-		mode === "none" ? searchResults.length : SEARCH_DEFAULT_LIMIT[mode];
-	const effectiveLimit = params.limit ?? defaultLimit;
-	const limitedResults = searchResults.slice(0, effectiveLimit);
-
 	const effectiveExcerptLength =
 		params.excerptLength ??
 		(mode === "none" ? undefined : SEARCH_DEFAULT_EXCERPT[mode]);
 
 	const documentsData = await Promise.all(
-		limitedResults.map(async (doc) => {
+		searchResults.map(async (res) => {
+			const doc = res.document;
 			if (params.includeContent) {
 				const fullDoc = await getDocumentContent(
 					vaultManager,
@@ -103,13 +100,14 @@ export async function searchDocuments(
 		}),
 	);
 
-	const sourceChars = limitedResults.reduce(
-		(sum, doc) => sum + doc.contentLength,
+	const sourceChars = searchResults.reduce(
+		(sum, res) => sum + res.document.contentLength,
 		0,
 	);
 	const maxOutputChars =
 		params.maxOutputChars ??
 		(mode === "none" ? null : ACTION_DEFAULT_MAX_OUTPUT_CHARS.search[mode]);
+
 	const basePayload = {
 		query: params.keyword,
 		found: documentsData.length,
@@ -130,9 +128,8 @@ export async function searchDocuments(
 	}
 
 	const isTruncated =
-		limitedResults.length < searchResults.length ||
-		documentsData.some((doc) => doc.content_is_truncated) ||
-		outputCapClamped;
+		documentsData.some((doc) => doc.content_is_truncated) || outputCapClamped;
+
 	const payload = finalizePayloadWithCompression(payloadForCompression, {
 		mode,
 		source_chars: sourceChars,
@@ -142,12 +139,18 @@ export async function searchDocuments(
 			"If you need full raw text, call vault action='read' with compressionMode='none'.",
 	});
 
+	// 진단 메시지가 있으면 최상단에 추가
+	let finalOutput = JSON.stringify(payload, null, 2);
+	if (diagnostic_message) {
+		finalOutput = `<system_directive>\n${diagnostic_message}\n</system_directive>\n\n${finalOutput}`;
+	}
+
 	return {
 		isError: false,
 		content: [
 			{
 				type: "text",
-				text: JSON.stringify(payload, null, 2),
+				text: finalOutput,
 			},
 		],
 	};

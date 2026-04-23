@@ -1307,9 +1307,6 @@ function textBufferReducer(
 	return newState;
 }
 
-/**
- * A simplified multi-line text buffer hook with viewport management.
- */
 export function useTextBuffer({
 	initialText = "",
 	viewportWidth = 80,
@@ -1435,6 +1432,10 @@ export function useTextBuffer({
 				move("end");
 				return true;
 			}
+			if (key.name === "enter" && key.shift) {
+				newline();
+				return true;
+			}
 
 			// Handle character input (only insertable printable characters)
 			if (key.insertable && key.sequence) {
@@ -1444,7 +1445,7 @@ export function useTextBuffer({
 
 			return false;
 		},
-		[backspace, deleteChar, move, insert],
+		[backspace, deleteChar, move, insert, newline],
 	);
 
 	const visualCursor = useMemo(
