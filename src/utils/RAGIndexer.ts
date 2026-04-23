@@ -3,6 +3,7 @@ import path from "node:path";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { encodingForModel } from "js-tiktoken";
 import ora, { type Ora } from "ora";
+import { localEmbedder } from "./Embedder.js";
 import { DirectoryWalker } from "./DirectoryWalker.js";
 import { llmClient } from "./LLMClient.js";
 import { parse as parseMatter } from "./processor/MatterParser.js";
@@ -148,9 +149,14 @@ export class RAGIndexer {
 			await this.embeddingSemaphore.acquire();
 			let vector: number[];
 			try {
-				vector = await llmClient.generateEmbedding(
-					`search_document: ${safeText}`,
-				);
+				const isLocalReady = await localEmbedder.checkModelPresence();
+				if (isLocalReady) {
+					vector = await localEmbedder.embed(`search_document: ${safeText}`);
+				} else {
+					vector = await llmClient.generateEmbedding(
+						`search_document: ${safeText}`,
+					);
+				}
 			} finally {
 				this.embeddingSemaphore.release();
 			}

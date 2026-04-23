@@ -207,17 +207,23 @@ export class VaultManager {
 	}
 
 	public async syncMissingRagIndices(): Promise<void> {
-		if (!this.isLocalAIReady) {
-			return;
-		}
-		const isHealthy = await llmClient.isEmbeddingServerHealthy();
-		if (!isHealthy) {
-			console.error(
-				"[VaultManager] Embedding server is unavailable. Skipping RAG sync.",
-			);
+		// 로컬 모델이 있는 경우 우선적으로 사용
+		if (this.isLocalAIReady) {
+			await this.executeSync();
 			return;
 		}
 
+		// 로컬 모델이 없는 경우 원격 서버 확인
+		const isHealthy = await llmClient.isEmbeddingServerHealthy();
+		if (isHealthy) {
+			await this.executeSync();
+		} else {
+			// 아무것도 없으면 조용히 종료 (로그는 이미 index.ts에서 나옴)
+			return;
+		}
+	}
+
+	private async executeSync(): Promise<void> {
 		const allDocs = await this.getAllDocuments();
 		const forceReindex = await vectorDB.checkAndMigrateIfNeeded();
 		const filesToProcess: string[] = [];
