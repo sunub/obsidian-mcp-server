@@ -89,7 +89,10 @@ class Reranker {
 			score: scores[index],
 		}));
 
-		const parsedResults = rerankedResultsSchema.parse(rankedDocuments);
+		const parsedResults = rerankedResultsSchema.parse(rankedDocuments) as {
+			document: string;
+			score: number;
+		}[];
 
 		return parsedResults.sort((a, b) => b.score - a.score);
 	}

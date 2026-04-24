@@ -2,8 +2,7 @@ import { useState } from "react";
 import { App } from "./App.js";
 import { LLMErrorComponent } from "./ui/LLMErrorComponent.js";
 import { LLMHealthChecker } from "./ui/LLMHealthChecker.js";
-
-export type LLMHealthStatus = "checking" | "success" | "error";
+import type { LLMHealthStatus } from "./types.js";
 
 export const AppContainer = () => {
 	const [llmStatus, setLLMStatus] = useState<LLMHealthStatus>("checking");

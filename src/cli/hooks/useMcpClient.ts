@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { configSchema } from "@/config.js";
+import { configSchema } from "../../config.js";
 import {
 	McpClientService,
 	type McpConnectionOptions,
