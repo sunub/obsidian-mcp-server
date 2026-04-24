@@ -37,7 +37,10 @@ async function parseAndValidateResponse<T extends ZodSchema>(
 	schema: T,
 ): Promise<z.infer<T>> {
 	if (response.isError) {
-		console.error("Tool execution failed content:", JSON.stringify(response.content, null, 2));
+		console.error(
+			"Tool execution failed content:",
+			JSON.stringify(response.content, null, 2),
+		);
 	}
 	expect(response.isError).toBe(false);
 	const responseContent = response.content as { type: string; text: unknown }[];
@@ -45,7 +48,9 @@ async function parseAndValidateResponse<T extends ZodSchema>(
 
 	// Strip <system_directive> if present
 	if (text.includes("<system_directive>")) {
-		text = text.replace(/<system_directive>[\s\S]*?<\/system_directive>/, "").trim();
+		text = text
+			.replace(/<system_directive>[\s\S]*?<\/system_directive>/, "")
+			.trim();
 	}
 
 	const responseText = JSON.parse(text);
@@ -157,7 +162,10 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			arguments: { action: "read", filename: ABSOLUTE_PATH },
 		});
 		if (absoulteResponse.isError) {
-			console.error("Absolute read failed:", JSON.stringify(absoulteResponse.content, null, 2));
+			console.error(
+				"Absolute read failed:",
+				JSON.stringify(absoulteResponse.content, null, 2),
+			);
 		}
 
 		const relativeResponse = await mcpClient.callTool({
@@ -165,7 +173,10 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			arguments: { action: "read", filename: RELATIVE_PATH },
 		});
 		if (relativeResponse.isError) {
-			console.error("Relative read failed:", JSON.stringify(relativeResponse.content, null, 2));
+			console.error(
+				"Relative read failed:",
+				JSON.stringify(relativeResponse.content, null, 2),
+			);
 		}
 
 		expect(absoulteResponse.isError).toBe(false);
@@ -190,20 +201,32 @@ describe("Obsidian MCP Server E2E Tests", () => {
 	});
 
 	test("list_all 도구는 vault의 모든 문서 목록을 반환한다", async () => {
-		const response = await mcpClient.callTool({
-			name: "vault",
-			arguments: { action: "list_all" },
-		});
+		let response;
+		let data: ListAllDocumentsData;
+		const maxRetries = 20;
 
-		const data = (await parseAndValidateResponse(
-			response,
-			listAllDocumentsDataSchema,
-		)) as ListAllDocumentsData;
+		// CI 환경 대응: 파일 인덱싱이 완료될 때까지 최대 2초간 재시도
+		for (let i = 0; i < maxRetries; i++) {
+			response = await mcpClient.callTool({
+				name: "vault",
+				arguments: { action: "list_all" },
+			});
 
-		expect(data.vault_overview.total_documents).toBe(demo_data.length);
-		expect(data.documents.length).toBe(demo_data.length);
+			data = (await parseAndValidateResponse(
+				response,
+				listAllDocumentsDataSchema,
+			)) as ListAllDocumentsData;
 
-		const sortedDocuments = [...data.documents].sort((a, b) =>
+			if (data.vault_overview.total_documents === demo_data.length) {
+				break;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+
+		expect(data!.vault_overview.total_documents).toBe(demo_data.length);
+		expect(data!.documents.length).toBe(demo_data.length);
+
+		const sortedDocuments = [...data!.documents].sort((a, b) =>
 			(a.metadata.title || "").localeCompare(b.metadata.title || ""),
 		);
 		const sortedDemoData = [...demo_data].sort((a, b) =>
