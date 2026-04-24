@@ -85,3 +85,6 @@ export type McpConnectionState =
 	| "connecting"
 	| "connected"
 	| "error";
+
+/** LLM Health Check Status */
+export type LLMHealthStatus = "checking" | "success" | "error";

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { debugLogger } from "@/cli/utils/debugLogger.js";
+import { debugLogger } from "../cli/utils/debugLogger.js";
 import state from "../config.js";
 
 export const RerankResponseSchema = z.object({

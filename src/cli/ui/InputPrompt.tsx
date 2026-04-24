@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { Box, Text } from "ink";
+import type React from "react";
 import { useCallback, useRef } from "react";
 import { useInputState } from "../context/InputContext.js";
 import { useInputHistory } from "../hooks/useInputHistory.js";

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { z } from "zod";
-import { configSchema } from "@/config.js";
+import { configSchema } from "../../config.js";
 import { debugLogger } from "../utils/debugLogger.js";
 
 const mcpServerEntrySchema = z.object({
