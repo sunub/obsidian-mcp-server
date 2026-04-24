@@ -245,20 +245,36 @@ describe("Obsidian MCP Server E2E Tests", () => {
 	});
 
 	test("vault의 collect_context 액션은 배치 메모리 패킷을 반환한다", async () => {
-		const response = await mcpClient.callTool({
-			name: "vault",
-			arguments: {
-				action: "collect_context",
-				scope: "all",
-				maxDocs: 2,
-				maxCharsPerDoc: 350,
-			},
-		});
+		let response: CompatibilityCallToolResult | undefined;
+		let data: z.infer<typeof collectContextResponseDataSchema> | undefined;
+		const maxRetries = 20;
 
-		const data = await parseAndValidateResponse(
-			response,
-			collectContextResponseDataSchema,
-		);
+		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
+		for (let i = 0; i < maxRetries; i++) {
+			response = await mcpClient.callTool({
+				name: "vault",
+				arguments: {
+					action: "collect_context",
+					scope: "all",
+					maxDocs: 2,
+					maxCharsPerDoc: 350,
+				},
+			});
+
+			data = await parseAndValidateResponse(
+				response,
+				collectContextResponseDataSchema,
+			);
+
+			if (data.documents.length > 0) {
+				break;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+
+		if (!data) {
+			throw new Error("Failed to get data from collect_context");
+		}
 
 		expect(data.action).toBe("collect_context");
 		expect(data.scope).toBe("all");
@@ -271,14 +287,8 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 	test('search 도구는 "Test Note" 키워드를 기반으로 문서를 찾을 수 있다', async () => {
 		const searchQuery = "Getting Started with Obsidian MCP Server";
-		const response = await mcpClient.callTool({
-			name: "vault",
-			arguments: {
-				action: "search",
-				keyword: searchQuery,
-				includeContent: true,
-			},
-		});
+		let response: CompatibilityCallToolResult | undefined;
+		const maxRetries = 20;
 
 		const ProcessedFrontMatterSchema = FrontMatterSchema.extend({
 			title: z.string(),
@@ -293,10 +303,33 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			documents: z.array(ProcessedDocumentSchema),
 		});
 
-		const data = await parseAndValidateResponse(
-			response,
-			ProcessedSearchSuccessSchema,
-		);
+		let data: z.infer<typeof ProcessedSearchSuccessSchema> | undefined;
+
+		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
+		for (let i = 0; i < maxRetries; i++) {
+			response = await mcpClient.callTool({
+				name: "vault",
+				arguments: {
+					action: "search",
+					keyword: searchQuery,
+					includeContent: true,
+				},
+			});
+
+			data = await parseAndValidateResponse(
+				response,
+				ProcessedSearchSuccessSchema,
+			);
+
+			if (data.found > 0) {
+				break;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+
+		if (!data) {
+			throw new Error("Failed to get data from search");
+		}
 
 		expect(data.query).toBe(searchQuery);
 		expect(data.found).toBe(1);
@@ -320,18 +353,34 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		const destinationImagePath = path.join(TEST_VAULT_PATH, "demo_img.png");
 		await copyFile(sourceImagePath, destinationImagePath);
 
-		const response = await mcpClient.callTool({
-			name: "organize_attachments",
-			arguments: {
-				keyword: "Test Note",
-				destination: "images",
-				useTitleAsFolderName: true,
-			},
-		});
-		const data = await parseAndValidateResponse(
-			response,
-			OrganizeAttachmentsResultSchema,
-		);
+		let response: CompatibilityCallToolResult | undefined;
+		let data: z.infer<typeof OrganizeAttachmentsResultSchema> | undefined;
+		const maxRetries = 20;
+
+		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
+		for (let i = 0; i < maxRetries; i++) {
+			response = await mcpClient.callTool({
+				name: "organize_attachments",
+				arguments: {
+					keyword: "Test Note",
+					destination: "images",
+					useTitleAsFolderName: true,
+				},
+			});
+			data = await parseAndValidateResponse(
+				response,
+				OrganizeAttachmentsResultSchema,
+			);
+
+			if (data.details.length > 0) {
+				break;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+
+		if (!data) {
+			throw new Error("Failed to get data from organize_attachments");
+		}
 
 		const detail = data.details.find((d) =>
 			d.document.includes("Test Note.md"),
