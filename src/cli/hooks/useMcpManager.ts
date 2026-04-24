@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadMcpServersConfig } from "../config/mcpServersConfig.js";
 import type { McpToolInfo } from "../services/McpClientService.js";
 import {
@@ -28,6 +28,10 @@ export interface UseMcpManagerReturn {
 	serverCount: number;
 	/** 연결된 서버 수 */
 	connectedCount: number;
+	/** 현재 연결 중인 서버가 있는지 여부 */
+	isAnyConnecting: boolean;
+	/** 에러가 발생한 서버가 있는지 여부 */
+	hasAnyError: boolean;
 }
 
 export const useMcpManager = (): UseMcpManagerReturn => {
@@ -42,6 +46,13 @@ export const useMcpManager = (): UseMcpManagerReturn => {
 	const [serverCount, setServerCount] = useState<number>(0);
 	const [connectedCount, setConnectedCount] = useState<number>(0);
 	const [isConnected, setIsConnected] = useState<boolean>(false);
+
+	const isAnyConnecting = useMemo(
+		() =>
+			Array.from(connections.values()).some((c) => c.state === "connecting"),
+		[connections],
+	);
+	const hasAnyError = errors.size > 0;
 
 	const managerRef = useRef<McpManager | null>(null);
 
@@ -71,10 +82,6 @@ export const useMcpManager = (): UseMcpManagerReturn => {
 					debugLogger.warn("[useMcpManager] 설정된 MCP 서버가 없습니다.");
 					return;
 				}
-
-				debugLogger.info(
-					`[useMcpManager] ${configs.length}개의 MCP 서버 연결 시작: ${configs.map((c) => c.name).join(", ")}`,
-				);
 
 				await manager.connectAll(configs, () => {
 					if (!cancelled) {
@@ -133,5 +140,7 @@ export const useMcpManager = (): UseMcpManagerReturn => {
 		errors,
 		serverCount,
 		connectedCount,
+		isAnyConnecting,
+		hasAnyError,
 	};
 };

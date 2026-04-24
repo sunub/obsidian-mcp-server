@@ -63,10 +63,7 @@ class DebugLogger {
 
 	debug(...args: unknown[]): void {
 		this.writeToFile("DEBUG", args);
-		console.error(
-			chalk.magenta("[DEBUG]"),
-			chalk.magenta(util.format(...args)),
-		);
+		console.error(chalk.bgGrey("[DEBUG]"), chalk.bgGrey(util.format(...args)));
 	}
 }
 

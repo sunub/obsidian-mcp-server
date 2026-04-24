@@ -4,6 +4,7 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { encodingForModel } from "js-tiktoken";
 import ora, { type Ora } from "ora";
 import { DirectoryWalker } from "./DirectoryWalker.js";
+import { localEmbedder } from "./Embedder.js";
 import { llmClient } from "./LLMClient.js";
 import { parse as parseMatter } from "./processor/MatterParser.js";
 import { Semaphore } from "./semaphore.js";
@@ -47,6 +48,7 @@ export class RAGIndexer {
 	private spinner: Ora | null = null;
 	private totalFiles = 0;
 	private processedFiles = 0;
+	private _isIndexing = false;
 	private enc = encodingForModel("gpt-3.5-turbo");
 
 	constructor() {
@@ -80,6 +82,28 @@ export class RAGIndexer {
 			this.spinner.succeed(`Successfully indexed ${this.totalFiles} files.`);
 			this.spinner = null;
 		}
+	}
+
+	public getStatus() {
+		return {
+			isIndexing: this._isIndexing,
+			processed: this.processedFiles,
+			total: this.totalFiles,
+			progress:
+				this.totalFiles > 0
+					? Math.round((this.processedFiles / this.totalFiles) * 100)
+					: 0,
+		};
+	}
+
+	public startIndexing(total: number) {
+		this._isIndexing = true;
+		this.totalFiles = total;
+		this.processedFiles = 0;
+	}
+
+	public stopIndexing() {
+		this._isIndexing = false;
 	}
 
 	private async buildFileRecords(
@@ -148,9 +172,14 @@ export class RAGIndexer {
 			await this.embeddingSemaphore.acquire();
 			let vector: number[];
 			try {
-				vector = await llmClient.generateEmbedding(
-					`search_document: ${safeText}`,
-				);
+				const isLocalReady = await localEmbedder.checkModelPresence();
+				if (isLocalReady) {
+					vector = await localEmbedder.embed(`search_document: ${safeText}`);
+				} else {
+					vector = await llmClient.generateEmbedding(
+						`search_document: ${safeText}`,
+					);
+				}
 			} finally {
 				this.embeddingSemaphore.release();
 			}
@@ -211,36 +240,41 @@ export class RAGIndexer {
 	}
 
 	async indexAll(vaultPath: string): Promise<void> {
-		const walker = new DirectoryWalker();
-		const filePaths = await walker.walk(vaultPath, this.ioSemaphore);
-		const markdownFiles = filePaths.filter(
-			(f) => f.endsWith(".md") || f.endsWith(".mdx"),
-		);
+		this._isIndexing = true;
+		try {
+			const walker = new DirectoryWalker();
+			const filePaths = await walker.walk(vaultPath, this.ioSemaphore);
+			const markdownFiles = filePaths.filter(
+				(f) => f.endsWith(".md") || f.endsWith(".mdx"),
+			);
 
-		this.setSpinner(markdownFiles.length);
+			this.setSpinner(markdownFiles.length);
 
-		const allRecords: VectorRecord[] = [];
-		const allMeta: { filePath: string; mtime: string }[] = [];
-		const fileSemaphore = new Semaphore(8);
+			const allRecords: VectorRecord[] = [];
+			const allMeta: { filePath: string; mtime: string }[] = [];
+			const fileSemaphore = new Semaphore(8);
 
-		await Promise.all(
-			markdownFiles.map(async (filePath) => {
-				await fileSemaphore.acquire();
-				try {
-					const result = await this.processFileInMemory(filePath);
-					if (result && result.records.length > 0) {
-						allRecords.push(...result.records);
-						allMeta.push({ filePath, mtime: result.mtime });
+			await Promise.all(
+				markdownFiles.map(async (filePath) => {
+					await fileSemaphore.acquire();
+					try {
+						const result = await this.processFileInMemory(filePath);
+						if (result && result.records.length > 0) {
+							allRecords.push(...result.records);
+							allMeta.push({ filePath, mtime: result.mtime });
+						}
+					} finally {
+						fileSemaphore.release();
 					}
-				} finally {
-					fileSemaphore.release();
-				}
-			}),
-		);
+				}),
+			);
 
-		if (allRecords.length > 0) {
-			await vectorDB.upsertChunks(allRecords);
-			await vectorDB.updateFileMetaBatch(allMeta);
+			if (allRecords.length > 0) {
+				await vectorDB.upsertChunks(allRecords);
+				await vectorDB.updateFileMetaBatch(allMeta);
+			}
+		} finally {
+			this._isIndexing = false;
 		}
 	}
 

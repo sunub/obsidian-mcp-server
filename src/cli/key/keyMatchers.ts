@@ -1,16 +1,7 @@
-/**
- * @license
- * Copyright 2025 Google LLC
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import type { Key } from "../hooks/useKeypress.js";
 import type { KeyBindingConfig } from "./keyBindings.js";
 import { Command, defaultKeyBindingConfig } from "./keyBindings.js";
 
-/**
- * Checks if a key matches any of the bindings for a command
- */
 function matchCommand(
 	command: Command,
 	key: Key,
@@ -21,9 +12,6 @@ function matchCommand(
 	return bindings.some((binding) => binding.matches(key));
 }
 
-/**
- * Key matcher function type
- */
 type KeyMatcher = (key: Key) => boolean;
 
 /**

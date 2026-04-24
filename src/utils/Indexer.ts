@@ -26,6 +26,28 @@ export class Indexer {
 		this.buildBacklinkIndex();
 	}
 
+	public async upsertFile(
+		filePath: string,
+		ioSemaphore: Semaphore,
+	): Promise<void> {
+		this.removeFileEntries(filePath);
+		await this.processFile(filePath, ioSemaphore);
+		this.buildBacklinkIndex();
+	}
+
+	public removeFileEntries(filePath: string): void {
+		for (const [token, fileSet] of this.invertedIndex.entries()) {
+			if (fileSet.has(filePath)) {
+				fileSet.delete(filePath);
+				if (fileSet.size === 0) {
+					this.invertedIndex.delete(token);
+				}
+			}
+		}
+
+		this.documentMap.delete(filePath);
+	}
+
 	public search(keyword: string): DocumentIndex[] {
 		const lowerKeyword = keyword.toLowerCase().trim();
 		if (!lowerKeyword) {
@@ -33,7 +55,6 @@ export class Indexer {
 		}
 
 		const tokens = lowerKeyword.split(/\s+/).filter((t) => t.length > 0);
-
 		if (tokens.length === 0) {
 			return [];
 		}
@@ -111,6 +132,7 @@ export class Indexer {
 				filePath,
 				frontmatter,
 				contentLength: content.length,
+				mtime: fileStat.mtime.getTime(),
 				imageLinks,
 				documentLinks,
 			};

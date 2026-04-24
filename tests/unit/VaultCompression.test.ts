@@ -77,10 +77,30 @@ function createMockVaultManager() {
 
 	const manager: Pick<
 		VaultManager,
-		"initialize" | "searchDocuments" | "getAllDocuments" | "getDocumentInfo"
+		| "initialize"
+		| "searchDocuments"
+		| "getAllDocuments"
+		| "getDocumentInfo"
+		| "hybridSearch"
 	> = {
 		initialize: vi.fn(async () => {}),
 		searchDocuments: vi.fn(async () => [indexedDoc]),
+		hybridSearch: vi.fn(async () => ({
+			results: [
+				{
+					score: 1.0,
+					document: indexedDoc,
+					matchedChunks: [
+						{
+							filePath: indexedDoc.filePath,
+							content: "A".repeat(4000),
+							mtime: Date.now(),
+						},
+					],
+					finalScore: 1.0,
+				},
+			],
+		})),
 		getAllDocuments: vi.fn(async () => [indexedDoc]),
 		getDocumentInfo: vi.fn(
 			async (

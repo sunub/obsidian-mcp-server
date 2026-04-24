@@ -1,8 +1,10 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { env } from "@huggingface/transformers";
 import { Command } from "commander";
 import dotenv from "dotenv";
 import { z } from "zod";
+import { MODELS_DIR } from "./utils/constants.js";
 
 dotenv.config({ debug: false, quiet: true });
 
@@ -119,6 +121,12 @@ export function getOptions(): ObsidianMcpConfig | false {
 	state.llmChatModel = parseResult.data.llmChatModel;
 
 	return state;
+}
+
+export function setLocalLLMEnvSetting() {
+	env.localModelPath = MODELS_DIR;
+	env.cacheDir = MODELS_DIR;
+	env.allowRemoteModels = false;
 }
 
 export default state;
