@@ -36,9 +36,19 @@ async function parseAndValidateResponse<T extends ZodSchema>(
 	response: CompatibilityCallToolResult,
 	schema: T,
 ): Promise<z.infer<T>> {
+	if (response.isError) {
+		console.error("Tool execution failed content:", JSON.stringify(response.content, null, 2));
+	}
 	expect(response.isError).toBe(false);
 	const responseContent = response.content as { type: string; text: unknown }[];
-	const responseText = JSON.parse(responseContent[0].text as string);
+	let text = responseContent[0].text as string;
+
+	// Strip <system_directive> if present
+	if (text.includes("<system_directive>")) {
+		text = text.replace(/<system_directive>[\s\S]*?<\/system_directive>/, "").trim();
+	}
+
+	const responseText = JSON.parse(text);
 	const parsed = schema.safeParse(responseText);
 
 	if (!parsed.success) {
@@ -146,11 +156,17 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			name: "vault",
 			arguments: { action: "read", filename: ABSOLUTE_PATH },
 		});
+		if (absoulteResponse.isError) {
+			console.error("Absolute read failed:", JSON.stringify(absoulteResponse.content, null, 2));
+		}
 
 		const relativeResponse = await mcpClient.callTool({
 			name: "vault",
 			arguments: { action: "read", filename: RELATIVE_PATH },
 		});
+		if (relativeResponse.isError) {
+			console.error("Relative read failed:", JSON.stringify(relativeResponse.content, null, 2));
+		}
 
 		expect(absoulteResponse.isError).toBe(false);
 		expect(relativeResponse.isError).toBe(false);
