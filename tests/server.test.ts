@@ -201,8 +201,8 @@ describe("Obsidian MCP Server E2E Tests", () => {
 	});
 
 	test("list_all 도구는 vault의 모든 문서 목록을 반환한다", async () => {
-		let response;
-		let data: ListAllDocumentsData;
+		let response: CompatibilityCallToolResult | undefined;
+		let data: ListAllDocumentsData | undefined;
 		const maxRetries = 20;
 
 		// CI 환경 대응: 파일 인덱싱이 완료될 때까지 최대 2초간 재시도
@@ -223,10 +223,14 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
 
-		expect(data!.vault_overview.total_documents).toBe(demo_data.length);
-		expect(data!.documents.length).toBe(demo_data.length);
+		if (!data) {
+			throw new Error("Failed to get data from list_all");
+		}
 
-		const sortedDocuments = [...data!.documents].sort((a, b) =>
+		expect(data.vault_overview.total_documents).toBe(demo_data.length);
+		expect(data.documents.length).toBe(demo_data.length);
+
+		const sortedDocuments = [...data.documents].sort((a, b) =>
 			(a.metadata.title || "").localeCompare(b.metadata.title || ""),
 		);
 		const sortedDemoData = [...demo_data].sort((a, b) =>
