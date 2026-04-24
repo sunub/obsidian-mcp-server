@@ -1,9 +1,13 @@
-import { env, pipeline } from "@huggingface/transformers";
+import {
+	env,
+	type FeatureExtractionPipeline,
+	pipeline,
+} from "@huggingface/transformers";
 import { MODELS_DIR } from "./constants.js";
 
 class EmbedderService {
 	private modelName = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
-	private extractor: any = null;
+	private extractor: FeatureExtractionPipeline | null = null;
 	private initPromise: Promise<void> | null = null;
 
 	constructor() {
@@ -18,7 +22,7 @@ class EmbedderService {
 				local_files_only: true,
 			});
 			return true;
-		} catch (e) {
+		} catch (_e) {
 			return false;
 		}
 	}
@@ -36,6 +40,10 @@ class EmbedderService {
 	public async embed(text: string): Promise<number[]> {
 		if (!this.extractor) {
 			await this.init();
+		}
+
+		if (!this.extractor) {
+			throw new Error("Failed to initialize embedder");
 		}
 
 		const output = await this.extractor(text, {
