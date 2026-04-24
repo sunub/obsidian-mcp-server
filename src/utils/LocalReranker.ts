@@ -1,11 +1,11 @@
+import type {
+	PreTrainedModel,
+	PreTrainedTokenizer,
+} from "@huggingface/transformers";
 import {
 	AutoModelForSequenceClassification,
 	AutoTokenizer,
 	env,
-} from "@huggingface/transformers";
-import type {
-	PreTrainedModel,
-	PreTrainedTokenizer,
 } from "@huggingface/transformers";
 import z from "zod";
 import { MODELS_DIR } from "./constants.js";
@@ -35,7 +35,7 @@ class Reranker {
 				local_files_only: true,
 			});
 			return true;
-		} catch (e) {
+		} catch (_e) {
 			return false;
 		}
 	}
