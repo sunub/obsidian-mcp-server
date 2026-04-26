@@ -10,6 +10,8 @@ interface MainContentProps {
 	history: HistoryItem[];
 	pendingItem: PendingItem | null;
 	streamingState: StreamingState;
+	isRagFetching?: boolean;
+	isCommandProcessing?: boolean;
 	width: number;
 }
 
@@ -61,8 +63,16 @@ export const MainContent: React.FC<MainContentProps> = ({
 	history,
 	pendingItem,
 	streamingState,
+	isRagFetching,
+	isCommandProcessing,
 	width,
 }) => {
+	const isBusy =
+		isRagFetching ||
+		isCommandProcessing ||
+		streamingState === "thinking" ||
+		streamingState === "executing";
+
 	return (
 		<>
 			<Static items={history}>
@@ -74,7 +84,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 				}}
 			</Static>
 
-			{streamingState === "thinking" && <ThinkingIndicator />}
+			{isBusy && <ThinkingIndicator />}
 
 			{pendingItem && (
 				<Box flexDirection="column" width={width} paddingX={1} marginBottom={1}>
