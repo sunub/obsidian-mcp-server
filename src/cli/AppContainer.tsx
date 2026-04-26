@@ -3,6 +3,7 @@ import { App } from "./App.js";
 import { LLMErrorComponent } from "./ui/LLMErrorComponent.js";
 import { LLMHealthChecker } from "./ui/LLMHealthChecker.js";
 import type { LLMHealthStatus } from "./types.js";
+import { KeypressProvider } from "./context/KeypressContext.js";
 
 export const AppContainer = () => {
 	const [llmStatus, setLLMStatus] = useState<LLMHealthStatus>("checking");
@@ -27,5 +28,9 @@ export const AppContainer = () => {
 		);
 	}
 
-	return <App />;
+	return (
+		<KeypressProvider>
+			<App />
+		</KeypressProvider>
+	);
 };
