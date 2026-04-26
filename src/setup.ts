@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { fileURLToPath } from "node:url";
 import { env, type PipelineType, pipeline } from "@huggingface/transformers";
 import chalk from "chalk";
@@ -145,9 +146,12 @@ export async function setup(options = { force: false }) {
 
 const isMain =
 	process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
-console.log(isMain, import.meta.url);
 
-if (isMain || process.argv[1]?.endsWith("setup.js")) {
+if (
+	isMain ||
+	process.argv[1]?.endsWith("setup.js") ||
+	process.argv[1]?.endsWith("obsidian-mcp-setup")
+) {
 	setup({ force: true })
 		.catch((error) => {
 			console.error(chalk.red("\n🚨 Fatal error during setup:"), error);
