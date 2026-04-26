@@ -14,6 +14,7 @@ export async function* callLLMStreaming(
 	messages: ConversationMessage[],
 	tools?: OpenAITool[],
 	allowFallback = true,
+	signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
 	const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
 
@@ -34,6 +35,7 @@ export async function* callLLMStreaming(
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(body),
+		signal,
 	});
 
 	if (!response.ok) {
