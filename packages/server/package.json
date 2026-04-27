@@ -13,7 +13,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "bun build ./src/index.ts --target node --outdir ./build --sourcemap",
+    "build": "bun build ./src/index.ts --target node --outdir ./build --sourcemap && tsc --emitDeclarationOnly",
     "start": "bun run ./src/index.ts",
     "test": "vitest run",
     "prepublishOnly": "shx cp ../../README.md . && shx cp ../../LICENSE ."
@@ -40,14 +40,16 @@
     "gray-matter": "^4.0.3",
     "glob": "^11.0.0",
     "mime-types": "^2.1.35",
-    "canvas": "^2.11.2"
+    "canvas": "^2.11.2",
+    "chalk": "^5.3.0"
   },
   "devDependencies": {
     "@sunub/obsidian-mcp-core": "workspace:*",
     "@types/node": "^20.14.10",
     "@types/mime-types": "^2.1.4",
     "vitest": "^2.0.1",
-    "shx": "^0.4.0"
+    "shx": "^0.4.0",
+    "typescript": "^5.0.0"
   },
   "publishConfig": {
     "access": "public",
