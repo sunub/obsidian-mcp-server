@@ -1,12 +1,19 @@
 {
 	"name": "obsidian-mcp-monorepo",
 	"version": "0.3.9",
+	"author": "sunub",
+	"devDependencies": {
+		"@biomejs/biome": "2.3.8",
+		"@types/node": "^24.3.1",
+		"shx": "^0.4.0",
+		"tsx": "^4.21.0",
+		"typescript": "^5.9.2",
+		"vite-tsconfig-paths": "^5.1.4",
+		"vitest": "^3.2.4"
+	},
 	"description": "Monorepo for Obsidian MCP Server and CLI Agent",
-	"type": "module",
+	"license": "ISC",
 	"private": true,
-	"workspaces": [
-		"packages/*"
-	],
 	"scripts": {
 		"test": "vitest",
 		"test:watch": "vitest --watch",
@@ -17,15 +24,8 @@
 		"cli": "bun run --cwd packages/cli start",
 		"server": "bun run --cwd packages/server start"
 	},
-	"author": "sunub",
-	"license": "ISC",
-	"devDependencies": {
-		"@biomejs/biome": "2.3.8",
-		"@types/node": "^24.3.1",
-		"shx": "^0.4.0",
-		"tsx": "^4.21.0",
-		"typescript": "^5.9.2",
-		"vite-tsconfig-paths": "^5.1.4",
-		"vitest": "^3.2.4"
-	}
+	"type": "module",
+	"workspaces": [
+		"packages/*"
+	]
 }

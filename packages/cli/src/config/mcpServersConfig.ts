@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { configSchema, debugLogger } from "@sunub/core";
 import { z } from "zod";
 
-
 const mcpServerEntrySchema = z.object({
 	command: z.string().min(1),
 	args: z.array(z.string()).optional().default([]),
@@ -81,8 +80,7 @@ function buildFallbackConfig(): McpServerConfig[] {
 	});
 
 	const env = parseResult.success ? parseResult.data : null;
-	const vaultPath =
-		env?.vaultPath || (process.env["VAULT_DIR_PATH"] as string);
+	const vaultPath = env?.vaultPath || (process.env["VAULT_DIR_PATH"] as string);
 
 	if (!vaultPath) {
 		debugLogger.warn(

@@ -238,7 +238,10 @@ export class VectorDB {
 				});
 			} catch (err) {
 				// 이미 생성된 경우 무시
-				debugLogger.debug(`[VectorDB] Table ${this.tableName} already exists or creation failed:`, err);
+				debugLogger.debug(
+					`[VectorDB] Table ${this.tableName} already exists or creation failed:`,
+					err,
+				);
 			}
 		}
 
@@ -260,12 +263,19 @@ export class VectorDB {
 
 		if (!tableNames.includes(this.fileMetaTableName)) {
 			try {
-				await this.db.createTable(this.fileMetaTableName, [{ filePath, mtime }], {
-					existOk: true,
-				});
+				await this.db.createTable(
+					this.fileMetaTableName,
+					[{ filePath, mtime }],
+					{
+						existOk: true,
+					},
+				);
 				return;
 			} catch (err) {
-				debugLogger.debug(`[VectorDB] Table ${this.fileMetaTableName} already exists:`, err);
+				debugLogger.debug(
+					`[VectorDB] Table ${this.fileMetaTableName} already exists:`,
+					err,
+				);
 			}
 		}
 
@@ -288,7 +298,10 @@ export class VectorDB {
 				});
 				return;
 			} catch (err) {
-				debugLogger.debug(`[VectorDB] Table ${this.fileMetaTableName} already exists:`, err);
+				debugLogger.debug(
+					`[VectorDB] Table ${this.fileMetaTableName} already exists:`,
+					err,
+				);
 			}
 		}
 
