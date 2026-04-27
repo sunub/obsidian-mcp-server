@@ -1,0 +1,22 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "./build",
+		"rootDir": "./src",
+		"baseUrl": ".",
+		"paths": {
+			"@cli/*": ["./src/*"],
+			"@core/*": ["../core/src/*"],
+			"@/*": ["../server/src/*"]
+		}
+	},
+	"references": [
+		{
+			"path": "../core"
+		},
+		{
+			"path": "../server"
+		}
+	],
+	"include": ["src/**/*"]
+}

@@ -25,12 +25,14 @@ Contents: Code quality standards, execution/approval protocols, commit message r
 [Domain A] Backend, Local DB (LanceDB), Model (Ollama), or RAG Logic:
 
 Reference Path: docs/rules/MCP_RAG.md
+Package Path: packages/server
 
 Note: Exclude frontend UI or React-related knowledge when addressing this domain.
 
 [Domain B] CLI Agent UI, Terminal Rendering (Ink), Stream Processing, or State Management:
 
 Reference Path: docs/rules/CLI_UI.md
+Package Path: packages/cli
 
 Note: Exclude database queries or vector embedding logic when addressing this domain.
 
