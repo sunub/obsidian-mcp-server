@@ -1,6 +1,6 @@
 {
 	"name": "@sunub/obsidian-mcp-core",
-	"version": "0.3.11",
+	"version": "0.3.15",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/sunub/obsidian-mcp-server.git",

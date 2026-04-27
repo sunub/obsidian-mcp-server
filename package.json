@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-mcp-monorepo",
-	"version": "0.3.14",
+	"version": "0.3.15",
 	"author": "sunub",
 	"devDependencies": {
 		"@biomejs/biome": "2.3.8",
