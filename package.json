@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-mcp-monorepo",
-	"version": "0.3.6",
+	"version": "0.3.7",
 	"description": "Monorepo for Obsidian MCP Server and CLI Agent",
 	"type": "module",
 	"private": true,
