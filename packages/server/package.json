@@ -15,7 +15,8 @@
   "scripts": {
     "build": "bun build ./src/index.ts --target node --outdir ./build --sourcemap",
     "start": "bun run ./src/index.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "shx cp ../../README.md . && shx cp ../../LICENSE ."
   },
   "repository": {
     "type": "git",
@@ -32,7 +33,6 @@
   "author": "sunub",
   "license": "MIT",
   "dependencies": {
-    "@sunub/obsidian-mcp-core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.1",
     "@lancedb/lancedb": "^0.10.0",
     "ollama": "^0.5.8",
@@ -43,9 +43,11 @@
     "canvas": "^2.11.2"
   },
   "devDependencies": {
+    "@sunub/obsidian-mcp-core": "workspace:*",
     "@types/node": "^20.14.10",
     "@types/mime-types": "^2.1.4",
-    "vitest": "^2.0.1"
+    "vitest": "^2.0.1",
+    "shx": "^0.4.0"
   },
   "publishConfig": {
     "access": "public",
