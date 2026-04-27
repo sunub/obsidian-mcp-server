@@ -1,6 +1,11 @@
 {
-	"name": "@sunub/core",
-	"version": "0.1.0",
+	"name": "@sunub/obsidian-mcp-core",
+	"version": "0.3.11",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sunub/obsidian-mcp-server.git",
+		"directory": "packages/core"
+	},
 	"type": "module",
 	"exports": {
 		".": "./build/index.js"

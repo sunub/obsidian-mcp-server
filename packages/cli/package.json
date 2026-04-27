@@ -1,13 +1,18 @@
 {
-	"name": "@sunub/cli",
-	"version": "0.1.0",
+	"name": "@sunub/obsidian-mcp-cli",
+	"version": "0.3.11",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sunub/obsidian-mcp-server.git",
+		"directory": "packages/cli"
+	},
 	"type": "module",
 	"scripts": {
 		"build": "tsc && npx tsc-alias",
 		"start": "node build/index.js"
 	},
 	"dependencies": {
-		"@sunub/core": "workspace:*",
+		"@sunub/obsidian-mcp-core": "workspace:*",
 		"@sunub/obsidian-mcp-server": "workspace:*",
 		"@modelcontextprotocol/sdk": "^1.17.5",
 		"@types/tinycolor2": "^1.4.6",
