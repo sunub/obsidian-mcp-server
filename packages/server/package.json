@@ -50,12 +50,14 @@
     "apache-arrow": "^19.0.1",
     "@langchain/textsplitters": "^0.1.0",
     "js-tiktoken": "^1.0.19",
-    "ora": "^9.2.1"
+    "ora": "^9.2.1",
+    "inquirer": "^12.4.1"
   },
   "devDependencies": {
     "@sunub/obsidian-mcp-core": "workspace:*",
     "@types/node": "^20.14.10",
     "@types/mime-types": "^2.1.4",
+    "@types/inquirer": "^9.0.7",
     "vitest": "^2.0.1",
     "shx": "^0.4.0",
     "typescript": "^5.0.0"
