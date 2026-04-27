@@ -70,23 +70,27 @@ function findConfigFile(): string | null {
 }
 
 function buildFallbackConfig(): McpServerConfig[] {
+	const parseResult = configSchema.safeParse({
+		vaultPath: process.env["VAULT_DIR_PATH"],
+		loggingLevel: process.env["LOGGING_LEVEL"],
+		llmApiUrl: process.env["LLM_API_URL"],
+		llmEmbeddingApiUrl: process.env["LLM_EMBEDDING_API_URL"],
+		llmEmbeddingModel: process.env["LLM_EMBEDDING_MODEL"],
+		llmChatModel: process.env["LLM_CHAT_MODEL"],
+	});
+
+	const env = parseResult.success ? parseResult.data : null;
+	const vaultPath =
+		env?.vaultPath || (process.env["VAULT_DIR_PATH"] as string);
+
+	if (!vaultPath) {
+		debugLogger.warn(
+			"[McpConfig] VAULT_DIR_PATH가 설정되지 않아 폴백 서버를 생성할 수 없습니다.",
+		);
+		return [];
+	}
+
 	try {
-		const env = configSchema.parse({
-			vaultPath: process.env["VAULT_DIR_PATH"],
-			loggingLevel: process.env["LOGGING_LEVEL"],
-			llmApiUrl: process.env["LLM_API_URL"],
-			llmEmbeddingApiUrl: process.env["LLM_EMBEDDING_API_URL"],
-			llmEmbeddingModel: process.env["LLM_EMBEDDING_MODEL"],
-			llmChatModel: process.env["LLM_CHAT_MODEL"],
-		});
-
-		if (!env.vaultPath) {
-			debugLogger.warn(
-				"[McpConfig] VAULT_DIR_PATH가 설정되지 않아 폴백 서버를 생성할 수 없습니다.",
-			);
-			return [];
-		}
-
 		// 현재 파일 위치를 기준으로 packages/server/build/index.js 위치를 계산
 		const __dirname = path.dirname(fileURLToPath(import.meta.url));
 		const serverEntry = path.resolve(
@@ -102,12 +106,12 @@ function buildFallbackConfig(): McpServerConfig[] {
 				args: [serverEntry],
 				cwd: projectRoot,
 				env: {
-					VAULT_DIR_PATH: env.vaultPath,
-					LLM_API_URL: env.llmApiUrl ?? "http://127.0.0.1:8080",
+					VAULT_DIR_PATH: vaultPath,
+					LLM_API_URL: env?.llmApiUrl ?? "http://127.0.0.1:8080",
 					LLM_EMBEDDING_API_URL:
-						env.llmEmbeddingApiUrl ?? "http://127.0.0.1:8081",
-					LLM_EMBEDDING_MODEL: env.llmEmbeddingModel ?? "nomic-embed-text",
-					LLM_CHAT_MODEL: env.llmChatModel ?? "llama3",
+						env?.llmEmbeddingApiUrl ?? "http://127.0.0.1:8081",
+					LLM_EMBEDDING_MODEL: env?.llmEmbeddingModel ?? "nomic-embed-text",
+					LLM_CHAT_MODEL: env?.llmChatModel ?? "llama3",
 					LOGGING_LEVEL: process.env["LOGGING_LEVEL"] ?? "info",
 				},
 			},

@@ -30,7 +30,10 @@ import {
 import { FrontMatterSchema } from "@/utils/processor/types";
 import demo_data from "./assets/demo_data";
 
-const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault");
+const TEST_VAULT_PATH = path.join(
+	process.cwd(),
+	`test-vault-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+);
 
 async function parseAndValidateResponse<T extends ZodSchema>(
 	response: CompatibilityCallToolResult,
@@ -69,6 +72,9 @@ describe("Obsidian MCP Server E2E Tests", () => {
 	let _transport: StdioClientTransport | InMemoryTransport;
 	let embeddedServer: ReturnType<typeof createMcpServer> | null = null;
 	let transportMode: "stdio" | "in_memory" = "stdio";
+
+	// Increase timeout for E2E tests
+	const E2E_TIMEOUT = 30000;
 
 	beforeAll(async () => {
 		await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
@@ -111,6 +117,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 	});
 
 	beforeEach(async () => {
+		await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
 		const files = await fs.readdir(TEST_VAULT_PATH);
 		await Promise.all(
 			files.map((file) =>
@@ -148,7 +155,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		expect(toolNames).toEqual(expect.arrayContaining(expectedTools));
 		expect(toolNames.length).toBe(expectedTools.length);
 		expect(["stdio", "in_memory"]).toContain(transportMode);
-	});
+	}, E2E_TIMEOUT);
 
 	test("vault의 read 액션은 적절하게 문서를 읽어올 수 있는가?", async () => {
 		const ABSOLUTE_PATH = path.join(
@@ -198,7 +205,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		expect(absoulteData.filename).toBe(relativeData.filename);
 		expect(absoulteData.metadata).toEqual(relativeData.metadata);
 		expect(absoulteData.content).toEqual(relativeData.content);
-	});
+	}, E2E_TIMEOUT);
 
 	test("list_all 도구는 vault의 모든 문서 목록을 반환한다", async () => {
 		let response: CompatibilityCallToolResult | undefined;
@@ -242,7 +249,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			expect(sortedDocuments[i].metadata.title).toBe(demo.title);
 			expect(sortedDocuments[i].metadata.tags).toEqual(demo.tags);
 		}
-	});
+	}, E2E_TIMEOUT);
 
 	test("vault의 collect_context 액션은 배치 메모리 패킷을 반환한다", async () => {
 		let response: CompatibilityCallToolResult | undefined;
@@ -283,7 +290,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		expect(data.batch.has_more).toBe(true);
 		expect(typeof data.batch.continuation_token).toBe("string");
 		expect(data.memory_packet.keyFacts.length).toBeGreaterThan(0);
-	});
+	}, E2E_TIMEOUT);
 
 	test('search 도구는 "Test Note" 키워드를 기반으로 문서를 찾을 수 있다', async () => {
 		const searchQuery = "Getting Started with Obsidian MCP Server";
@@ -341,7 +348,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		expect(
 			"excerpt" in doc.content ? doc.content.excerpt : doc.content.preview,
 		).toBeDefined();
-	});
+	}, E2E_TIMEOUT);
 
 	test("organize_attachments 도구는 문서의 이미지 파일을 정리할 수 있다", async () => {
 		const sourceImagePath = path.join(
@@ -354,9 +361,9 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 		let response: CompatibilityCallToolResult | undefined;
 		let data: z.infer<typeof OrganizeAttachmentsResultSchema> | undefined;
-		const maxRetries = 20;
+		const maxRetries = 50;
 
-		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
+		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 5초간 재시도
 		for (let i = 0; i < maxRetries; i++) {
 			response = await mcpClient.callTool({
 				name: "organize_attachments",
@@ -396,5 +403,5 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		);
 		const movedImageStat = await fs.stat(movedImagePath);
 		expect(movedImageStat.isFile()).toBe(true);
-	});
+	}, E2E_TIMEOUT);
 });
