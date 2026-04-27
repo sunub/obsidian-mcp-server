@@ -6,6 +6,8 @@
 		"baseUrl": ".",
 		"paths": {
 			"@cli/*": ["./src/*"],
+			"@sunub/core": ["../core/src/index.ts"],
+			"@sunub/obsidian-mcp-server": ["../server/src/index.ts"],
 			"@core/*": ["../core/src/*"],
 			"@/*": ["../server/src/*"]
 		}

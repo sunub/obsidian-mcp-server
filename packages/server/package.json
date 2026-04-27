@@ -15,8 +15,7 @@
 	],
 	"scripts": {
 		"build": "tsc && tsc-alias && shx chmod +x build/index.js",
-		"start": "node build/index.js",
-		"prepare": "npm run build"
+		"start": "node build/index.js"
 	},
 	"dependencies": {
 		"@sunub/core": "workspace:*",
