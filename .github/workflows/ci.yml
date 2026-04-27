@@ -45,8 +45,16 @@ jobs:
 
       - name: Publish NPM Packages
         run: |
+          # 1. 토큰 존재 여부 확인 (비어있으면 조기 종료)
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::NPM_TOKEN is empty! Please check GitHub Secrets."
+            exit 1
+          fi
+
+          # 2. 명시적으로 .npmrc 생성 (actions/setup-node 의존성 탈피)
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+
           # Publish core first as other packages depend on it
-          # Use --no-git-checks to avoid issues with detached HEAD in CI
           npm publish ./packages/core --access public
           npm publish ./packages/server --access public
           npm publish ./packages/cli --access public
