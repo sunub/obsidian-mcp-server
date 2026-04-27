@@ -149,9 +149,34 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			await fs.writeFile(filePath, frontmatter + text);
 		}
 
-		// 서버가 파일 시스템 변화를 감지하고 인덱싱할 시간을 충분히 줍니다.
-		// 특히 CI 환경에서는 파일 감지가 늦어질 수 있습니다.
-		await new Promise((resolve) => setTimeout(resolve, 2000));
+		// 서버가 파일 시스템 변화를 감지하고 모든 문서(5개)를 인덱싱할 때까지 대기합니다.
+		// 고정된 시간 대기보다 폴링 방식이 CI 환경에서 훨씬 안정적입니다.
+		let isReady = false;
+		const maxAttempts = 20; // 최대 10초 (20 * 500ms)
+		for (let i = 0; i < maxAttempts; i++) {
+			try {
+				const response = await mcpClient.callTool({
+					name: "vault",
+					arguments: { action: "list_all" },
+				});
+
+				if (!response.isError) {
+					const text = (response.content as { type: string; text: string }[])[0].text;
+					const data = JSON.parse(text);
+					if (data.vault_overview.total_documents === demo_data.length) {
+						isReady = true;
+						break;
+					}
+				}
+			} catch (e) {
+				// 서버가 아직 준비 중일 수 있음
+			}
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
+
+		if (!isReady) {
+			console.warn("WARNING: Server did not index all documents in time. Tests might fail.");
+		}
 	});
 
 	afterEach(async () => {});
