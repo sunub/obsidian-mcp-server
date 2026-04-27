@@ -11,7 +11,7 @@ on:
 
 jobs:
   publish:
-    name: Publish Package
+    name: Publish Packages
     runs-on: ubuntu-latest
     needs: [test]
     permissions:
@@ -43,8 +43,12 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Publish NPM Package
-        run: npm publish --access public
+      - name: Publish NPM Packages
+        run: |
+          # Publish core first as other packages depend on it
+          cd packages/core && npm publish --access public
+          cd ../server && npm publish --access public
+          cd ../cli && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -69,10 +73,15 @@ jobs:
       - name: Build
         run: bun run build
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: build/
+          # Upload all build directories from packages
+          path: |
+            packages/core/build/
+            packages/server/build/
+            packages/cli/build/
 
   lint:
     runs-on: ubuntu-latest
@@ -100,10 +109,11 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      - uses: actions/download-artifact@v4
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
         with:
           name: build-artifacts
-          path: build/
+          path: packages/
 
       - name: Create test vault directory
         run: mkdir -p test-vault
@@ -112,3 +122,4 @@ jobs:
         run: bun run test
         env:
           VAULT_DIR_PATH: ${{ github.workspace }}/test-vault
+          NODE_ENV: test
