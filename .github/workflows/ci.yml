@@ -36,19 +36,20 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      - name: Build
+        run: bun run build
+
       - name: Get Version Tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Build
-        run: bun run build
-
       - name: Publish NPM Packages
         run: |
           # Publish core first as other packages depend on it
-          cd packages/core && npm publish --access public
-          cd ../server && npm publish --access public
-          cd ../cli && npm publish --access public
+          # Use --no-git-checks to avoid issues with detached HEAD in CI
+          npm publish ./packages/core --access public
+          npm publish ./packages/server --access public
+          npm publish ./packages/cli --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
