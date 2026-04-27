@@ -54,10 +54,16 @@ jobs:
           # 2. 명시적으로 .npmrc 생성 (actions/setup-node 의존성 탈피)
           echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
 
+          # 3. workspace:* 프로토콜을 실제 버전으로 치환 (모노레포 배포 필수 단계)
+          # 루트 package.json의 버전을 사용하여 모든 패키지의 의존성을 동기화합니다.
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          sed -i "s/workspace:\*/$VERSION/g" packages/*/package.json
+
           # Publish core first as other packages depend on it
-          npm publish ./packages/core --access public
-          npm publish ./packages/server --access public
-          npm publish ./packages/cli --access public
+          # --no-git-checks 플래그로 CI 환경의 git 상태와 무관하게 배포를 허용합니다.
+          npm publish ./packages/core --access public --no-git-checks
+          npm publish ./packages/server --access public --no-git-checks
+          npm publish ./packages/cli --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

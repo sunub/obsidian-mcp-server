@@ -1,6 +1,6 @@
 {
-	"name": "@sunub/core",
-	"version": "0.1.0",
+	"name": "@sunub/obsidian-mcp-core",
+	"version": "0.3.9",
 	"type": "module",
 	"exports": {
 		".": "./build/index.js"
