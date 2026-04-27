@@ -232,7 +232,14 @@ export class VectorDB {
 		const tableNames = await this.db.tableNames();
 
 		if (!tableNames.includes(this.tableName)) {
-			await this.db.createEmptyTable(this.tableName, VaultDocumentSchema);
+			try {
+				await this.db.createEmptyTable(this.tableName, VaultDocumentSchema, {
+					existOk: true,
+				});
+			} catch (err) {
+				// 이미 생성된 경우 무시
+				debugLogger.debug(`[VectorDB] Table ${this.tableName} already exists or creation failed:`, err);
+			}
 		}
 
 		const table = await this.db.openTable(this.tableName);
@@ -252,8 +259,14 @@ export class VectorDB {
 		const tableNames = await this.db.tableNames();
 
 		if (!tableNames.includes(this.fileMetaTableName)) {
-			await this.db.createTable(this.fileMetaTableName, [{ filePath, mtime }]);
-			return;
+			try {
+				await this.db.createTable(this.fileMetaTableName, [{ filePath, mtime }], {
+					existOk: true,
+				});
+				return;
+			} catch (err) {
+				debugLogger.debug(`[VectorDB] Table ${this.fileMetaTableName} already exists:`, err);
+			}
 		}
 
 		const table = await this.db.openTable(this.fileMetaTableName);
@@ -269,8 +282,14 @@ export class VectorDB {
 		const tableNames = await this.db.tableNames();
 
 		if (!tableNames.includes(this.fileMetaTableName)) {
-			await this.db.createTable(this.fileMetaTableName, entries);
-			return;
+			try {
+				await this.db.createTable(this.fileMetaTableName, entries, {
+					existOk: true,
+				});
+				return;
+			} catch (err) {
+				debugLogger.debug(`[VectorDB] Table ${this.fileMetaTableName} already exists:`, err);
+			}
 		}
 
 		const table = await this.db.openTable(this.fileMetaTableName);
