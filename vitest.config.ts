@@ -1,14 +1,8 @@
-import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-	plugins: [tsconfigPaths()],
 	test: {
-		name: "unit",
-		include: ["tests/**/*.{test,spec}.{ts,tsx}"],
-		exclude: ["node_modules/**", "dist/**"],
-		globals: true,
-		environment: "node",
+		projects: ["packages/*/vitest.config.ts"],
 		coverage: {
 			reporter: ["text", "json-summary", "json", "html", "lcovonly"],
 			thresholds: {
