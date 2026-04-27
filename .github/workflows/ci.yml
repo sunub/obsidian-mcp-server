@@ -37,7 +37,10 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build
-        run: bun run build
+        run: |
+          bun run --cwd packages/core build
+          bun run --cwd packages/server build
+          bun run --cwd packages/cli build
 
       - name: Get Version Tag
         id: get_version
@@ -82,7 +85,10 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build
-        run: bun run build
+        run: |
+          bun run --cwd packages/core build
+          bun run --cwd packages/server build
+          bun run --cwd packages/cli build
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
