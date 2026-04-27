@@ -1,0 +1,42 @@
+$ tsc && tsc-alias && shx chmod +x build/index.js
+src/cli/App.tsx(313,26): error TS2322: Type '{ buffer: { lines: string[]; text: string; cursor: [number, number]; preferredCol: number | null; selectionAnchor: null; pastedContent: {}; allVisualLines: string[]; viewportVisualLines: string[]; ... 91 more ...; vimPasteBefore: (_count: number) => void; }; ... 5 more ...; suggestionsWidth: number; }' is not assignable to type 'InputState'.
+  Types of property 'buffer' are incompatible.
+    Property 'visualCursorColWidth' is missing in type '{ lines: string[]; text: string; cursor: [number, number]; preferredCol: number | null; selectionAnchor: null; pastedContent: {}; allVisualLines: string[]; viewportVisualLines: string[]; visualCursor: [...]; ... 90 more ...; vimPasteBefore: (_count: number) => void; }' but required in type 'TextBuffer'.
+src/cli/hooks/useHistoryManager.ts(1,23): error TS6133: 'useEffect' is declared but its value is never read.
+src/cli/hooks/useHistoryManager.ts(2,28): error TS6196: 'PendingItem' is declared but never used.
+src/cli/hooks/useRagContext.ts(10,7): error TS6133: 'MAX_CONTEXT_CHARS' is declared but its value is never read.
+src/cli/hooks/useRagContext.ts(26,10): error TS6133: 'hasValidResults' is declared but its value is never read.
+src/cli/ui/HalfPaddingBox.tsx(10,28): error TS2307: Cannot find module '../../contexts/UIStateContext.js' or its corresponding type declarations.
+src/cli/ui/HalfPaddingBox.tsx(11,23): error TS2307: Cannot find module '../../semantic-colors.js' or its corresponding type declarations.
+src/cli/ui/HalfPaddingBox.tsx(16,8): error TS2307: Cannot find module '../../themes/color-utils.js' or its corresponding type declarations.
+src/cli/ui/HalfPaddingBox.tsx(17,43): error TS2307: Cannot find module '../../utils/terminalUtils.js' or its corresponding type declarations.
+src/cli/ui/InputPrompt.tsx(11,10): error TS6133: 'cpLen' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(3,11): error TS6196: 'MarkdownDisplayProps' is declared but never used.
+src/cli/ui/MarkdownDisplay.tsx(11,7): error TS6133: 'EMPTY_LINE_HEIGHT' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(12,7): error TS6133: 'CODE_BLOCK_PREFIX_PADDING' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(13,7): error TS6133: 'LIST_ITEM_PREFIX_PADDING' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(14,7): error TS6133: 'LIST_ITEM_TEXT_FLEX_GROW' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(17,8): error TS6133: 'lines' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(26,8): error TS6133: 'contentBlocks' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(27,6): error TS6133: 'inCodeBlock' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(28,6): error TS6133: 'lastLineEmpty' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(29,6): error TS6133: 'codeBlockContent' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(30,6): error TS6133: 'codeBlockLang' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(31,6): error TS6133: 'codeBlockFence' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(32,6): error TS6133: 'inTable' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(33,6): error TS6133: 'tableRows' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(34,6): error TS6133: 'tableHeaders' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(36,8): error TS6133: 'codeFenceMatch' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(36,25): error TS2552: Cannot find name 'line'. Did you mean 'lines'?
+src/cli/ui/MarkdownDisplay.tsx(37,8): error TS6133: 'headerMatch' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(37,22): error TS2552: Cannot find name 'line'. Did you mean 'lines'?
+src/cli/ui/MarkdownDisplay.tsx(38,8): error TS6133: 'ulMatch' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(38,18): error TS2552: Cannot find name 'line'. Did you mean 'lines'?
+src/cli/ui/MarkdownDisplay.tsx(39,8): error TS6133: 'olMatch' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(39,18): error TS2552: Cannot find name 'line'. Did you mean 'lines'?
+src/cli/ui/MarkdownDisplay.tsx(40,8): error TS6133: 'hrMatch' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(40,18): error TS2552: Cannot find name 'line'. Did you mean 'lines'?
+src/cli/ui/MarkdownDisplay.tsx(41,8): error TS6133: 'tableRowMatch' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(41,24): error TS2552: Cannot find name 'line'. Did you mean 'lines'?
+src/cli/ui/MarkdownDisplay.tsx(42,8): error TS6133: 'tableSeparatorMatch' is declared but its value is never read.
+src/cli/ui/MarkdownDisplay.tsx(42,30): error TS2552: Cannot find name 'line'. Did you mean 'lines'?
