@@ -1,6 +1,7 @@
 import { debugLogger } from "@sunub/core";
 import { z } from "zod";
 import state from "@/config.js";
+import { localReranker } from "@/utils/LocalReranker.js";
 
 export const RerankResponseSchema = z.object({
 	model: z.string(),
@@ -42,6 +43,27 @@ class RerankerClient {
 			return [];
 		}
 
+		// 1. 로컬 리랭커 사용 시도 (우선순위)
+		try {
+			const isLocalAvailable = await localReranker.checkModelPresence();
+			if (isLocalAvailable) {
+				const results = await localReranker.rerank(query, documents);
+				return results
+					.map((r) => ({
+						index: documents.indexOf(r.document),
+						relevance_score: r.score,
+						document: r.document,
+					}))
+					.slice(0, topN);
+			}
+		} catch (error) {
+			console.warn(
+				"[RerankerClient] Local reranker failed, falling back to server:",
+				error,
+			);
+		}
+
+		// 2. 외부 API 서버 사용 (폴백)
 		try {
 			const response = await fetch(`${this.endpoint}/v1/rerank`, {
 				method: "POST",
