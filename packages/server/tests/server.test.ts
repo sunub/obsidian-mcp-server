@@ -373,9 +373,9 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 		let response: CompatibilityCallToolResult | undefined;
 		let data: z.infer<typeof OrganizeAttachmentsResultSchema> | undefined;
-		const maxRetries = 50;
+		const maxRetries = 100; // 최대 20초 (100 * 200ms)
 
-		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 5초간 재시도
+		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 충분히 재시도
 		for (let i = 0; i < maxRetries; i++) {
 			response = await mcpClient.callTool({
 				name: "organize_attachments",
@@ -395,8 +395,17 @@ describe("Obsidian MCP Server E2E Tests", () => {
 				if (data.details.length > 0) {
 					break;
 				}
+			} else {
+				// 에러 내용 로깅 (디버깅 용도)
+				if (i % 10 === 0) {
+					const errorText = response.content
+						.filter((c: any) => c.type === "text")
+						.map((c: any) => c.text)
+						.join("\n");
+					console.log(`[RETRY ${i}] organize_attachments failed: ${errorText.substring(0, 100)}...`);
+				}
 			}
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 200));
 		}
 
 		if (!data) {
