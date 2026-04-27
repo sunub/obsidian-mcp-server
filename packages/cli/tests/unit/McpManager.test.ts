@@ -39,7 +39,7 @@ describe("McpManager", () => {
 
 	describe("connectAll — 다중 서버 연결", () => {
 		test("모든 서버가 성공적으로 연결된다", async () => {
-			const MockService = vi.mocked(McpClientService);
+			const MockService = McpClientService as any;
 			MockService.mockImplementation(
 				() =>
 					({
@@ -67,7 +67,7 @@ describe("McpManager", () => {
 
 		test("Partial Failure — 일부 서버 실패 시 나머지는 정상 동작", async () => {
 			let callCount = 0;
-			const MockService = vi.mocked(McpClientService);
+			const MockService = McpClientService as any;
 			MockService.mockImplementation(() => {
 				callCount++;
 				const shouldFail = callCount === 2;
@@ -115,7 +115,7 @@ describe("McpManager", () => {
 			});
 
 			let callCount = 0;
-			const MockService = vi.mocked(McpClientService);
+			const MockService = McpClientService as any;
 			MockService.mockImplementation(() => {
 				callCount++;
 				const toolName = callCount === 1 ? "vault" : "web_search";
@@ -144,7 +144,7 @@ describe("McpManager", () => {
 		});
 
 		test("존재하지 않는 도구 호출 시 에러를 반환한다", async () => {
-			const MockService = vi.mocked(McpClientService);
+			const MockService = McpClientService as any;
 			MockService.mockImplementation(
 				() =>
 					({
@@ -177,7 +177,7 @@ describe("McpManager", () => {
 			});
 
 			let callCount = 0;
-			const MockService = vi.mocked(McpClientService);
+			const MockService = McpClientService as any;
 			MockService.mockImplementation(() => {
 				callCount++;
 				const isFirst = callCount === 1;
@@ -213,7 +213,7 @@ describe("McpManager", () => {
 		test("모든 서버의 연결을 해제하고 상태를 초기화한다", async () => {
 			const mockDisconnect = vi.fn().mockResolvedValue(undefined);
 
-			const MockService = vi.mocked(McpClientService);
+			const MockService = McpClientService as any;
 			MockService.mockImplementation(
 				() =>
 					({
@@ -244,7 +244,7 @@ describe("McpManager", () => {
 	describe("상태 접근자", () => {
 		test("connections Map이 서버별 상태를 정확히 반영한다", async () => {
 			let callCount = 0;
-			const MockService = vi.mocked(McpClientService);
+			const MockService = McpClientService as any;
 			MockService.mockImplementation(() => {
 				callCount++;
 				const shouldFail = callCount === 2;

@@ -34,6 +34,8 @@
 		"@types/react": "^19.2.14",
 		"@types/yargs": "^17.0.35",
 		"tsc-alias": "^1.8.16",
-		"typescript": "^5.9.2"
+		"typescript": "^5.9.2",
+		"vite-tsconfig-paths": "^5.1.4",
+		"vitest": "^3.2.4"
 	}
 }
