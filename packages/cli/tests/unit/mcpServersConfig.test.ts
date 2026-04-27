@@ -4,7 +4,14 @@ import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // configSchema의 모듈 수준 파싱 부작용을 방지하기 위해 모킹.
-vi.mock("@core/configSchema", () => ({
+vi.mock("@sunub/core", () => ({
+	debugLogger: {
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		debug: vi.fn(),
+		log: vi.fn(),
+	},
 	configSchema: {
 		parse: vi.fn((input: Record<string, unknown>) => ({
 			vaultPath: input["vaultPath"] || "",
@@ -14,6 +21,18 @@ vi.mock("@core/configSchema", () => ({
 				input["llmEmbeddingApiUrl"] || "http://127.0.0.1:8081",
 			llmEmbeddingModel: input["llmEmbeddingModel"] || "nomic-embed-text",
 			llmChatModel: input["llmChatModel"] || "llama3",
+		})),
+		safeParse: vi.fn((input: Record<string, unknown>) => ({
+			success: true,
+			data: {
+				vaultPath: input["vaultPath"] || "",
+				loggingLevel: input["loggingLevel"] || "info",
+				llmApiUrl: input["llmApiUrl"] || "http://127.0.0.1:8080",
+				llmEmbeddingApiUrl:
+					input["llmEmbeddingApiUrl"] || "http://127.0.0.1:8081",
+				llmEmbeddingModel: input["llmEmbeddingModel"] || "nomic-embed-text",
+				llmChatModel: input["llmChatModel"] || "llama3",
+			},
 		})),
 	},
 }));

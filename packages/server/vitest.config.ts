@@ -13,6 +13,7 @@ export default defineConfig({
 		alias: {
 			"@": resolve(import.meta.dirname, "src"),
 			"@core": resolve(import.meta.dirname, "../core/src"),
+			"@sunub/core": resolve(import.meta.dirname, "../core/src/index.ts"),
 		},
 	},
 	test: {

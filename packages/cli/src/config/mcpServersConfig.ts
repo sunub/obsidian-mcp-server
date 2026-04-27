@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { configSchema, debugLogger } from "@sunub/core";
 import { z } from "zod";
 
+
 const mcpServerEntrySchema = z.object({
 	command: z.string().min(1),
 	args: z.array(z.string()).optional().default([]),

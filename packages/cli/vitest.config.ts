@@ -14,6 +14,11 @@ export default defineConfig({
 			"@cli": resolve(import.meta.dirname, "src"),
 			"@core": resolve(import.meta.dirname, "../core/src"),
 			"@": resolve(import.meta.dirname, "../server/src"),
+			"@sunub/core": resolve(import.meta.dirname, "../core/src/index.ts"),
+			"@sunub/obsidian-mcp-server": resolve(
+				import.meta.dirname,
+				"../server/src/index.ts",
+			),
 		},
 	},
 	test: {
