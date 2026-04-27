@@ -1,0 +1,15 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "./build",
+		"rootDir": "./src",
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"],
+			"@sunub/core": ["../core/src/index.ts"],
+			"@core/*": ["../core/src/*"]
+		}
+	},
+	"references": [{ "path": "../core" }],
+	"include": ["src/**/*"]
+}

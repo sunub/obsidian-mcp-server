@@ -1,0 +1,24 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "./build",
+		"rootDir": "./src",
+		"baseUrl": ".",
+		"paths": {
+			"@cli/*": ["./src/*"],
+			"@sunub/core": ["../core/src/index.ts"],
+			"@sunub/obsidian-mcp-server": ["../server/src/index.ts"],
+			"@core/*": ["../core/src/*"],
+			"@/*": ["../server/src/*"]
+		}
+	},
+	"references": [
+		{
+			"path": "../core"
+		},
+		{
+			"path": "../server"
+		}
+	],
+	"include": ["src/**/*"]
+}
