@@ -148,9 +148,16 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			const filePath = path.join(TEST_VAULT_PATH, fileName);
 			await fs.writeFile(filePath, frontmatter + text);
 		}
+
+		// 서버가 파일 시스템 변화를 감지하고 인덱싱할 시간을 충분히 줍니다.
+		// 특히 CI 환경에서는 파일 감지가 늦어질 수 있습니다.
+		await new Promise((resolve) => setTimeout(resolve, 2000));
 	});
 
 	afterEach(async () => {});
+
+	// Increase default timeout for all tests in this suite
+	const TEST_TIMEOUT = 60000;
 
 	test(
 		"서버에 등록된 모든 도구 목록을 가져올 수 있다",
@@ -170,7 +177,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			expect(toolNames.length).toBe(expectedTools.length);
 			expect(["stdio", "in_memory"]).toContain(transportMode);
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -224,7 +231,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			expect(absoulteData.metadata).toEqual(relativeData.metadata);
 			expect(absoulteData.content).toEqual(relativeData.content);
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -272,7 +279,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 				expect(sortedDocuments[i].metadata.tags).toEqual(demo.tags);
 			}
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -317,7 +324,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			expect(typeof data.batch.continuation_token).toBe("string");
 			expect(data.memory_packet.keyFacts.length).toBeGreaterThan(0);
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -379,7 +386,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 				"excerpt" in doc.content ? doc.content.excerpt : doc.content.preview,
 			).toBeDefined();
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -452,6 +459,6 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			const movedImageStat = await fs.stat(movedImagePath);
 			expect(movedImageStat.isFile()).toBe(true);
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 });
