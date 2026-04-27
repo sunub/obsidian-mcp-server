@@ -1,4 +1,5 @@
 import state from "@/config.js";
+import { localEmbedder } from "@/utils/Embedder.js";
 
 export interface LLMChatResponse {
 	model: string;
@@ -43,6 +44,11 @@ export class LLMClient {
 	}
 
 	async isEmbeddingServerHealthy(): Promise<boolean> {
+		// 로컬 임베더 모델이 존재하는지 먼저 확인
+		if (await localEmbedder.checkModelPresence()) {
+			return true;
+		}
+
 		const url = `${this.embeddingApiUrl}/v1/models`;
 		try {
 			const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
@@ -101,6 +107,20 @@ ${chunkContent}
 	}
 
 	async generateEmbedding(text: string): Promise<number[]> {
+		// 1. 로컬 임베더 사용 시도 (우선순위)
+		try {
+			const isLocalAvailable = await localEmbedder.checkModelPresence();
+			if (isLocalAvailable) {
+				return await localEmbedder.embed(text);
+			}
+		} catch (error) {
+			console.warn(
+				"[LLMClient] Local embedder failed, falling back to server:",
+				error,
+			);
+		}
+
+		// 2. 외부 API 서버 사용 (폴백)
 		const url = `${this.embeddingApiUrl}/v1/embeddings`;
 		try {
 			const response = await fetch(url, {

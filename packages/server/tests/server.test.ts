@@ -118,15 +118,27 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 	beforeEach(async () => {
 		await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
-		const files = await fs.readdir(TEST_VAULT_PATH);
-		await Promise.all(
-			files.map((file) =>
-				fs.rm(path.join(TEST_VAULT_PATH, file), {
-					recursive: true,
-					force: true,
-				}),
-			),
-		);
+
+		// 배경 프로세스(LanceDB/VaultWatcher)와의 경합을 피하기 위해 재시도 로직 추가
+		let retryCount = 5;
+		while (retryCount > 0) {
+			try {
+				const files = await fs.readdir(TEST_VAULT_PATH);
+				await Promise.all(
+					files.map((file) =>
+						fs.rm(path.join(TEST_VAULT_PATH, file), {
+							recursive: true,
+							force: true,
+						}),
+					),
+				);
+				break; // 성공 시 루프 탈출
+			} catch (err) {
+				retryCount--;
+				if (retryCount === 0) throw err;
+				await new Promise((resolve) => setTimeout(resolve, 200)); // 200ms 대기 후 재시도
+			}
+		}
 
 		for (const { title, tags, content } of demo_data) {
 			const { text } = content;
@@ -373,13 +385,16 @@ describe("Obsidian MCP Server E2E Tests", () => {
 					useTitleAsFolderName: true,
 				},
 			});
-			data = await parseAndValidateResponse(
-				response,
-				OrganizeAttachmentsResultSchema,
-			);
 
-			if (data.details.length > 0) {
-				break;
+			if (!response.isError) {
+				data = await parseAndValidateResponse(
+					response,
+					OrganizeAttachmentsResultSchema,
+				);
+
+				if (data.details.length > 0) {
+					break;
+				}
 			}
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		}

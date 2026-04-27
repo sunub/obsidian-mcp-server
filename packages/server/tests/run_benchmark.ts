@@ -4,6 +4,7 @@ import { performance } from "node:perf_hooks";
 import { Indexer } from "@/utils/Indexer.js";
 import { Semaphore } from "@/utils/semaphore.js";
 import { vectorDB } from "@/utils/VectorDB.js";
+import { localEmbedder } from "@/utils/Embedder.js";
 
 async function setupTestData(dir: string, count: number) {
 	await fs.mkdir(dir, { recursive: true });
@@ -57,6 +58,16 @@ async function run() {
 
 		console.log(`\n--- [Search Latency] ---`);
 
+		// 1. 실제 임베딩 성능 측정
+		console.log(`\n--- [Embedding Latency (Local)] ---`);
+		const startEmbed = performance.now();
+		const testText = "How to optimize Obsidian vault performance?";
+		await localEmbedder.embed(testText);
+		const endEmbed = performance.now();
+		console.log(
+			`✅ Local Transformer Embedding: ${(endEmbed - startEmbed).toFixed(2)}ms`,
+		);
+
 		const startKwd = performance.now();
 		const kwdResult = indexer.search("obsidian");
 		const endKwd = performance.now();
@@ -66,9 +77,10 @@ async function run() {
 
 		try {
 			await vectorDB.connect();
-			const dummyVector = new Array(768).fill(0).map(() => Math.random());
+			// 실제 임베딩 결과 사용
+			const queryVector = await localEmbedder.embed("obsidian");
 			const startVec = performance.now();
-			await vectorDB.search(dummyVector, 5);
+			await vectorDB.search(queryVector, 5);
 			const endVec = performance.now();
 			console.log(
 				`✅ Vector Search (LanceDB): ${(endVec - startVec).toFixed(4)}ms`,
@@ -106,3 +118,4 @@ async function run() {
 }
 
 run();
+
