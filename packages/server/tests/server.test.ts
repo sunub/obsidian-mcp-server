@@ -142,8 +142,8 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 		for (const { title, tags, content } of demo_data) {
 			const { text } = content;
-			const tagsYaml = tags.map((tag) => `  - ${tag}`).join("\n");
-			const frontmatter = `---\ntitle: ${title}\ntags:\n${tagsYaml}\n---\n\n`;
+			const tagsInline = `[${tags.join(", ")}]`;
+			const frontmatter = `---\ntitle: ${title}\ntags: ${tagsInline}\n---\n\n`;
 			const fileName = `${title.replace(/[/\\?%*:|"<>]/g, "-")}.md`;
 			const filePath = path.join(TEST_VAULT_PATH, fileName);
 			await fs.writeFile(filePath, frontmatter + text);
