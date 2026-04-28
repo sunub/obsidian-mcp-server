@@ -80,6 +80,17 @@ describe("Obsidian MCP Server E2E Tests", () => {
   beforeAll(async () => {
     await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
 
+    // 1. 서버 시작 전 테스트용 문서들을 미리 생성합니다.
+    // 이렇게 하면 서버 부팅 시 초기 스캔(walker) 단계에서 즉시 인식됩니다.
+    for (const { title, tags, content } of demo_data) {
+      const { text } = content;
+      const tagsInline = `[${tags.join(", ")}]`;
+      const frontmatter = `---\ntitle: ${title}\ntags: ${tagsInline}\n---\n\n`;
+      const fileName = `${title.replace(/[/\\\\?%*:|"<>]/g, "-")}.md`;
+      const filePath = path.join(TEST_VAULT_PATH, fileName);
+      await fs.writeFile(filePath, frontmatter + text);
+    }
+
     mcpClient = new Client({ name: "test-client", version: "1.0.0" });
     const stdioTransport = new StdioClientTransport({
       command: "bun",
@@ -111,55 +122,8 @@ describe("Obsidian MCP Server E2E Tests", () => {
       _transport = clientTransport;
       transportMode = "in_memory";
     }
-  });
 
-  afterAll(async () => {
-    if (mcpClient) {
-      await mcpClient.close();
-    }
-    if (embeddedServer) {
-      await embeddedServer.close();
-    }
-    await vaultWatcher.stop();
-    await fs.rm(TEST_VAULT_PATH, { recursive: true, force: true });
-  });
-
-  beforeEach(async () => {
-    await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
-
-    // 배경 프로세스(LanceDB/VaultWatcher)와의 경합을 피하기 위해 재시도 로직 추가
-    let retryCount = 5;
-    while (retryCount > 0) {
-      try {
-        const files = await fs.readdir(TEST_VAULT_PATH);
-        await Promise.all(
-          files.map((file) => {
-            if (file === ".obsidian") return Promise.resolve();
-            return fs.rm(path.join(TEST_VAULT_PATH, file), {
-              recursive: true,
-              force: true,
-            });
-          }),
-        );
-        break; // 성공 시 루프 탈출
-      } catch (err) {
-        retryCount--;
-        if (retryCount === 0) throw err;
-        await new Promise((resolve) => setTimeout(resolve, 200)); // 200ms 대기 후 재시도
-      }
-    }
-
-    for (const { title, tags, content } of demo_data) {
-      const { text } = content;
-      const tagsInline = `[${tags.join(", ")}]`;
-      const frontmatter = `---\ntitle: ${title}\ntags: ${tagsInline}\n---\n\n`;
-      const fileName = `${title.replace(/[/\\\\?%*:|"<>]/g, "-")}.md`;
-      const filePath = path.join(TEST_VAULT_PATH, fileName);
-      await fs.writeFile(filePath, frontmatter + text);
-    }
-
-    // 서버가 파일 시스템 변화를 감지하고 모든 문서(5개)를 인덱싱할 때까지 대기합니다.
-    // 고정된 시간 대기보다 폴링 방식이 CI 환경에서 훨씬 안정적입니다.
+    // 2. 서버가 모든 문서(5개)를 인덱싱할 때까지 대기합니다. (전체 테스트 중 딱 한 번만 수행)
     let isReady = false;
     let currentCount = 0;
     const maxAttempts = 40; // 최대 20초 (40 * 500ms)
@@ -186,8 +150,24 @@ describe("Obsidian MCP Server E2E Tests", () => {
     }
 
     if (!isReady) {
-      throw new Error(`Server indexing timed out. Got ${currentCount}/${demo_data.length} docs.`);
+      throw new Error(`Server indexing timed out during setup. Got ${currentCount}/${demo_data.length} docs.`);
     }
+  });
+
+  afterAll(async () => {
+    if (mcpClient) {
+      await mcpClient.close();
+    }
+    if (embeddedServer) {
+      await embeddedServer.close();
+    }
+    await vaultWatcher.stop();
+    await fs.rm(TEST_VAULT_PATH, { recursive: true, force: true });
+  });
+
+  beforeEach(async () => {
+    // 매 테스트 전에는 별도의 파일 시스템 작업을 수행하지 않습니다.
+    // 모든 초기화는 beforeAll에서 1회 완료되었습니다.
   });
 
   afterEach(async () => {
