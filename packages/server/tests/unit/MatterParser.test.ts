@@ -68,7 +68,7 @@ Rest of the content.`;
 		expect(result.content).toContain("Rest of the content.");
 	});
 
-	test("스키마에 정의되지 않은 필드는 무시(strip)된다", () => {
+	test("스키마에 정의되지 않은 필드도 유지(passthrough)된다", () => {
 		const text = `---
 title: Test
 unknownField: some value
@@ -79,8 +79,8 @@ Content`;
 		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
 		expect(result.frontmatter.title).toBe("Test");
-		expect(result.frontmatter).not.toHaveProperty("unknownField");
-		expect(result.frontmatter).not.toHaveProperty("anotherRandom");
+		expect(result.frontmatter).toHaveProperty("unknownField", "some value");
+		expect(result.frontmatter).toHaveProperty("anotherRandom", 42);
 	});
 
 	test("빈 문자열을 처리한다", () => {
