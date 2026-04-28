@@ -16,3 +16,10 @@ export function getGlobalVaultManager(): VaultManager {
 	instance = new VaultManager(vaultPath, 20);
 	return instance;
 }
+
+/**
+ * 테스트용: 기존 인스턴스를 초기화합니다.
+ */
+export function clearVaultManagerInstance(): void {
+	instance = null;
+}

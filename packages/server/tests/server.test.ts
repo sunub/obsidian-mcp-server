@@ -29,6 +29,7 @@ import {
   SearchSuccessSchema,
 } from "@/tools/vault/types/search";
 import { FormattedMetadataSchema } from "@/utils/processor/types";
+import { clearVaultManagerInstance } from "@/utils/getVaultManager.js";
 import demo_data from "./assets/demo_data";
 
 const TEST_VAULT_PATH = path.join(
@@ -111,7 +112,11 @@ describe("Obsidian MCP Server E2E Tests", () => {
       mcpClient = new Client({ name: "test-client", version: "1.0.0" });
       const [clientTransport, serverTransport] =
         InMemoryTransport.createLinkedPair();
+      
+      // 싱글톤 상태 초기화
       state.vaultPath = TEST_VAULT_PATH;
+      clearVaultManagerInstance();
+
       // 인메모리 서버 모드에서도 파일 감시와 인덱싱이 필요하므로 직접 시작합니다.
       vaultWatcher.start(TEST_VAULT_PATH).catch((error) => {
         console.error("[E2E-Fallback] Failed to start vaultWatcher:", error);
@@ -126,7 +131,9 @@ describe("Obsidian MCP Server E2E Tests", () => {
     // 2. 서버가 모든 문서(5개)를 인덱싱할 때까지 대기합니다. (전체 테스트 중 딱 한 번만 수행)
     let isReady = false;
     let currentCount = 0;
-    const maxAttempts = 40; // 최대 20초 (40 * 500ms)
+    const maxAttempts = 60; // 최대 30초 (60 * 500ms)
+    console.error(`Waiting for indexing... Vault: ${TEST_VAULT_PATH}`);
+    
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const response = await mcpClient.callTool({
@@ -138,13 +145,18 @@ describe("Obsidian MCP Server E2E Tests", () => {
           const text = (response.content as { type: string; text: string }[])[0].text;
           const data = JSON.parse(text);
           currentCount = data.vault_overview.total_documents;
+          if (i % 10 === 0) {
+            console.error(`[Setup] Current indexed docs: ${currentCount}/${demo_data.length}`);
+          }
           if (currentCount === demo_data.length) {
             isReady = true;
             break;
           }
+        } else {
+          console.error(`[Setup] Tool error:`, JSON.stringify(response.content));
         }
       } catch (e) {
-        // ignore errors during initial indexing wait
+        console.error(`[Setup] Request failed:`, e);
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
@@ -163,6 +175,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
     }
     await vaultWatcher.stop();
     await fs.rm(TEST_VAULT_PATH, { recursive: true, force: true });
+    clearVaultManagerInstance();
   });
 
   beforeEach(async () => {
