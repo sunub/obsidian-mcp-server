@@ -3,18 +3,24 @@
   "version": "0.3.15",
   "description": "Obsidian Local RAG MCP Server",
   "type": "module",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "obsidian-mcp-server": "./build/index.js"
+    "obsidian-mcp-server": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
   "files": [
-    "build",
+    "dist",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "bun build ./src/index.ts --target node --outdir ./build --sourcemap && tsc --emitDeclarationOnly",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "start": "bun run ./src/index.ts",
     "test": "vitest run",
     "prepublishOnly": "shx cp ../../README.md . && shx cp ../../LICENSE ."
@@ -36,6 +42,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
     "@lancedb/lancedb": "^0.10.0",
+    "@sunub/obsidian-mcp-core": "workspace:*",
     "ollama": "^0.5.8",
     "zod": "^3.23.8",
     "gray-matter": "^4.0.3",
@@ -54,13 +61,13 @@
     "inquirer": "^12.4.1"
   },
   "devDependencies": {
-    "@sunub/obsidian-mcp-core": "workspace:*",
-    "@types/node": "^20.14.10",
-    "@types/mime-types": "^2.1.4",
     "@types/inquirer": "^9.0.7",
-    "vitest": "^2.0.1",
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^20.14.10",
     "shx": "^0.4.0",
-    "typescript": "^5.0.0"
+    "tsc-alias": "^1.8.16",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.1"
   },
   "publishConfig": {
     "access": "public",

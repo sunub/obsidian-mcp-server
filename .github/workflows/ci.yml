@@ -56,19 +56,32 @@ jobs:
       - name: Publish NPM Packages
         run: |
           # 1. 토큰 존재 여부 확인
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
+          if [ -z "$NPM_TOKEN" ]; then
             echo "::error::NPM_TOKEN is empty! Please check GitHub Secrets."
             exit 1
           fi
 
           # 2. 명시적으로 .npmrc 생성
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
 
-          # 3. 배포 수행
+          # 3. core 버전 추출
+          CORE_VERSION=$(node -p "require('./packages/core/package.json').version")
+          echo "Core version: $CORE_VERSION"
+
+          # 4. core 패키지 배포 (server의 런타임 의존성)
+          cd packages/core
+          npm publish --access public --no-git-checks || echo "core@$CORE_VERSION already published, skipping..."
+          cd ../..
+
+          # 5. server의 workspace:* 를 실제 버전으로 치환
           cd packages/server
+          sed -i "s/\"workspace:\*\"/\"^${CORE_VERSION}\"/g" package.json
+          echo "Resolved workspace:* -> ^$CORE_VERSION in server/package.json"
+
+          # 6. server 패키지 배포
           npm publish --access public --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -104,7 +117,7 @@ jobs:
           name: build-artifacts
           path: |
             packages/core/build/
-            packages/server/build/
+            packages/server/dist/
             packages/cli/build/
 
   lint:
