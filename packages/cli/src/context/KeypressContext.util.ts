@@ -2,7 +2,7 @@ import type { Key, KeypressHandler } from "@cli/context/KeypressContext.js";
 import { FOCUS_IN, FOCUS_OUT } from "@cli/hooks/useFocus.js";
 import { ESC } from "@cli/key/input.js";
 import { parseMouseEvent } from "@cli/key/mouse.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 
 export const BACKSLASH_ENTER_TIMEOUT = 5;
 export const ESC_TIMEOUT = 50;

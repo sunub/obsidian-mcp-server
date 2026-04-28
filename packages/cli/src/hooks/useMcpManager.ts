@@ -5,7 +5,7 @@ import {
 	type ServerConnectionInfo,
 } from "@cli/services/McpManager.js";
 import type { McpToolResult } from "@cli/types.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface UseMcpManagerReturn {

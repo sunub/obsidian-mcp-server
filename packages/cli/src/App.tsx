@@ -16,7 +16,7 @@ import { MainContent } from "@cli/ui/MainContent.js";
 import { MCPServers } from "@cli/ui/MCPServers.js";
 import { SystemInfoSummaryBox } from "@cli/ui/SystemInfoSummaryBox.js";
 import { historyStorage } from "@cli/utils/historyStorage.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 import { Box, Text } from "ink";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

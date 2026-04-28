@@ -5,7 +5,7 @@ import type {
 } from "@cli/services/McpClientService.js";
 import { McpClientService } from "@cli/services/McpClientService.js";
 import type { McpConnectionState, McpToolResult } from "@cli/types.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 
 interface ToolRouteEntry {
 	serverName: string;

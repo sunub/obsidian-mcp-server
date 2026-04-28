@@ -144,7 +144,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			const { text } = content;
 			const tagsInline = `[${tags.join(", ")}]`;
 			const frontmatter = `---\ntitle: ${title}\ntags: ${tagsInline}\n---\n\n`;
-			const fileName = `${title.replace(/[/\\?%*:|"<>]/g, "-")}.md`;
+			const fileName = `${title.replace(/[/\\\\?%*:|"<>]/g, "-")}.md`;
 			const filePath = path.join(TEST_VAULT_PATH, fileName);
 			await fs.writeFile(filePath, frontmatter + text);
 		}
@@ -177,7 +177,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		if (!isReady) {
 			console.warn("WARNING: Server did not index all documents in time. Tests might fail.");
 		}
-	});
+	}, E2E_TIMEOUT);
 
 	afterEach(async () => {});
 

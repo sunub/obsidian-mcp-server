@@ -1,5 +1,5 @@
 import type { CallToolFn } from "@cli/types.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 import { useCallback, useState } from "react";
 
 export interface UseRagContextReturn {
