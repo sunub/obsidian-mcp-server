@@ -1,0 +1,74 @@
+{
+	"name": "@sunub/obsidian-mcp-server",
+	"version": "0.3.16",
+	"description": "Obsidian Local RAG MCP Server",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"bin": {
+		"obsidian-mcp-server": "./dist/index.js"
+	},
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+		"start": "bun run ./src/index.ts",
+		"test": "vitest run",
+		"prepublishOnly": "shx cp ../../README.md . && shx cp ../../LICENSE ."
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sunub/obsidian-mcp-server.git",
+		"directory": "packages/server"
+	},
+	"keywords": [
+		"mcp",
+		"obsidian",
+		"rag",
+		"ollama",
+		"lancedb"
+	],
+	"author": "sunub",
+	"license": "MIT",
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.0.1",
+		"@lancedb/lancedb": "^0.27.2",
+		"@sunub/obsidian-mcp-core": "workspace:*",
+		"ollama": "^0.5.8",
+		"gray-matter": "^4.0.3",
+		"glob": "^11.0.0",
+		"mime-types": "^2.1.35",
+		"chalk": "^5.3.0",
+		"@huggingface/transformers": "^3.3.3",
+		"chokidar": "^4.0.3",
+		"commander": "^13.1.0",
+		"dotenv": "^16.4.7",
+		"apache-arrow": "^19.0.1",
+		"@langchain/textsplitters": "^0.1.0",
+		"js-tiktoken": "^1.0.19",
+		"ora": "^9.2.1",
+		"inquirer": "^12.4.1"
+	},
+	"devDependencies": {
+		"@types/inquirer": "^9.0.7",
+		"@types/mime-types": "^2.1.4",
+		"@types/node": "^20.14.10",
+		"shx": "^0.4.0",
+		"tsc-alias": "^1.8.16",
+		"typescript": "^5.0.0",
+		"vitest": "^2.0.1"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	}
+}

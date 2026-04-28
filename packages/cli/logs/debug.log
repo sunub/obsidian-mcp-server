@@ -1,0 +1,62 @@
+[2026-04-27T05:40:32.723Z] [WARN] [McpConfig] mcp-servers.json을 찾을 수 없습니다. 환경변수 폴백을 사용합니다.
+[2026-04-27T05:40:32.724Z] [DEBUG] [McpClient] Connection attempt 1/3...
+[2026-04-27T05:40:32.728Z] [INFO] [CLI] LLM Server verified at http://127.0.0.1:8080
+[2026-04-27T05:40:32.749Z] [DEBUG] [McpServer:stderr] node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module '/Users/sunub/workspace/obsidian-mcp-server/packages/cli/packages/server/build/index.js'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v24.14.1
+[2026-04-27T05:40:32.751Z] [ERROR] [McpClient] Connection attempt 1 failed: MCP error -32000: Connection closed
+[2026-04-27T05:40:33.754Z] [DEBUG] [McpClient] Connection attempt 2/3...
+[2026-04-27T05:40:33.790Z] [DEBUG] [McpServer:stderr] node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module '/Users/sunub/workspace/obsidian-mcp-server/packages/cli/packages/server/build/index.js'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v24.14.1
+[2026-04-27T05:40:33.791Z] [ERROR] [McpClient] Connection attempt 2 failed: MCP error -32000: Connection closed
+[2026-04-27T05:40:35.793Z] [DEBUG] [McpClient] Connection attempt 3/3...
+[2026-04-27T05:40:35.835Z] [DEBUG] [McpServer:stderr] node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module '/Users/sunub/workspace/obsidian-mcp-server/packages/cli/packages/server/build/index.js'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v24.14.1
+[2026-04-27T05:40:35.837Z] [ERROR] [McpClient] Connection attempt 3 failed: MCP error -32000: Connection closed
+[2026-04-27T05:40:35.837Z] [ERROR] [McpManager] "obsidian" 연결 실패: MCP 서버 연결 실패 (3회 시도): MCP error -32000: Connection closed
+[2026-04-27T05:40:35.837Z] [INFO] [McpManager] 연결 완료: 0/1 성공, 1 실패
+[2026-04-27T05:40:40.088Z] [INFO] [McpManager] 모든 서버 연결 해제 중...

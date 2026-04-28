@@ -1,0 +1,45 @@
+{
+	"name": "@sunub/obsidian-mcp-cli",
+	"version": "0.3.15",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sunub/obsidian-mcp-server.git",
+		"directory": "packages/cli"
+	},
+	"type": "module",
+	"scripts": {
+		"build": "tsc && npx tsc-alias",
+		"start": "node build/index.js"
+	},
+	"dependencies": {
+		"@sunub/obsidian-mcp-core": "workspace:*",
+		"@sunub/obsidian-mcp-server": "workspace:*",
+		"@modelcontextprotocol/sdk": "^1.17.5",
+		"@types/tinycolor2": "^1.4.6",
+		"ansi-regex": "^6.2.2",
+		"chalk": "^5.6.2",
+		"clipboardy": "^5.3.1",
+		"commander": "^14.0.2",
+		"dotenv": "^17.4.2",
+		"ink": "npm:@jrichman/ink@6.6.9",
+		"inquirer": "^13.4.2",
+		"mnemonist": "^0.40.3",
+		"ora": "^9.3.0",
+		"prompts": "^2.4.2",
+		"react": "^19.2.5",
+		"string-width": "^8.2.0",
+		"strip-ansi": "^7.2.0",
+		"tinycolor2": "^1.6.0",
+		"tinygradient": "^2.0.1",
+		"wrap-ansi": "^10.0.0",
+		"yargs": "^18.0.0"
+	},
+	"devDependencies": {
+		"@types/react": "^19.2.14",
+		"@types/yargs": "^17.0.35",
+		"tsc-alias": "^1.8.16",
+		"typescript": "^5.9.2",
+		"vite-tsconfig-paths": "^5.1.4",
+		"vitest": "^3.2.4"
+	}
+}
