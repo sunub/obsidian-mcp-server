@@ -1,6 +1,6 @@
+import { SLASH_COMMANDS } from "@cli/constants.js";
 import { Box, Text } from "ink";
-import tools from "../../tools/index.js";
-import { SLASH_COMMANDS } from "../constants.js";
+import tools from "@/tools/index.js";
 
 interface ToolInfo {
 	name: string;

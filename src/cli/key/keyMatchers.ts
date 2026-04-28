@@ -1,6 +1,6 @@
-import type { Key } from "../hooks/useKeypress.js";
-import type { KeyBindingConfig } from "./keyBindings.js";
-import { Command, defaultKeyBindingConfig } from "./keyBindings.js";
+import type { Key } from "@cli/hooks/useKeypress.js";
+import type { KeyBindingConfig } from "@cli/key/keyBindings.js";
+import { Command, defaultKeyBindingConfig } from "@cli/key/keyBindings.js";
 
 function matchCommand(
 	command: Command,

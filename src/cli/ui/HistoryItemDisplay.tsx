@@ -1,6 +1,6 @@
+import type { ContentRenderer, HistoryItem } from "@cli/types.js";
 import { Box, Text } from "ink";
 import type React from "react";
-import type { ContentRenderer, HistoryItem } from "../types.js";
 
 type HISTORY_DISPLAY_TYPE = "user" | "assistant" | "error" | "info";
 
@@ -19,7 +19,6 @@ const LABEL_MAP: Record<
 		type: HISTORY_DISPLAY_TYPE;
 		label: string;
 		fontColor: string;
-		backgroundColor: string;
 		highlightColor: string;
 	}
 > = {
@@ -27,14 +26,12 @@ const LABEL_MAP: Record<
 		type: "user",
 		label: "▶ You",
 		fontColor: "#F1F5F9",
-		backgroundColor: "#313d4c",
 		highlightColor: "#F1F5F9",
 	},
 	assistant: {
 		type: "assistant",
 		label: "◀ Assistant",
 		fontColor: "white",
-		backgroundColor: "",
 		highlightColor: "magenta",
 	},
 	error: {
@@ -42,14 +39,12 @@ const LABEL_MAP: Record<
 		label: "✖ Error",
 		highlightColor: "red",
 		fontColor: "white",
-		backgroundColor: "red",
 	},
 	info: {
 		type: "info",
 		label: "ℹ Info",
 		highlightColor: "yellow",
 		fontColor: "white",
-		backgroundColor: "red",
 	},
 };
 
@@ -58,8 +53,7 @@ export const HistoryItemDisplay: React.FC<HistoryItemDisplayProps> = ({
 	width,
 	contentRenderer = renderPlainText,
 }) => {
-	const { label, fontColor, backgroundColor, highlightColor, type } =
-		LABEL_MAP[item.type];
+	const { label, fontColor, highlightColor, type } = LABEL_MAP[item.type];
 
 	return (
 		<Box
@@ -69,7 +63,6 @@ export const HistoryItemDisplay: React.FC<HistoryItemDisplayProps> = ({
 			paddingRight={1}
 			marginTop={1}
 			marginBottom={1}
-			backgroundColor={backgroundColor}
 		>
 			{type === "user" ? (
 				<>

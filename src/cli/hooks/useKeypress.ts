@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect } from "react";
 import {
 	type Key,
 	type KeypressHandler,
 	type KeypressPriority,
 	useKeypressContext,
-} from "../context/KeypressContext.js";
+} from "@cli/context/KeypressContext.js";
+import { useEffect } from "react";
 
 export type { Key };
 

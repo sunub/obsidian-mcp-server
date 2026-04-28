@@ -1,6 +1,6 @@
+import { cpLen } from "@cli/utils/textUtil.js";
 import { useCallback, useRef, useState } from "react";
-import { debugLogger } from "../utils/debugLogger.js";
-import { cpLen } from "../utils/textUtil.js";
+import { debugLogger } from "@/shared/index.js";
 
 interface Logger {
 	getPreviousUserMessages(): Promise<string[]>;

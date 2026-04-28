@@ -1,12 +1,12 @@
-import state from "../../../config.js";
-import { debugLogger } from "../../utils/debugLogger.js";
 import type {
 	ConversationMessage,
 	OpenAITool,
 	StreamEvent,
 	ToolCall,
-} from "./types.js";
-import { cleanMessagesForNoTools } from "./utils.js";
+} from "@cli/hooks/useLlmStream/types.js";
+import { cleanMessagesForNoTools } from "@cli/hooks/useLlmStream/utils.js";
+import state from "@/config.js";
+import { debugLogger } from "@/shared/index.js";
 
 let toolCallingSupportedCache: boolean | null = null;
 
@@ -14,6 +14,7 @@ export async function* callLLMStreaming(
 	messages: ConversationMessage[],
 	tools?: OpenAITool[],
 	allowFallback = true,
+	signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
 	const url = `${state.llmApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
 
@@ -34,6 +35,7 @@ export async function* callLLMStreaming(
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(body),
+		signal,
 	});
 
 	if (!response.ok) {

@@ -10,17 +10,17 @@ import {
 	DEFAULT_BORDER_OPACITY,
 	DEFAULT_INPUT_BACKGROUND_OPACITY,
 	DEFAULT_SELECTION_OPACITY,
-} from "../constants.js";
-import { DefaultDark } from "./builtin/default-dark.js";
-import { NoColorTheme } from "./builtin/no-color.js";
-import { TokyoNight } from "./builtin/tokyonight-dark.js";
-import type { SemanticColors } from "./semantic-tokens.js";
-import type { ColorsTheme, Theme, ThemeType } from "./theme.js";
+} from "@cli/constants.js";
+import { DefaultDark } from "@cli/theme/builtin/default-dark.js";
+import { NoColorTheme } from "@cli/theme/builtin/no-color.js";
+import { TokyoNight } from "@cli/theme/builtin/tokyonight-dark.js";
+import type { SemanticColors } from "@cli/theme/semantic-tokens.js";
+import type { ColorsTheme, Theme, ThemeType } from "@cli/theme/theme.js";
 import {
 	getThemeTypeFromBackgroundColor,
 	interpolateColor,
 	resolveColor,
-} from "./theme.js";
+} from "@cli/theme/theme.js";
 
 export interface ThemeDisplay {
 	name: string;

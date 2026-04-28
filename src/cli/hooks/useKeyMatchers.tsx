@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { defaultKeyMatchers, type KeyMatchers } from "@cli/key/keyMatchers.js";
 import type React from "react";
 import { createContext, useContext } from "react";
-import { defaultKeyMatchers, type KeyMatchers } from "../key/keyMatchers.js";
 
 export const KeyMatchersContext =
 	createContext<KeyMatchers>(defaultKeyMatchers);

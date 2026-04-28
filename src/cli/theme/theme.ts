@@ -4,14 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { CSSProperties } from "react";
-import tinycolor from "tinycolor2";
-import tinygradient from "tinygradient";
 import {
 	DEFAULT_INPUT_BACKGROUND_OPACITY,
 	DEFAULT_SELECTION_OPACITY,
-} from "../constants.js";
-import type { SemanticColors } from "./semantic-tokens.js";
+} from "@cli/constants.js";
+import type { SemanticColors } from "@cli/theme/semantic-tokens.js";
+import type { CSSProperties } from "react";
+import tinycolor from "tinycolor2";
+import tinygradient from "tinygradient";
 
 // Define the set of Ink's named colors for quick lookup
 export const INK_SUPPORTED_NAMES = new Set([

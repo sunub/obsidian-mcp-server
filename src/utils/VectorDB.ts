@@ -3,7 +3,7 @@ import path from "node:path";
 import type { Connection } from "@lancedb/lancedb";
 import { connect, Index } from "@lancedb/lancedb";
 import * as arrow from "apache-arrow";
-import { debugLogger } from "../cli/utils/debugLogger.js";
+import { debugLogger } from "@/shared/index.js";
 import state from "../config.js";
 
 export const INDEX_VERSION = 5;

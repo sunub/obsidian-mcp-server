@@ -1,2 +1,2 @@
-export type { LlmStreamState } from "./useLlmStream.js";
-export * from "./useLlmStream.js";
+export type { LlmStreamState } from "@cli/hooks/useLlmStream/useLlmStream.js";
+export * from "@cli/hooks/useLlmStream/useLlmStream.js";

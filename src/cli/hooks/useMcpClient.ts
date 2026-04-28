@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { configSchema } from "../../config.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	McpClientService,
 	type McpConnectionOptions,
 	type McpToolInfo,
-} from "../services/McpClientService.js";
-import type { McpConnectionState, McpToolResult } from "../types.js";
-import { debugLogger } from "../utils/debugLogger.js";
+} from "@cli/services/McpClientService.js";
+import type { McpConnectionState, McpToolResult } from "@cli/types.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { configSchema, debugLogger } from "@/shared/index.js";
 
 export interface UseMcpClientReturn {
 	isConnected: boolean;
@@ -38,12 +39,13 @@ function buildConnectionOptions(): McpConnectionOptions {
 		);
 	}
 
-	const projectRoot = process.cwd();
-	const serverEntry = "build/index.js";
-	const command = "node";
+	// 현재 파일 위치를 기준으로 packages/server/dist/index.js 위치를 계산
+	const __dirname = path.dirname(fileURLToPath(import.meta.url));
+	const serverEntry = path.resolve(__dirname, "../../../server/dist/index.js");
+	const projectRoot = path.resolve(__dirname, "../../../../");
 
 	return {
-		command,
+		command: "node",
 		args: [serverEntry],
 		cwd: projectRoot,
 		env: {

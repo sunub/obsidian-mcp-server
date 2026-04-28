@@ -1,8 +1,11 @@
-import type { McpServerConfig } from "../config/mcpServersConfig.js";
-import type { McpConnectionState, McpToolResult } from "../types.js";
-import { debugLogger } from "../utils/debugLogger.js";
-import type { McpConnectionOptions, McpToolInfo } from "./McpClientService.js";
-import { McpClientService } from "./McpClientService.js";
+import type { McpServerConfig } from "@cli/config/mcpServersConfig.js";
+import type {
+	McpConnectionOptions,
+	McpToolInfo,
+} from "@cli/services/McpClientService.js";
+import { McpClientService } from "@cli/services/McpClientService.js";
+import type { McpConnectionState, McpToolResult } from "@cli/types.js";
+import { debugLogger } from "@/shared/index.js";
 
 interface ToolRouteEntry {
 	serverName: string;

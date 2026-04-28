@@ -1,3 +1,7 @@
+import {
+	emitKeys,
+	nonKeyboardEventFilter,
+} from "@cli/context/KeypressContext.util.js";
 import { useStdin } from "ink";
 import { MultiMap } from "mnemonist";
 import type React from "react";
@@ -9,7 +13,6 @@ import {
 	useMemo,
 	useRef,
 } from "react";
-import { emitKeys, nonKeyboardEventFilter } from "./KeypressContext.util.js";
 
 export const BACKSLASH_ENTER_TIMEOUT = 5;
 export const ESC_TIMEOUT = 50;

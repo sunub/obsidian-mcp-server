@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { debugLogger } from "@/cli/utils/debugLogger.js";
+import { debugLogger } from "@/shared/index.js";
 import { createToolError } from "@/utils/createToolError.js";
 import { rerankerClient } from "@/utils/RerankerClient.js";
 import type { EnrichedDocument } from "../../../../utils/VaultManger/types.js";

@@ -1,15 +1,9 @@
-/**
- * @license
- * Copyright 2025 Google LLC
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { stripVTControlCharacters } from "node:util";
+import { LRU_BUFFER_PERF_CACHE_LIMIT } from "@cli/constants.js";
 import ansiRegex from "ansi-regex";
 import { LRUCache } from "mnemonist";
 import stringWidth from "string-width";
 import stripAnsi from "strip-ansi";
-import { LRU_BUFFER_PERF_CACHE_LIMIT } from "../constants.js";
 
 /**
  * Calculates the maximum width of a multi-line ASCII art string.

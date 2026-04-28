@@ -1,386 +1,16 @@
-import { LRUCache } from "mnemonist";
-import { useCallback, useEffect, useMemo, useReducer } from "react";
-import { LRU_BUFFER_PERF_CACHE_LIMIT } from "../constants.js";
-import type { Key } from "../context/KeypressContext.js";
+import { LRU_BUFFER_PERF_CACHE_LIMIT } from "@cli/constants.js";
+import type { Key } from "@cli/context/KeypressContext.js";
 import {
 	cpLen,
 	cpSlice,
 	getCachedStringWidth,
 	toCodePoints,
-} from "../utils/textUtil.js";
+} from "@cli/utils/textUtil.js";
+import { LRUCache } from "mnemonist";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 
 export const PASTED_TEXT_PLACEHOLDER_REGEX =
 	/\[Pasted Text: \d+ (?:lines|chars)(?: #\d+)?\]/g;
-
-export interface TextBuffer {
-	// State
-	lines: string[]; // Logical lines
-	text: string;
-	cursor: [number, number]; // Logical cursor [row, col]
-	/**
-	 * When the user moves the caret vertically we try to keep their original
-	 * horizontal column even when passing through shorter lines.  We remember
-	 * that *preferred* column in this field while the user is still travelling
-	 * vertically.  Any explicit horizontal movement resets the preference.
-	 */
-	preferredCol: number | null; // Preferred visual column
-	selectionAnchor: [number, number] | null; // Logical selection anchor
-	pastedContent: Record<string, string>;
-
-	// Visual state (handles wrapping)
-	allVisualLines: string[]; // All visual lines for the current text and viewport width.
-	viewportVisualLines: string[]; // The subset of visual lines to be rendered based on visualScrollRow and viewport.height
-	visualCursor: [number, number]; // Visual cursor [row, col] relative to the start of all visualLines
-	visualScrollRow: number; // Scroll position for visual lines (index of the first visible visual line)
-	viewportHeight: number; // The maximum height of the viewport
-	/**
-	 * For each visual line (by absolute index in allVisualLines) provides a tuple
-	 * [logicalLineIndex, startColInLogical] that maps where that visual line
-	 * begins within the logical buffer. Indices are code-point based.
-	 */
-	visualToLogicalMap: Array<[number, number]>;
-	/**
-	 * For each logical line, an array mapping transformed positions (in the transformed
-	 * line) back to logical column indices.
-	 */
-	transformedToLogicalMaps: number[][];
-	/**
-	 * For each visual line (absolute index across all visual lines), the start index
-	 * within that logical line's transformed content.
-	 */
-	visualToTransformedMap: number[];
-	/** Cached transformations per logical line */
-	visualLayout: VisualLayout;
-
-	// Actions
-
-	/**
-	 * Replaces the entire buffer content with the provided text.
-	 * The operation is undoable.
-	 */
-	setText: (text: string, cursorPosition?: "start" | "end" | number) => void;
-	/**
-	 * Insert a single character or string without newlines.
-	 */
-	insert: (ch: string, opts?: { paste?: boolean }) => void;
-	newline: () => void;
-	backspace: () => void;
-	del: () => void;
-	move: (dir: Direction) => void;
-	undo: () => void;
-	redo: () => void;
-	/**
-	 * Replaces the text within the specified range with new text.
-	 * Handles both single-line and multi-line ranges.
-	 *
-	 * @param startRow The starting row index (inclusive).
-	 * @param startCol The starting column index (inclusive, code-point based).
-	 * @param endRow The ending row index (inclusive).
-	 * @param endCol The ending column index (exclusive, code-point based).
-	 * @param text The new text to insert.
-	 * @returns True if the buffer was modified, false otherwise.
-	 */
-	replaceRange: (
-		startRow: number,
-		startCol: number,
-		endRow: number,
-		endCol: number,
-		text: string,
-	) => void;
-	/**
-	 * Delete the word to the *left* of the caret, mirroring common
-	 * Ctrl/Alt+Backspace behaviour in editors & terminals. Both the adjacent
-	 * whitespace *and* the word characters immediately preceding the caret are
-	 * removed.  If the caret is already at column‑0 this becomes a no-op.
-	 */
-	deleteWordLeft: () => void;
-	/**
-	 * Delete the word to the *right* of the caret, akin to many editors'
-	 * Ctrl/Alt+Delete shortcut.  Removes any whitespace/punctuation that
-	 * follows the caret and the next contiguous run of word characters.
-	 */
-	deleteWordRight: () => void;
-
-	/**
-	 * Deletes text from the cursor to the end of the current line.
-	 */
-	killLineRight: () => void;
-	/**
-	 * Deletes text from the start of the current line to the cursor.
-	 */
-	killLineLeft: () => void;
-	/**
-	 * High level "handleInput" – receives what Ink gives us.
-	 */
-	handleInput: (key: Key) => boolean;
-	/**
-	 * Opens the current buffer contents in the user's preferred terminal text
-	 * editor ($VISUAL or $EDITOR, falling back to "vi").  The method blocks
-	 * until the editor exits, then reloads the file and replaces the in‑memory
-	 * buffer with whatever the user saved.
-	 *
-	 * The operation is treated as a single undoable edit – we snapshot the
-	 * previous state *once* before launching the editor so one `undo()` will
-	 * revert the entire change set.
-	 *
-	 * Note: We purposefully rely on the *synchronous* spawn API so that the
-	 * calling process genuinely waits for the editor to close before
-	 * continuing.  This mirrors Git's behaviour and simplifies downstream
-	 * control‑flow (callers can simply `await` the Promise).
-	 */
-	openInExternalEditor: () => Promise<void>;
-
-	replaceRangeByOffset: (
-		startOffset: number,
-		endOffset: number,
-		replacementText: string,
-	) => void;
-	getOffset: () => number;
-	moveToOffset(offset: number): void;
-	moveToVisualPosition(visualRow: number, visualCol: number): void;
-	/**
-	 * Convert visual coordinates to logical position without moving cursor.
-	 * Returns null if the position is out of bounds.
-	 */
-	getLogicalPositionFromVisual(
-		visualRow: number,
-		visualCol: number,
-	): { row: number; col: number } | null;
-	/**
-	 * Check if a line index falls within an expanded paste region.
-	 * Returns the paste placeholder ID if found, null otherwise.
-	 */
-	getExpandedPasteAtLine(lineIndex: number): string | null;
-	/**
-	 * Toggle expansion state for a paste placeholder.
-	 * If collapsed, expands to show full content inline.
-	 * If expanded, collapses back to placeholder.
-	 */
-	togglePasteExpansion(id: string, row: number, col: number): void;
-	/**
-	 * The current expanded paste info (read-only).
-	 */
-	/**
-	 * Delete N words forward from cursor position (vim 'dw' command)
-	 */
-	vimDeleteWordForward: (count: number) => void;
-	/**
-	 * Delete N words backward from cursor position (vim 'db' command)
-	 */
-	vimDeleteWordBackward: (count: number) => void;
-	/**
-	 * Delete to end of N words from cursor position (vim 'de' command)
-	 */
-	vimDeleteWordEnd: (count: number) => void;
-	/**
-	 * Delete N big words forward from cursor position (vim 'dW' command)
-	 */
-	vimDeleteBigWordForward: (count: number) => void;
-	/**
-	 * Delete N big words backward from cursor position (vim 'dB' command)
-	 */
-	vimDeleteBigWordBackward: (count: number) => void;
-	/**
-	 * Delete to end of N big words from cursor position (vim 'dE' command)
-	 */
-	vimDeleteBigWordEnd: (count: number) => void;
-	/**
-	 * Change N words forward from cursor position (vim 'cw' command)
-	 */
-	vimChangeWordForward: (count: number) => void;
-	/**
-	 * Change N words backward from cursor position (vim 'cb' command)
-	 */
-	vimChangeWordBackward: (count: number) => void;
-	/**
-	 * Change to end of N words from cursor position (vim 'ce' command)
-	 */
-	vimChangeWordEnd: (count: number) => void;
-	/**
-	 * Change N big words forward from cursor position (vim 'cW' command)
-	 */
-	vimChangeBigWordForward: (count: number) => void;
-	/**
-	 * Change N big words backward from cursor position (vim 'cB' command)
-	 */
-	vimChangeBigWordBackward: (count: number) => void;
-	/**
-	 * Change to end of N big words from cursor position (vim 'cE' command)
-	 */
-	vimChangeBigWordEnd: (count: number) => void;
-	/**
-	 * Delete N lines from cursor position (vim 'dd' command)
-	 */
-	vimDeleteLine: (count: number) => void;
-	/**
-	 * Change N lines from cursor position (vim 'cc' command)
-	 */
-	vimChangeLine: (count: number) => void;
-	/**
-	 * Delete from cursor to end of line (vim 'D' command)
-	 * With count > 1, deletes to end of current line plus (count-1) additional lines
-	 */
-	vimDeleteToEndOfLine: (count?: number) => void;
-	/**
-	 * Delete from start of line to cursor (vim 'd0' command)
-	 */
-	vimDeleteToStartOfLine: () => void;
-	/**
-	 * Change from cursor to end of line (vim 'C' command)
-	 * With count > 1, changes to end of current line plus (count-1) additional lines
-	 */
-	vimChangeToEndOfLine: (count?: number) => void;
-	/**
-	 * Delete from cursor to first non-whitespace character (vim 'd^' command)
-	 */
-	vimDeleteToFirstNonWhitespace: () => void;
-	/**
-	 * Change from cursor to start of line (vim 'c0' command)
-	 */
-	vimChangeToStartOfLine: () => void;
-	/**
-	 * Change from cursor to first non-whitespace character (vim 'c^' command)
-	 */
-	vimChangeToFirstNonWhitespace: () => void;
-	/**
-	 * Delete from current line to first line (vim 'dgg' command)
-	 */
-	vimDeleteToFirstLine: (count: number) => void;
-	/**
-	 * Delete from current line to last line (vim 'dG' command)
-	 */
-	vimDeleteToLastLine: (count: number) => void;
-	/**
-	 * Change movement operations (vim 'ch', 'cj', 'ck', 'cl' commands)
-	 */
-	vimChangeMovement: (movement: "h" | "j" | "k" | "l", count: number) => void;
-	/**
-	 * Move cursor left N times (vim 'h' command)
-	 */
-	vimMoveLeft: (count: number) => void;
-	/**
-	 * Move cursor right N times (vim 'l' command)
-	 */
-	vimMoveRight: (count: number) => void;
-	/**
-	 * Move cursor up N times (vim 'k' command)
-	 */
-	vimMoveUp: (count: number) => void;
-	/**
-	 * Move cursor down N times (vim 'j' command)
-	 */
-	vimMoveDown: (count: number) => void;
-	/**
-	 * Move cursor forward N words (vim 'w' command)
-	 */
-	vimMoveWordForward: (count: number) => void;
-	/**
-	 * Move cursor backward N words (vim 'b' command)
-	 */
-	vimMoveWordBackward: (count: number) => void;
-	/**
-	 * Move cursor to end of Nth word (vim 'e' command)
-	 */
-	vimMoveWordEnd: (count: number) => void;
-	/**
-	 * Move cursor forward N big words (vim 'W' command)
-	 */
-	vimMoveBigWordForward: (count: number) => void;
-	/**
-	 * Move cursor backward N big words (vim 'B' command)
-	 */
-	vimMoveBigWordBackward: (count: number) => void;
-	/**
-	 * Move cursor to end of Nth big word (vim 'E' command)
-	 */
-	vimMoveBigWordEnd: (count: number) => void;
-	/**
-	 * Delete N characters at cursor (vim 'x' command)
-	 */
-	vimDeleteChar: (count: number) => void;
-	/** Delete N characters before cursor (vim 'X') */
-	vimDeleteCharBefore: (count: number) => void;
-	/** Toggle case of N characters at cursor (vim '~') */
-	vimToggleCase: (count: number) => void;
-	/** Replace N characters at cursor with char, stay in NORMAL mode (vim 'r') */
-	vimReplaceChar: (char: string, count: number) => void;
-	/** Move to Nth occurrence of char forward on line; till=true stops before it (vim 'f'/'t') */
-	vimFindCharForward: (char: string, count: number, till: boolean) => void;
-	/** Move to Nth occurrence of char backward on line; till=true stops after it (vim 'F'/'T') */
-	vimFindCharBackward: (char: string, count: number, till: boolean) => void;
-	/** Delete from cursor to Nth occurrence of char forward; till=true excludes the char (vim 'df'/'dt') */
-	vimDeleteToCharForward: (char: string, count: number, till: boolean) => void;
-	/** Delete from Nth occurrence of char backward to cursor; till=true excludes the char (vim 'dF'/'dT') */
-	vimDeleteToCharBackward: (char: string, count: number, till: boolean) => void;
-	/**
-	 * Enter insert mode at cursor (vim 'i' command)
-	 */
-	vimInsertAtCursor: () => void;
-	/**
-	 * Enter insert mode after cursor (vim 'a' command)
-	 */
-	vimAppendAtCursor: () => void;
-	/**
-	 * Open new line below and enter insert mode (vim 'o' command)
-	 */
-	vimOpenLineBelow: () => void;
-	/**
-	 * Open new line above and enter insert mode (vim 'O' command)
-	 */
-	vimOpenLineAbove: () => void;
-	/**
-	 * Move to end of line and enter insert mode (vim 'A' command)
-	 */
-	vimAppendAtLineEnd: () => void;
-	/**
-	 * Move to first non-whitespace and enter insert mode (vim 'I' command)
-	 */
-	vimInsertAtLineStart: () => void;
-	/**
-	 * Move cursor to beginning of line (vim '0' command)
-	 */
-	vimMoveToLineStart: () => void;
-	/**
-	 * Move cursor to end of line (vim '$' command)
-	 */
-	vimMoveToLineEnd: () => void;
-	/**
-	 * Move cursor to first non-whitespace character (vim '^' command)
-	 */
-	vimMoveToFirstNonWhitespace: () => void;
-	/**
-	 * Move cursor to first line (vim 'gg' command)
-	 */
-	vimMoveToFirstLine: () => void;
-	/**
-	 * Move cursor to last line (vim 'G' command)
-	 */
-	vimMoveToLastLine: () => void;
-	/**
-	 * Move cursor to specific line number (vim '[N]G' command)
-	 */
-	vimMoveToLine: (lineNumber: number) => void;
-	/**
-	 * Handle escape from insert mode (moves cursor left if not at line start)
-	 */
-	vimEscapeInsertMode: () => void;
-	/** Yank N lines into the unnamed register (vim 'yy' / 'Nyy') */
-	vimYankLine: (count: number) => void;
-	/** Yank forward N words into the unnamed register (vim 'yw') */
-	vimYankWordForward: (count: number) => void;
-	/** Yank forward N big words into the unnamed register (vim 'yW') */
-	vimYankBigWordForward: (count: number) => void;
-	/** Yank to end of N words into the unnamed register (vim 'ye') */
-	vimYankWordEnd: (count: number) => void;
-	/** Yank to end of N big words into the unnamed register (vim 'yE') */
-	vimYankBigWordEnd: (count: number) => void;
-	/** Yank from cursor to end of line into the unnamed register (vim 'y$') */
-	vimYankToEndOfLine: (count: number) => void;
-	/** Paste the unnamed register after cursor (vim 'p') */
-	vimPasteAfter: (count: number) => void;
-	/** Paste the unnamed register before cursor (vim 'P') */
-	vimPasteBefore: (count: number) => void;
-}
 
 export type Direction = "left" | "right" | "up" | "down" | "home" | "end";
 
@@ -469,7 +99,7 @@ function getLineLayoutCacheKey(
 function calculateVisualCursorFromLayout(
 	layout: VisualLayout,
 	logicalCursor: [number, number],
-): [number, number] {
+): [number, number, number] {
 	const { logicalToVisualMap, visualLines, transformedToLogicalMaps } = layout;
 	const [logicalRow, logicalCol] = logicalCursor;
 
@@ -477,7 +107,7 @@ function calculateVisualCursorFromLayout(
 
 	if (!segmentsForLogicalLine || segmentsForLogicalLine.length === 0) {
 		// This can happen for an empty document.
-		return [0, 0];
+		return [0, 0, 0];
 	}
 
 	// Find the segment where the logical column fits.
@@ -529,12 +159,21 @@ function calculateVisualCursorFromLayout(
 		transformedCol,
 		Math.max(0, transformedToLogicalMap.length - 1),
 	);
-	const visualCol = clampedTransformedCol - startColInTransformed;
-	const clampedVisualCol = Math.min(
-		Math.max(visualCol, 0),
-		cpLen(visualLines[visualRow] ?? ""),
+	const visualColIndex = clampedTransformedCol - startColInTransformed;
+	const currentVisualLineText = visualLines[visualRow] ?? "";
+
+	let visualColWidth = 0;
+	const codePoints = toCodePoints(currentVisualLineText);
+
+	for (let i = 0; i < Math.min(visualColIndex, codePoints.length); i++) {
+		visualColWidth += getCachedStringWidth(codePoints[i]);
+	}
+	const clampedVisualColIndex = Math.min(
+		Math.max(visualColIndex, 0),
+		codePoints.length,
 	);
-	return [visualRow, clampedVisualCol];
+
+	return [visualRow, clampedVisualColIndex, visualColWidth];
 }
 /**
  * Helper: Converts logical row/col position to absolute text offset
@@ -804,7 +443,7 @@ function bufferReducerLogic(
 		case "MOVE": {
 			const { dir } = action;
 			const { visualLayout, preferredCol } = state;
-			const visualCursor = calculateVisualCursorFromLayout(visualLayout, [
+			const [vRow, , vWidth] = calculateVisualCursorFromLayout(visualLayout, [
 				cursorRow,
 				cursorCol,
 			]);
@@ -835,30 +474,34 @@ function bufferReducerLogic(
 				return { ...state, cursorRow: r, cursorCol: c, preferredCol: null };
 			}
 
-			// Up/Down movement (visual-based)
-			let newVisRow = visualCursor[0];
-			let newVisCol = visualCursor[1];
-			let newPrefCol = preferredCol;
+			// Up/Down movement (width-based)
+			let newVisRow = vRow;
+			const targetWidth = preferredCol !== null ? preferredCol : vWidth;
 
 			if (dir === "up" && newVisRow > 0) {
-				if (newPrefCol === null) newPrefCol = newVisCol;
 				newVisRow--;
-				newVisCol = Math.min(
-					newPrefCol,
-					cpLen(visualLayout.visualLines[newVisRow] ?? ""),
-				);
 			} else if (
 				dir === "down" &&
 				newVisRow < visualLayout.visualLines.length - 1
 			) {
-				if (newPrefCol === null) newPrefCol = newVisCol;
 				newVisRow++;
-				newVisCol = Math.min(
-					newPrefCol,
-					cpLen(visualLayout.visualLines[newVisRow] ?? ""),
-				);
 			} else {
 				return state;
+			}
+
+			// Find the logical index in the new visual line that best matches the targetWidth
+			const newLineText = visualLayout.visualLines[newVisRow] ?? "";
+			const codePoints = toCodePoints(newLineText);
+			let currentWidth = 0;
+			let newVisColIdx = 0;
+
+			for (let i = 0; i < codePoints.length; i++) {
+				const charWidth = getCachedStringWidth(codePoints[i]);
+				if (currentWidth + charWidth > targetWidth) {
+					break;
+				}
+				currentWidth += charWidth;
+				newVisColIdx = i + 1;
 			}
 
 			const mapping = visualLayout.visualToLogicalMap[newVisRow];
@@ -866,8 +509,8 @@ function bufferReducerLogic(
 				return {
 					...state,
 					cursorRow: mapping[0],
-					cursorCol: mapping[1] + newVisCol,
-					preferredCol: newPrefCol,
+					cursorCol: mapping[1] + newVisColIdx,
+					preferredCol: targetWidth,
 				};
 			}
 			return state;
@@ -1448,7 +1091,7 @@ export function useTextBuffer({
 		[backspace, deleteChar, move, insert, newline],
 	);
 
-	const visualCursor = useMemo(
+	const [vRow, vColIdx, vWidth] = useMemo(
 		() =>
 			calculateVisualCursorFromLayout(state.visualLayout, [
 				state.cursorRow,
@@ -1456,6 +1099,12 @@ export function useTextBuffer({
 			]),
 		[state.visualLayout, state.cursorRow, state.cursorCol],
 	);
+
+	const visualCursor = useMemo(
+		() => [vRow, vWidth] as [number, number],
+		[vRow, vWidth],
+	);
+	const visualCursorColIndex = vColIdx;
 
 	const viewportVisualLines = useMemo(
 		() =>
@@ -1487,6 +1136,8 @@ export function useTextBuffer({
 			allVisualLines: state.visualLayout.visualLines,
 			viewportVisualLines,
 			visualCursor,
+			visualCursorColIndex,
+			visualCursorColWidth: vWidth,
 			visualScrollRow: state.visualScrollRow,
 			viewportHeight: state.viewportHeight,
 			visualToLogicalMap: state.visualLayout.visualToLogicalMap,
@@ -1600,6 +1251,8 @@ export function useTextBuffer({
 			state,
 			viewportVisualLines,
 			visualCursor,
+			visualCursorColIndex,
+			vWidth,
 			insert,
 			setText,
 			newline,
@@ -1621,3 +1274,4 @@ export function useTextBuffer({
 		],
 	);
 }
+export type TextBuffer = ReturnType<typeof useTextBuffer>;

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { darkTheme, lightTheme } from "./theme.js";
+import { darkTheme, lightTheme } from "@cli/theme/theme.js";
 
 export interface SemanticColors {
 	text: {

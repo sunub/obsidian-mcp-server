@@ -4,10 +4,10 @@
  * 터미널 상단에 각 MCP 서버의 연결 상태를 시각적으로 표시합니다.
  */
 
+import type { ServerConnectionInfo } from "@cli/services/McpManager.js";
+import type { McpConnectionState } from "@cli/types.js";
 import { Box, Text } from "ink";
 import type React from "react";
-import type { ServerConnectionInfo } from "../services/McpManager.js";
-import type { McpConnectionState } from "../types.js";
 
 interface ConnectionStatusProps {
 	connections: Map<string, ServerConnectionInfo>;

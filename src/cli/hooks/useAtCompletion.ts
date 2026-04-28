@@ -1,5 +1,5 @@
+import type { Suggestion } from "@cli/ui/SuggestionsDisplay.js";
 import type React from "react";
-import type { Suggestion } from "../ui/SuggestionsDisplay.js";
 
 export interface UseAtCompletionOptions {
 	enabled: boolean;

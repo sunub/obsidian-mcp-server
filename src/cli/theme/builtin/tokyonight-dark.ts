@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { type ColorsTheme, interpolateColor, Theme } from "../theme.js";
+import { type ColorsTheme, interpolateColor, Theme } from "@cli/theme/theme.js";
 
 const palette = {
 	bg: "#1a1b26",

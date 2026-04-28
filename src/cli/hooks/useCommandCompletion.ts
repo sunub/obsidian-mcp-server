@@ -4,23 +4,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CommandContext, SlashCommand } from "../commands/types.js";
-import type { TextBuffer } from "../key/text-buffer.js";
-import { logicalPosToOffset } from "../key/text-buffer.js";
-import type { Suggestion } from "../ui/SuggestionsDisplay.js";
-import { isSlashCommand } from "../utils/commandUtils.js";
-import { toCodePoints } from "../utils/textUtil.js";
-import { useAtCompletion } from "./useAtCompletion.js";
-import { useCompletion } from "./useCompletion.js";
+import type { CommandContext, SlashCommand } from "@cli/commands/types.js";
+import { useAtCompletion } from "@cli/hooks/useAtCompletion.js";
+import { useCompletion } from "@cli/hooks/useCompletion.js";
 import {
 	PROMPT_COMPLETION_MIN_LENGTH,
 	type PromptCompletion,
 	usePromptCompletion,
-} from "./usePromptCompletion.js";
-import { useShellCompletion } from "./useShellCompletion.js";
-import { useSlashCompletion } from "./useSlashCompletion.js";
+} from "@cli/hooks/usePromptCompletion.js";
+import { useShellCompletion } from "@cli/hooks/useShellCompletion.js";
+import { useSlashCompletion } from "@cli/hooks/useSlashCompletion.js";
+import type { TextBuffer } from "@cli/key/text-buffer.js";
+import { logicalPosToOffset } from "@cli/key/text-buffer.js";
+import type { Suggestion } from "@cli/ui/SuggestionsDisplay.js";
+import { isSlashCommand } from "@cli/utils/commandUtils.js";
+import { toCodePoints } from "@cli/utils/textUtil.js";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface Config {
 	[key: string]: unknown;

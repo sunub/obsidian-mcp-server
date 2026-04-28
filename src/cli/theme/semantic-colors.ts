@@ -1,5 +1,5 @@
-import type { SemanticColors } from "./semantic-tokens.js";
-import { themeManager } from "./theme-manager.js";
+import type { SemanticColors } from "@cli/theme/semantic-tokens.js";
+import { themeManager } from "@cli/theme/theme-manager.js";
 
 export const theme: SemanticColors = {
 	get text() {

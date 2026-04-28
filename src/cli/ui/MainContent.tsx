@@ -1,15 +1,17 @@
+import { HELP_COMMAND_MARKER } from "@cli/constants.js";
+import type { HistoryItem, PendingItem, StreamingState } from "@cli/types.js";
+import { HelpCommands } from "@cli/ui/HelpCommands.js";
+import { HistoryItemDisplay } from "@cli/ui/HistoryItemDisplay.js";
+import { ThinkingIndicator } from "@cli/ui/ThinkingIndicator.js";
 import { Box, Static, Text } from "ink";
 import type React from "react";
-import { HELP_COMMAND_MARKER } from "../constants.js";
-import type { HistoryItem, PendingItem, StreamingState } from "../types.js";
-import { HelpCommands } from "./HelpCommands.js";
-import { HistoryItemDisplay } from "./HistoryItemDisplay.js";
-import { ThinkingIndicator } from "./ThinkingIndicator.js";
 
 interface MainContentProps {
 	history: HistoryItem[];
 	pendingItem: PendingItem | null;
 	streamingState: StreamingState;
+	isRagFetching?: boolean;
+	isCommandProcessing?: boolean;
 	width: number;
 }
 
@@ -61,8 +63,16 @@ export const MainContent: React.FC<MainContentProps> = ({
 	history,
 	pendingItem,
 	streamingState,
+	isRagFetching,
+	isCommandProcessing,
 	width,
 }) => {
+	const isBusy =
+		isRagFetching ||
+		isCommandProcessing ||
+		streamingState === "thinking" ||
+		streamingState === "executing";
+
 	return (
 		<>
 			<Static items={history}>
@@ -74,7 +84,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 				}}
 			</Static>
 
-			{streamingState === "thinking" && <ThinkingIndicator />}
+			{isBusy && <ThinkingIndicator />}
 
 			{pendingItem && (
 				<Box flexDirection="column" width={width} paddingX={1} marginBottom={1}>

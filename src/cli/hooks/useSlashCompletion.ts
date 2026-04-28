@@ -1,6 +1,6 @@
+import type { CommandContext, SlashCommand } from "@cli/commands/types.js";
+import type { Suggestion } from "@cli/ui/SuggestionsDisplay.js";
 import type React from "react";
-import type { CommandContext, SlashCommand } from "../commands/types.js";
-import type { Suggestion } from "../ui/SuggestionsDisplay.js";
 
 export interface UseSlashCompletionOptions {
 	enabled: boolean;

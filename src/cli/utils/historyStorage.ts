@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { debugLogger } from "./debugLogger.js";
+import { debugLogger } from "@/shared/index.js";
 
 const HISTORY_FILE_PATH = path.join(
 	os.homedir(),

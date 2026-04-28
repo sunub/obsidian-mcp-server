@@ -1,7 +1,7 @@
+import type { McpToolResult } from "@cli/types.js";
 import { Client } from "@modelcontextprotocol/sdk/client";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import type { McpToolResult } from "../types.js";
-import { debugLogger } from "../utils/debugLogger.js";
+import { debugLogger } from "@/shared/index.js";
 
 export interface McpConnectionOptions {
 	command: string;
@@ -109,10 +109,10 @@ export class McpClientService {
 		const client = this.client as Client;
 
 		const result = await client.listTools();
-		return result.tools.map((tool) => ({
+		return (result.tools as unknown as McpToolInfo[]).map((tool) => ({
 			name: tool.name,
 			description: tool.description,
-			inputSchema: tool.inputSchema as McpToolInputSchema | undefined,
+			inputSchema: tool.inputSchema,
 		}));
 	}
 

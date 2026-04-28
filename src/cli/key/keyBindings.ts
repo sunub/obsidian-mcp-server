@@ -4,12 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { z } from "zod";
-
 /**
  * Command enum for all available keyboard shortcuts
  */
-import type { Key } from "../hooks/useKeypress.js";
+import type { Key } from "@cli/hooks/useKeypress.js";
+import { z } from "zod";
 
 export enum Command {
 	// Basic Controls

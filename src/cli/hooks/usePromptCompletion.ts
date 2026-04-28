@@ -1,6 +1,6 @@
+import type { TextBuffer } from "@cli/key/text-buffer.js";
+import type { Suggestion } from "@cli/ui/SuggestionsDisplay.js";
 import type React from "react";
-import type { TextBuffer } from "../key/text-buffer.js";
-import type { Suggestion } from "../ui/SuggestionsDisplay.js";
 
 export const PROMPT_COMPLETION_MIN_LENGTH = 3;
 

@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { loadMcpServersConfig } from "../config/mcpServersConfig.js";
-import type { McpToolInfo } from "../services/McpClientService.js";
+import { loadMcpServersConfig } from "@cli/config/mcpServersConfig.js";
+import type { McpToolInfo } from "@cli/services/McpClientService.js";
 import {
 	McpManager,
 	type ServerConnectionInfo,
-} from "../services/McpManager.js";
-import type { McpToolResult } from "../types.js";
-import { debugLogger } from "../utils/debugLogger.js";
+} from "@cli/services/McpManager.js";
+import type { McpToolResult } from "@cli/types.js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { debugLogger } from "@/shared/index.js";
 
 export interface UseMcpManagerReturn {
 	/** 하나라도 연결되었는지 (Partial Readiness) */

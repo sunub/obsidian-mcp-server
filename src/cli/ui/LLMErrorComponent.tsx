@@ -1,4 +1,5 @@
 import { Box, Text } from "ink";
+import { useEffect } from "react";
 
 interface LLMErrorComponentProps {
 	apiUrl: string;
@@ -17,6 +18,10 @@ export function LLMErrorComponent({
 		"2. Ensure the environment variables (LLM_API_URL, LLM_EMBEDDING_API_URL) correctly match the running server's URL.",
 		"3. Restart the service with the synchronized settings.",
 	];
+
+	useEffect(() => {
+		process.exit(1);
+	}, []);
 
 	return (
 		<Box

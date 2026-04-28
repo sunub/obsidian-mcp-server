@@ -1,5 +1,5 @@
+import type { TextBuffer } from "@cli/key/text-buffer.js";
 import { createContext, useContext } from "react";
-import type { TextBuffer } from "../key/text-buffer.js";
 
 export interface InputState {
 	buffer: TextBuffer;

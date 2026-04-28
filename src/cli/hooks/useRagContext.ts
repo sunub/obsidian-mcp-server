@@ -1,13 +1,11 @@
+import type { CallToolFn } from "@cli/types.js";
 import { useCallback, useState } from "react";
-import type { CallToolFn, McpToolResult } from "../types.js";
-import { debugLogger } from "../utils/debugLogger.js";
+import { debugLogger } from "@/shared/index.js";
 
 export interface UseRagContextReturn {
 	fetchContext: (query: string) => Promise<string | null>;
 	isFetching: boolean;
 }
-
-const MAX_CONTEXT_CHARS = 4000;
 
 const ANSI_RE =
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences intentionally matched
@@ -16,35 +14,53 @@ function stripAnsi(text: string): string {
 	return text.replace(ANSI_RE, "");
 }
 
-function extractTextFromResult(result: McpToolResult): string {
-	return result.content
-		.filter((c) => c.type === "text" && c.text)
-		.map((c) => c.text ?? "")
-		.join("\n");
+interface RagDocument {
+	title: string;
+	excerpt: string;
+	relevance: string;
 }
 
-function hasValidResults(result: McpToolResult): boolean {
-	if (result.isError) {
-		return false;
+interface RagPayload {
+	memory_packet: {
+		topicSummary: string;
+		keyFacts?: string[];
+	};
+	documents: RagDocument[];
+}
+
+function formatAsContext(payload: RagPayload): string {
+	const { memory_packet, documents } = payload;
+
+	const contextParts = [
+		"<context>",
+		`  <summary>${memory_packet.topicSummary}</summary>`,
+	];
+
+	if (memory_packet.keyFacts && memory_packet.keyFacts.length > 0) {
+		contextParts.push("  <key_facts>");
+		for (const fact of memory_packet.keyFacts) {
+			contextParts.push(`    - ${fact}`);
+		}
+		contextParts.push("  </key_facts>");
 	}
-	const text = extractTextFromResult(result);
-	return text.length > 0 && !text.includes("No results found");
-}
 
-function formatAsContext(rawText: string): string {
-	const truncated =
-		rawText.length > MAX_CONTEXT_CHARS
-			? `${rawText.slice(0, MAX_CONTEXT_CHARS)}\n... (결과가 잘렸습니다)`
-			: rawText;
+	// 연관도가 높은(high) 문서의 본문 조각 추가 (최대 2개)
+	const highRelevanceDocs = documents
+		.filter((doc) => doc.relevance === "high")
+		.slice(0, 2);
+	if (highRelevanceDocs.length > 0) {
+		contextParts.push("  <detailed_excerpts>");
+		for (const doc of highRelevanceDocs) {
+			contextParts.push(`    <doc title="${doc.title}">`);
+			contextParts.push(`      ${doc.excerpt}`);
+			contextParts.push("    </doc>");
+		}
+		contextParts.push("  </detailed_excerpts>");
+	}
 
-	return [
-		"[Vault Context]",
-		"아래는 사용자의 Obsidian Vault에서 찾은 관련 문서입니다. 이 컨텍스트를 참고하여 답변해주세요.",
-		"",
-		truncated,
-		"",
-		"[End Vault Context]",
-	].join("\n");
+	contextParts.push("</context>");
+
+	return contextParts.join("\n");
 }
 
 export const useRagContext = (
@@ -61,47 +77,39 @@ export const useRagContext = (
 			}
 
 			const query = stripAnsi(rawQuery).trim();
+			if (query.length < 3) return null;
 
 			setIsFetching(true);
-			debugLogger.debug(`[RAG] Fetching context for: "${query}"`);
+			debugLogger.debug(`[RAG] Collecting context for topic: "${query}"`);
 
 			try {
-				const semanticResult = await callTool("vault", {
-					action: "search_vault_by_semantic",
-					query,
-					limit: 5,
+				// collect_context 액션을 사용하여 고밀도 데이터 요청
+				const result = await callTool("vault", {
+					action: "collect_context",
+					topic: query,
+					maxDocs: 10,
+					maxCharsPerDoc: 1000,
+					memoryMode: "response_only",
 				});
 
-				if (hasValidResults(semanticResult)) {
-					const text = extractTextFromResult(semanticResult);
-					debugLogger.debug(
-						`[RAG] Semantic search returned ${text.length} chars.`,
+				if (result.isError) {
+					debugLogger.warn(
+						"[RAG] Context collection failed, falling back to basic search.",
 					);
-					return formatAsContext(text);
+					// 에러 시 기존 search 액션으로 폴백 시도 가능 (생략)
+					return null;
 				}
 
-				debugLogger.debug(
-					"[RAG] Semantic search empty, falling back to keyword search.",
-				);
+				const text = result.content.find((c) => c.type === "text")?.text;
+				if (!text) return null;
 
-				const keywordResult = await callTool("vault", {
-					action: "search",
-					keyword: query,
-					limit: 5,
-					includeContent: true,
-					compressionMode: "balanced",
-				});
-
-				if (hasValidResults(keywordResult)) {
-					const text = extractTextFromResult(keywordResult);
-					debugLogger.debug(
-						`[RAG] Keyword search returned ${text.length} chars.`,
-					);
-					return formatAsContext(text);
+				const payload = JSON.parse(text);
+				if (payload.documents?.length === 0) {
+					debugLogger.debug("[RAG] No relevant documents found.");
+					return null;
 				}
 
-				debugLogger.debug("[RAG] No relevant context found in Vault.");
-				return null;
+				return formatAsContext(payload);
 			} catch (err) {
 				debugLogger.error("[RAG] Context fetch failed:", err);
 				return null;

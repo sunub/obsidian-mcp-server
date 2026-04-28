@@ -1,6 +1,6 @@
+import type { LLMHealthStatus } from "@cli/types.js";
 import { Box, Text } from "ink";
 import { useEffect } from "react";
-import type { LLMHealthStatus } from "../types.js";
 
 interface LLMHealthCheckerProps {
 	llmApi_URL: string;

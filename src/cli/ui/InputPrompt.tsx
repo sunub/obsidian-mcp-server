@@ -1,14 +1,14 @@
+import { useInputState } from "@cli/context/InputContext.js";
+import { useInputHistory } from "@cli/hooks/useInputHistory.js";
+import { useKeyMatchers } from "@cli/hooks/useKeyMatchers.js";
+import { type Key, useKeypress } from "@cli/hooks/useKeypress.js";
+import { Command } from "@cli/key/keyMatchers.js";
+import { theme } from "@cli/theme/semantic-colors.js";
+import { cpIndexToOffset, cpSlice } from "@cli/utils/textUtil.js";
 import chalk from "chalk";
 import { Box, Text } from "ink";
 import type React from "react";
 import { useCallback, useRef } from "react";
-import { useInputState } from "../context/InputContext.js";
-import { useInputHistory } from "../hooks/useInputHistory.js";
-import { useKeyMatchers } from "../hooks/useKeyMatchers.js";
-import { type Key, useKeypress } from "../hooks/useKeypress.js";
-import { Command } from "../key/keyMatchers.js";
-import { theme } from "../theme/semantic-colors.js";
-import { cpLen, cpSlice } from "../utils/textUtil.js";
 
 export interface InputPromptProps {
 	onSubmit: (value: string) => void;
@@ -147,8 +147,8 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 
 	useKeypress(handleInput, { isActive: true, priority: true });
 
-	const [cursorVisualRowAbsolute, cursorVisualColAbsolute] =
-		buffer.visualCursor;
+	const [cursorVisualRowAbsolute] = buffer.visualCursor;
+	const cursorVisualColIndex = buffer.visualCursorColIndex;
 	const showCursor = focus;
 
 	const renderItem = useCallback(
@@ -158,50 +158,43 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 
 			const isOnCursorLine =
 				focus && absoluteVisualIdx === cursorVisualRowAbsolute;
-			const renderedLine: React.ReactNode[] = [];
 
-			let display = lineText;
-
-			if (isOnCursorLine) {
-				const charToHighlight =
-					cpSlice(
-						display,
-						cursorVisualColAbsolute,
-						cursorVisualColAbsolute + 1,
-					) || " ";
-				const highlighted = showCursor
-					? chalk.inverse(charToHighlight)
-					: charToHighlight;
-
-				display =
-					cpSlice(display, 0, cursorVisualColAbsolute) +
-					highlighted +
-					cpSlice(display, cursorVisualColAbsolute + 1);
-			}
-
-			renderedLine.push(
-				<Text key="content" color={theme.text.primary}>
-					{display}
-				</Text>,
-			);
-
-			if (isOnCursorLine && cursorVisualColAbsolute === cpLen(lineText)) {
-				renderedLine.push(
-					<Text key="cursor-end">{showCursor ? chalk.inverse(" ") : " "}</Text>,
+			if (!isOnCursorLine) {
+				return (
+					<Box height={1} key={`line-${absoluteVisualIdx}`}>
+						<Text color={theme.text.primary}>{lineText}</Text>
+					</Box>
 				);
 			}
 
+			// Cursor Line: Declarative split for hardware cursor alignment
+			const before = cpSlice(lineText, 0, cursorVisualColIndex);
+			const at =
+				cpSlice(lineText, cursorVisualColIndex, cursorVisualColIndex + 1) ||
+				" ";
+			const after = cpSlice(lineText, cursorVisualColIndex + 1);
+
 			return (
 				<Box height={1} key={`line-${absoluteVisualIdx}`}>
-					<Text>{renderedLine}</Text>
+					<Text
+						terminalCursorFocus={showCursor && isOnCursorLine}
+						terminalCursorPosition={cpIndexToOffset(
+							lineText,
+							cursorVisualColIndex,
+						)}
+					>
+						<Text color={theme.text.primary}>{before}</Text>
+						<Text inverse={showCursor}>{at}</Text>
+						<Text color={theme.text.primary}>{after}</Text>
+					</Text>
 				</Box>
 			);
 		},
 		[
-			buffer,
+			buffer.visualToLogicalMap,
 			focus,
 			cursorVisualRowAbsolute,
-			cursorVisualColAbsolute,
+			cursorVisualColIndex,
 			showCursor,
 		],
 	);
@@ -213,7 +206,6 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 			flexGrow={1}
 			flexDirection="row"
 			paddingX={1}
-			marginTop={1}
 			borderStyle={"bold"}
 			borderTop={true}
 			borderBottom={true}
@@ -226,7 +218,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 			<Box flexGrow={1} flexDirection="column" ref={innerBoxRef}>
 				{buffer.text.length === 0 && placeholder ? (
 					showCursor ? (
-						<Text>
+						<Text terminalCursorFocus={showCursor} terminalCursorPosition={0}>
 							{chalk.inverse(placeholder.slice(0, 1))}
 							<Text color={theme.text.secondary}>{placeholder.slice(1)}</Text>
 						</Text>
@@ -235,7 +227,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 					)
 				) : (
 					<Box flexDirection="column" width="100%">
-						{scrollableData.map((lineText, index) =>
+						{scrollableData.map((lineText: string, index: number) =>
 							renderItem(lineText, index + buffer.visualScrollRow),
 						)}
 					</Box>

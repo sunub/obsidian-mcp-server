@@ -1,18 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import state from "../../../config.js";
-import type { McpToolInfo } from "../../services/McpClientService.js";
-import type { CallToolFn, PendingItem, StreamingState } from "../../types.js";
-import { debugLogger } from "../../utils/debugLogger.js";
-import { MAX_AGENTIC_ITERATIONS, MAX_TOOL_RESULT_CHARS } from "./constants.js";
-import { callLLMStreaming } from "./llmService.js";
-import type { ConversationMessage, ToolCall } from "./types.js";
+import {
+	MAX_AGENTIC_ITERATIONS,
+	MAX_TOOL_RESULT_CHARS,
+} from "@cli/hooks/useLlmStream/constants.js";
+import { callLLMStreaming } from "@cli/hooks/useLlmStream/llmService.js";
+import type {
+	ConversationMessage,
+	ToolCall,
+} from "@cli/hooks/useLlmStream/types.js";
 import {
 	formatToolArguments,
 	mcpToolsToOpenAI,
 	parseThinkingContent,
 	prepareInitialMessages,
 	stripAnsi,
-} from "./utils.js";
+	truncateHistory,
+} from "@cli/hooks/useLlmStream/utils.js";
+import type { McpToolInfo } from "@cli/services/McpClientService.js";
+import type { CallToolFn, PendingItem, StreamingState } from "@cli/types.js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import state from "@/config.js";
+import { debugLogger } from "@/shared/index.js";
 
 export interface LlmStreamState {
 	pendingItem: PendingItem | null;
@@ -21,7 +28,7 @@ export interface LlmStreamState {
 	error: Error | null;
 	sendMessage: (text: string, ragContext?: string | null) => Promise<void>;
 	reset: () => void;
-	clearHistory: () => void;
+	clearStreamingHistory: () => void;
 }
 
 export const useLlmStream = (
@@ -33,6 +40,7 @@ export const useLlmStream = (
 	const [error, setError] = useState<Error | null>(null);
 
 	const conversationRef = useRef<ConversationMessage[]>([]);
+	const abortControllerRef = useRef<AbortController | null>(null);
 	const isLoading = useMemo(() => streamingState !== "idle", [streamingState]);
 
 	useEffect(() => {
@@ -64,12 +72,22 @@ export const useLlmStream = (
 			setPendingItem({ type: "assistant", content: "", isComplete: false });
 			setError(null);
 
+			if (abortControllerRef.current) {
+				abortControllerRef.current.abort();
+			}
+			abortControllerRef.current = new AbortController();
+			const signal = abortControllerRef.current.signal;
+
 			try {
-				const { messages, userMessage } = prepareInitialMessages(
+				const { messages: rawMessages, userMessage } = prepareInitialMessages(
 					text,
 					ragContext,
 					conversationRef.current,
 				);
+
+				// 토큰 절약을 위해 히스토리 절사 적용 (최대 6000자)
+				const messages = truncateHistory(rawMessages, 6000);
+
 				conversationRef.current.push(userMessage);
 
 				const openAITools =
@@ -84,7 +102,12 @@ export const useLlmStream = (
 					let toolCallsReceived: ToolCall[] | null = null;
 					let firstEventReceived = false;
 
-					for await (const event of callLLMStreaming(messages, openAITools)) {
+					for await (const event of callLLMStreaming(
+						messages,
+						openAITools,
+						true,
+						signal,
+					)) {
 						if (!firstEventReceived) {
 							setStreamingState("streaming");
 							firstEventReceived = true;
@@ -111,6 +134,7 @@ export const useLlmStream = (
 						debugLogger.debug(
 							`[LLM] iter=${iter} executing ${toolCallsReceived.length} tool(s)`,
 						);
+						setStreamingState("executing");
 
 						messages.push({
 							role: "assistant",
@@ -195,12 +219,16 @@ export const useLlmStream = (
 	);
 
 	const reset = useCallback(() => {
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort();
+			abortControllerRef.current = null;
+		}
 		setPendingItem(null);
 		setStreamingState("idle");
 		setError(null);
 	}, []);
 
-	const clearHistory = useCallback(() => {
+	const clearStreamingHistory = useCallback(() => {
 		conversationRef.current = [];
 	}, []);
 
@@ -211,6 +239,6 @@ export const useLlmStream = (
 		error,
 		sendMessage,
 		reset,
-		clearHistory,
+		clearStreamingHistory,
 	};
 };

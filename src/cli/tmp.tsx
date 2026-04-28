@@ -1,11 +1,11 @@
 // @ts-nocheck
 
+import { InputContext } from "@cli/context/InputContext.js";
+import { KeypressProvider } from "@cli/context/KeypressContext.js";
+import { useTextBuffer } from "@cli/key/text-buffer.js";
+import { InputPrompt } from "@cli/ui/InputPrompt.js";
 import { render, Text } from "ink";
 import { useMemo, useState } from "react";
-import { InputContext } from "./context/InputContext.js";
-import { KeypressProvider } from "./context/KeypressContext.js";
-import { useTextBuffer } from "./key/text-buffer.js";
-import { InputPrompt } from "./ui/InputPrompt.js";
 
 function App() {
 	const [submitText, setSubmitText] = useState("");

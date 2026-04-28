@@ -1,8 +1,8 @@
+import { HELP_COMMAND_MARKER } from "@cli/constants.js";
+import type { McpToolInfo } from "@cli/services/McpClientService.js";
+import type { CallToolFn, DispatchResult, McpToolResult } from "@cli/types.js";
 import { useCallback } from "react";
-import { HELP_COMMAND_MARKER } from "../constants.js";
-import type { McpToolInfo } from "../services/McpClientService.js";
-import type { CallToolFn, DispatchResult, McpToolResult } from "../types.js";
-import { debugLogger } from "../utils/debugLogger.js";
+import { debugLogger } from "@/shared/index.js";
 
 function extractText(result: McpToolResult): string {
 	return result.content

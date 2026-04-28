@@ -1,8 +1,9 @@
+import { App } from "@cli/App.js";
+import { KeypressProvider } from "@cli/context/KeypressContext.js";
+import type { LLMHealthStatus } from "@cli/types.js";
+import { LLMErrorComponent } from "@cli/ui/LLMErrorComponent.js";
+import { LLMHealthChecker } from "@cli/ui/LLMHealthChecker.js";
 import { useState } from "react";
-import { App } from "./App.js";
-import { LLMErrorComponent } from "./ui/LLMErrorComponent.js";
-import { LLMHealthChecker } from "./ui/LLMHealthChecker.js";
-import type { LLMHealthStatus } from "./types.js";
 
 export const AppContainer = () => {
 	const [llmStatus, setLLMStatus] = useState<LLMHealthStatus>("checking");
@@ -27,5 +28,9 @@ export const AppContainer = () => {
 		);
 	}
 
-	return <App />;
+	return (
+		<KeypressProvider>
+			<App />
+		</KeypressProvider>
+	);
 };

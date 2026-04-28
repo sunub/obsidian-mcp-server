@@ -1,21 +1,50 @@
-/**
- * Core types for the CLI AI Agent conversation system.
- *
- * These types define the data structures used to manage conversation state,
- * streaming responses, and history rendering throughout the application.
- */
+export type HistoryType = "user" | "assistant" | "error" | "info";
 
-/** 대화 기록의 단일 항목 */
 export interface HistoryItem {
-	/** 고유 식별자 (자동 증가) */
 	id: number;
-	/** 메시지 타입 */
-	type: "user" | "assistant" | "error" | "info";
-	/** 메시지 내용 (일반 텍스트, 향후 마크다운 렌더링 확장 가능) */
+	type: HistoryType;
 	content: string;
-	/** 생성 시각 (Date.now()) */
 	timestamp: number;
 }
+
+export interface HistoryItemBase {
+	text?: string; // Text content for user/gemini/info/error messages
+}
+
+export type HistoryItemUser = HistoryItemBase & {
+	type: "user";
+	text: string;
+};
+
+export type HistoryItemLLM = HistoryItemBase & {
+	type: "llm";
+	text: string;
+};
+
+export type HistoryItemLLMContent = HistoryItemBase & {
+	type: "llm_content";
+	text: string;
+};
+
+export type HistoryItemInfo = HistoryItemBase & {
+	type: "info";
+	text: string;
+	secondaryText?: string;
+	source?: string;
+	icon?: string;
+	color?: string;
+	marginBottom?: number;
+};
+
+export type HistoryItemError = HistoryItemBase & {
+	type: "error";
+	text: string;
+};
+
+export type HistoryItemWarning = HistoryItemBase & {
+	type: "warning";
+	text: string;
+};
 
 /**
  * 현재 스트리밍 중인 응답의 상태.
@@ -41,9 +70,15 @@ export interface PendingItem {
  * - `idle`:      대기 상태 (입력 가능)
  * - `thinking`:  요청 전송 완료, 첫 번째 청크 대기 중
  * - `streaming`: 청크가 도착하여 실시간 출력 중
+ * - `executing`: LLM이 도구(Tool)를 호출하여 실행 중인 상태
  * - `error`:     스트리밍 중 에러 발생
  */
-export type StreamingState = "idle" | "thinking" | "streaming" | "error";
+export type StreamingState =
+	| "idle"
+	| "thinking"
+	| "streaming"
+	| "executing"
+	| "error";
 
 /**
  * 컨텐츠 렌더링 함수 시그니처.

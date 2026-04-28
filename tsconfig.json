@@ -31,7 +31,8 @@
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"],
-			"@cli/*": ["./src/cli/*"]
+			"@cli/*": ["./src/cli/*"],
+			"@shared/*": ["./src/shared/*"]
 		},
 		"jsx": "react-jsx"
 	},

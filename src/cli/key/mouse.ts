@@ -1,4 +1,4 @@
-import { SGR_MOUSE_REGEX, X11_MOUSE_REGEX } from "./input.js";
+import { SGR_MOUSE_REGEX, X11_MOUSE_REGEX } from "@cli/key/input.js";
 
 export type MouseEventName =
 	| "left-press"
