@@ -1,14 +1,41 @@
 {
-	"files": [],
-	"references": [
-		{
-			"path": "packages/core"
+	"compilerOptions": {
+		"noImplicitAny": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
+		"noImplicitThis": true,
+		"noPropertyAccessFromIndexSignature": true,
+		"noUnusedLocals": true,
+		"strictBindCallApply": true,
+		"strictFunctionTypes": true,
+		"strictNullChecks": true,
+		"strictPropertyInitialization": true,
+		"sourceMap": true,
+		"composite": true,
+		"incremental": true,
+		"declaration": true,
+		"allowSyntheticDefaultImports": true,
+		"verbatimModuleSyntax": true,
+		"types": ["node"],
+		"lib": ["ES2023"],
+		"outDir": "./build",
+		"rootDir": "src",
+		"target": "ES2022",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"],
+			"@cli/*": ["./src/cli/*"],
+			"@shared/*": ["./src/shared/*"]
 		},
-		{
-			"path": "packages/server"
-		},
-		{
-			"path": "packages/cli"
-		}
-	]
+		"jsx": "react-jsx"
+	},
+	"include": ["src/**/*", "src/cli/**/*"],
+	"exclude": ["node_modules"]
 }

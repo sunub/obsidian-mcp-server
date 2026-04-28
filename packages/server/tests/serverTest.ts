@@ -75,7 +75,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
   let transportMode: "stdio" | "in_memory" = "stdio";
 
   // Increase timeout for E2E tests
-  const E2E_TIMEOUT = 30000;
+  const _E2E_TIMEOUT = 30000;
 
   beforeAll(async () => {
     await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
@@ -144,7 +144,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
             break;
           }
         }
-      } catch (e) {
+      } catch (_e) {
         // ignore errors during initial indexing wait
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
