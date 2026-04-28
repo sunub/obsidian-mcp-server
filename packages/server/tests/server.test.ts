@@ -16,6 +16,7 @@ import {
 import { type ZodSchema, z } from "zod";
 import state from "@/config";
 import createMcpServer from "@/server";
+import { vaultWatcher } from "@/utils/VaultWatcher.js";
 import { OrganizeAttachmentsResultSchema } from "@/tools/organize_attachments/params";
 import { collectContextResponseDataSchema } from "@/tools/vault/types/collect_context";
 import {
@@ -95,9 +96,15 @@ describe("Obsidian MCP Server E2E Tests", () => {
       _transport = stdioTransport;
       transportMode = "stdio";
     } catch {
+      // stdio 연결 실패 시 mcpClient를 새로 생성하여 상태를 초기화합니다.
+      mcpClient = new Client({ name: "test-client", version: "1.0.0" });
       const [clientTransport, serverTransport] =
         InMemoryTransport.createLinkedPair();
       state.vaultPath = TEST_VAULT_PATH;
+      // 인메모리 서버 모드에서도 파일 감시와 인덱싱이 필요하므로 직접 시작합니다.
+      vaultWatcher.start(TEST_VAULT_PATH).catch((error) => {
+        console.error("[E2E-Fallback] Failed to start vaultWatcher:", error);
+      });
       embeddedServer = createMcpServer();
       await embeddedServer.connect(serverTransport);
       await mcpClient.connect(clientTransport);
@@ -113,6 +120,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
     if (embeddedServer) {
       await embeddedServer.close();
     }
+    await vaultWatcher.stop();
     await fs.rm(TEST_VAULT_PATH, { recursive: true, force: true });
   });
 
