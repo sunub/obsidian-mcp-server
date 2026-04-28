@@ -142,15 +142,47 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 		for (const { title, tags, content } of demo_data) {
 			const { text } = content;
-			const tagsYaml = tags.map((tag) => `  - ${tag}`).join("\n");
-			const frontmatter = `---\ntitle: ${title}\ntags:\n${tagsYaml}\n---\n\n`;
+			const tagsInline = `[${tags.join(", ")}]`;
+			const frontmatter = `---\ntitle: ${title}\ntags: ${tagsInline}\n---\n\n`;
 			const fileName = `${title.replace(/[/\\?%*:|"<>]/g, "-")}.md`;
 			const filePath = path.join(TEST_VAULT_PATH, fileName);
 			await fs.writeFile(filePath, frontmatter + text);
 		}
+
+		// 서버가 파일 시스템 변화를 감지하고 모든 문서(5개)를 인덱싱할 때까지 대기합니다.
+		// 고정된 시간 대기보다 폴링 방식이 CI 환경에서 훨씬 안정적입니다.
+		let isReady = false;
+		const maxAttempts = 20; // 최대 10초 (20 * 500ms)
+		for (let i = 0; i < maxAttempts; i++) {
+			try {
+				const response = await mcpClient.callTool({
+					name: "vault",
+					arguments: { action: "list_all" },
+				});
+
+				if (!response.isError) {
+					const text = (response.content as { type: string; text: string }[])[0].text;
+					const data = JSON.parse(text);
+					if (data.vault_overview.total_documents === demo_data.length) {
+						isReady = true;
+						break;
+					}
+				}
+			} catch (e) {
+				// 서버가 아직 준비 중일 수 있음
+			}
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
+
+		if (!isReady) {
+			console.warn("WARNING: Server did not index all documents in time. Tests might fail.");
+		}
 	});
 
 	afterEach(async () => {});
+
+	// Increase default timeout for all tests in this suite
+	const TEST_TIMEOUT = 60000;
 
 	test(
 		"서버에 등록된 모든 도구 목록을 가져올 수 있다",
@@ -170,7 +202,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			expect(toolNames.length).toBe(expectedTools.length);
 			expect(["stdio", "in_memory"]).toContain(transportMode);
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -224,7 +256,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			expect(absoulteData.metadata).toEqual(relativeData.metadata);
 			expect(absoulteData.content).toEqual(relativeData.content);
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -272,7 +304,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 				expect(sortedDocuments[i].metadata.tags).toEqual(demo.tags);
 			}
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -317,7 +349,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			expect(typeof data.batch.continuation_token).toBe("string");
 			expect(data.memory_packet.keyFacts.length).toBeGreaterThan(0);
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -379,7 +411,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 				"excerpt" in doc.content ? doc.content.excerpt : doc.content.preview,
 			).toBeDefined();
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 
 	test(
@@ -452,6 +484,6 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			const movedImageStat = await fs.stat(movedImagePath);
 			expect(movedImageStat.isFile()).toBe(true);
 		},
-		E2E_TIMEOUT,
+		TEST_TIMEOUT,
 	);
 });

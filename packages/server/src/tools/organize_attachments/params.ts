@@ -37,7 +37,7 @@ export const OrganizeAttachmentsDetailSchema = z
 			.string()
 			.describe("The path of the processed markdown document."),
 		status: z
-			.enum(["skipped", "completed", "success"])
+			.enum(["skipped", "completed", "success", "moved", "error"])
 			.describe("The status of the operation."),
 		message: z
 			.string()
@@ -49,13 +49,13 @@ export const OrganizeAttachmentsDetailSchema = z
 			.number()
 			.optional()
 			.describe(
-				'The number of files successfully moved. Present if status is "completed".',
+				'The number of files successfully moved. Present if status is "completed" or "moved".',
 			),
 		targetDirectory: z
 			.string()
 			.optional()
 			.describe(
-				'The directory where attachments were moved. Present if status is "completed".',
+				'The directory where attachments were moved. Present if status is "completed" or "moved".',
 			),
 		errors: z
 			.array(
