@@ -41,7 +41,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
-    "@lancedb/lancedb": "^0.10.0",
+    "@lancedb/lancedb": "^0.27.2",
     "@sunub/obsidian-mcp-core": "workspace:*",
     "ollama": "^0.5.8",
     "zod": "^3.23.8",
