@@ -2,11 +2,13 @@ import { z } from "zod";
 import { FrontMatterSchema } from "@/utils/processor/types.js";
 
 const DocumentMetadataSchema = FrontMatterSchema;
-const DocumentStatsSchema = z.object({
-	contentLength: z.number(),
-	hasContent: z.boolean(),
-	wordCount: z.number(),
-});
+const DocumentStatsSchema = z
+	.object({
+		contentLength: z.number(),
+		hasContent: z.boolean(),
+		wordCount: z.number(),
+	})
+	.passthrough();
 
 // Schema for content when includeContent is true
 const FullContentSchema = z.object({

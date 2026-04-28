@@ -14,6 +14,7 @@ import {
   test,
 } from "vitest";
 import { type ZodSchema, z } from "zod";
+import type { McpToolResult } from "@sunub/obsidian-mcp-core";
 import state from "@/config";
 import createMcpServer from "@/server";
 import { OrganizeAttachmentsResultSchema } from "@/tools/organize_attachments/params";
@@ -36,7 +37,7 @@ const TEST_VAULT_PATH = path.join(
 );
 
 async function parseAndValidateResponse<T extends ZodSchema>(
-  response: CompatibilityCallToolResult,
+  response: McpToolResult,
   schema: T,
 ): Promise<z.infer<T>> {
   if (response.isError) {
@@ -46,8 +47,8 @@ async function parseAndValidateResponse<T extends ZodSchema>(
     );
   }
   expect(response.isError).toBe(false);
-  const responseContent = response.content as { type: string; text: unknown }[];
-  let text = responseContent[0].text as string;
+  const responseContent = response.content as { type: string; text: string }[];
+  let text = responseContent[0].text;
 
   // Strip <system_directive> if present
   if (text.includes("<system_directive>")) {
@@ -60,7 +61,8 @@ async function parseAndValidateResponse<T extends ZodSchema>(
   const parsed = schema.safeParse(responseText);
 
   if (!parsed.success) {
-    console.error("Schema validation failed:", parsed.error.format());
+    console.error("Schema validation failed for response:", JSON.stringify(responseText, null, 2));
+    console.error("Validation errors:", JSON.stringify(parsed.error.format(), null, 2));
     throw new Error("Response schema validation failed");
   }
 

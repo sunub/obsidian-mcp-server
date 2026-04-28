@@ -184,4 +184,5 @@ export const metadataSchema = z
 			.boolean()
 			.describe("Indicates whether a task or item is completed"),
 	})
+	.passthrough()
 	.describe("Metadata extracted from the document frontmatter, if available");

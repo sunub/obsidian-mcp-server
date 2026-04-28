@@ -13,6 +13,7 @@ const documentStatsSchema = z
 			.number()
 			.describe("Total number of characters in the content"),
 	})
+	.passthrough()
 	.describe("Document statistics");
 
 const documentSchema = z
