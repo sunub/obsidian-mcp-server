@@ -36,10 +36,6 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      # 추가된 단계
-      - name: Install canvas build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
-
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
@@ -113,10 +109,6 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      # 추가된 단계
-      - name: Install canvas build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
-
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
@@ -143,10 +135,6 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      # 추가된 단계
-      - name: Install canvas build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
-
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
@@ -161,10 +149,6 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
-
-      # 추가된 단계
-      - name: Install canvas build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
