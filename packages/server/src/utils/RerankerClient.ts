@@ -1,4 +1,4 @@
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 import { z } from "zod";
 import state from "@/config.js";
 import { localReranker } from "@/utils/LocalReranker.js";

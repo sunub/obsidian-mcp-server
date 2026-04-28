@@ -4,10 +4,13 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*.*.*' ]
+    branches: [main]
+    tags: ["v*.*.*"]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   publish:
@@ -30,14 +33,21 @@ jobs:
       - name: Setup Node.js (for npm publish)
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      # 추가된 단계
+      - name: Install canvas build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
       - name: Build
-        run: bun run build
+        run: |
+          bun run --cwd packages/core build
+          bun run --cwd packages/server build
+          bun run --cwd packages/cli build
 
       - name: Get Version Tag
         id: get_version
@@ -45,27 +55,33 @@ jobs:
 
       - name: Publish NPM Packages
         run: |
-          # 1. 토큰 존재 여부 확인 (비어있으면 조기 종료)
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
+          # 1. 토큰 존재 여부 확인
+          if [ -z "$NPM_TOKEN" ]; then
             echo "::error::NPM_TOKEN is empty! Please check GitHub Secrets."
             exit 1
           fi
 
-          # 2. 명시적으로 .npmrc 생성 (actions/setup-node 의존성 탈피)
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          # 2. 명시적으로 .npmrc 생성
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
 
-          # 3. workspace:* 프로토콜을 실제 버전으로 치환 (모노레포 배포 필수 단계)
-          # 루트 package.json의 버전을 사용하여 모든 패키지의 의존성을 동기화합니다.
-          VERSION=$(node -e "console.log(require('./package.json').version)")
-          sed -i "s/workspace:\*/$VERSION/g" packages/*/package.json
+          # 3. core 버전 추출
+          CORE_VERSION=$(node -p "require('./packages/core/package.json').version")
+          echo "Core version: $CORE_VERSION"
 
-          # Publish core first as other packages depend on it
-          # --no-git-checks 플래그로 CI 환경의 git 상태와 무관하게 배포를 허용합니다.
-          npm publish ./packages/core --access public --no-git-checks
-          npm publish ./packages/server --access public --no-git-checks
-          npm publish ./packages/cli --access public --no-git-checks
+          # 4. core 패키지 배포 (server의 런타임 의존성)
+          cd packages/core
+          npm publish --access public --no-git-checks || echo "core@$CORE_VERSION already published, skipping..."
+          cd ../..
+
+          # 5. server의 workspace:* 를 실제 버전으로 치환
+          cd packages/server
+          sed -i "s/\"workspace:\*\"/\"^${CORE_VERSION}\"/g" package.json
+          echo "Resolved workspace:* -> ^$CORE_VERSION in server/package.json"
+
+          # 6. server 패키지 배포
+          npm publish --access public --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -82,20 +98,26 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      # 추가된 단계
+      - name: Install canvas build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
       - name: Build
-        run: bun run build
+        run: |
+          bun run --cwd packages/core build
+          bun run --cwd packages/server build
+          bun run --cwd packages/cli build
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          # Upload all build directories from packages
           path: |
             packages/core/build/
-            packages/server/build/
+            packages/server/dist/
             packages/cli/build/
 
   lint:
@@ -105,6 +127,10 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+
+      # 추가된 단계
+      - name: Install canvas build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
@@ -121,6 +147,10 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      # 추가된 단계
+      - name: Install canvas build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
@@ -134,7 +164,7 @@ jobs:
         run: mkdir -p test-vault
 
       - name: Test
-        run: bun run test
+        run: bun run test --poolOptions.threads.singleThread
         env:
           VAULT_DIR_PATH: ${{ github.workspace }}/test-vault
           NODE_ENV: test

@@ -1,15 +1,23 @@
 {
 	"name": "@sunub/obsidian-mcp-core",
-	"version": "0.3.11",
+	"version": "0.3.15",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/sunub/obsidian-mcp-server.git",
 		"directory": "packages/core"
 	},
 	"type": "module",
+	"main": "build/index.js",
+	"types": "build/index.d.ts",
 	"exports": {
-		".": "./build/index.js"
+		".": {
+			"import": "./build/index.js",
+			"types": "./build/index.d.ts"
+		}
 	},
+	"files": [
+		"build"
+	],
 	"scripts": {
 		"build": "tsc"
 	},
@@ -17,5 +25,8 @@
 		"chalk": "^5.6.2",
 		"dotenv": "^17.4.2",
 		"zod": "^3.25.76"
+	},
+	"publishConfig": {
+		"access": "public"
 	}
 }

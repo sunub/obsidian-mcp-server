@@ -1,7 +1,7 @@
 import { HELP_COMMAND_MARKER } from "@cli/constants.js";
 import type { McpToolInfo } from "@cli/services/McpClientService.js";
 import type { CallToolFn, DispatchResult, McpToolResult } from "@cli/types.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 import { useCallback } from "react";
 
 function extractText(result: McpToolResult): string {

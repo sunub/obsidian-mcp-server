@@ -15,4 +15,4 @@ mcp-servers.json
 .github/prompts/*
 
 logs/*
-tsconfig.tsbuildinfo
+*.tsbuildinfo

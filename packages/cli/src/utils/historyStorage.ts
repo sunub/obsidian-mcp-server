@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 
 const HISTORY_FILE_PATH = path.join(
 	os.homedir(),

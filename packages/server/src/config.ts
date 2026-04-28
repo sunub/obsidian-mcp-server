@@ -1,14 +1,13 @@
-import path from "node:path";
+
 import { env } from "@huggingface/transformers";
-import type { ObsidianMcpConfig } from "@sunub/core";
-import { configSchema } from "@sunub/core";
+import type { ObsidianMcpConfig } from "@sunub/obsidian-mcp-core";
+import { configSchema } from "@sunub/obsidian-mcp-core";
 import { Command } from "commander";
 import dotenv from "dotenv";
 import type { z } from "zod";
 import { MODELS_DIR } from "@/utils/constants.js";
 
-const rootEnvPath = path.resolve(import.meta.dirname, "../../../.env");
-dotenv.config({ path: rootEnvPath, debug: false, quiet: true });
+dotenv.config({ debug: false });
 
 const _rawConfig = {
 	vaultPath: process.env["VAULT_DIR_PATH"] || "",

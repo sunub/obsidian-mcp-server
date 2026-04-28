@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 import type { ObsidianContentQueryParams } from "@/tools/vault/params.js";
 import {
 	type CollectContextDocument,

@@ -6,7 +6,7 @@ import {
 	type McpToolInfo,
 } from "@cli/services/McpClientService.js";
 import type { McpConnectionState, McpToolResult } from "@cli/types.js";
-import { configSchema, debugLogger } from "@sunub/core";
+import { configSchema, debugLogger } from "@sunub/obsidian-mcp-core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface UseMcpClientReturn {
@@ -39,9 +39,9 @@ function buildConnectionOptions(): McpConnectionOptions {
 		);
 	}
 
-	// 현재 파일 위치를 기준으로 packages/server/build/index.js 위치를 계산
+	// 현재 파일 위치를 기준으로 packages/server/dist/index.js 위치를 계산
 	const __dirname = path.dirname(fileURLToPath(import.meta.url));
-	const serverEntry = path.resolve(__dirname, "../../../server/build/index.js");
+	const serverEntry = path.resolve(__dirname, "../../../server/dist/index.js");
 	const projectRoot = path.resolve(__dirname, "../../../../");
 
 	return {

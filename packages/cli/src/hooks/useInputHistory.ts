@@ -1,5 +1,5 @@
 import { cpLen } from "@cli/utils/textUtil.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 import { useCallback, useRef, useState } from "react";
 
 interface Logger {

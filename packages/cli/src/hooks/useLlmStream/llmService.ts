@@ -5,7 +5,7 @@ import type {
 	ToolCall,
 } from "@cli/hooks/useLlmStream/types.js";
 import { cleanMessagesForNoTools } from "@cli/hooks/useLlmStream/utils.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 import state from "@/config.js";
 
 let toolCallingSupportedCache: boolean | null = null;

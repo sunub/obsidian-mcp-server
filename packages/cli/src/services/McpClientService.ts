@@ -1,7 +1,7 @@
 import type { McpToolResult } from "@cli/types.js";
 import { Client } from "@modelcontextprotocol/sdk/client";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { debugLogger } from "@sunub/core";
+import { debugLogger } from "@sunub/obsidian-mcp-core";
 
 export interface McpConnectionOptions {
 	command: string;

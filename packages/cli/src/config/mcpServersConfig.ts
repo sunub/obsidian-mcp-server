@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path, { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { configSchema, debugLogger } from "@sunub/core";
+import { configSchema, debugLogger } from "@sunub/obsidian-mcp-core";
 import { z } from "zod";
 
 const mcpServerEntrySchema = z.object({
@@ -90,11 +90,11 @@ function buildFallbackConfig(): McpServerConfig[] {
 	}
 
 	try {
-		// 현재 파일 위치를 기준으로 packages/server/build/index.js 위치를 계산
+		// 현재 파일 위치를 기준으로 packages/server/dist/index.js 위치를 계산
 		const __dirname = path.dirname(fileURLToPath(import.meta.url));
 		const serverEntry = path.resolve(
 			__dirname,
-			"../../../server/build/index.js",
+			"../../../server/dist/index.js",
 		);
 		const projectRoot = path.resolve(__dirname, "../../../../");
 
