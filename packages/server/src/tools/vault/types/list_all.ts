@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { responseTypeSchema } from "@/tools/vault/params.js";
-import { FrontMatterSchema } from "@/utils/processor/types.js";
+import { FormattedMetadataSchema } from "@/utils/processor/types.js";
 
 // import { metadataSchema } from '@/tools/vault/types/@/tools/vault/params.js';
 
 // 실제 응답 구조에 맞춘 스키마
-const metadataSchema = FrontMatterSchema;
+const metadataSchema = FormattedMetadataSchema;
 
 const documentStatsSchema = z
 	.object({
@@ -13,6 +13,7 @@ const documentStatsSchema = z
 			.number()
 			.describe("Total number of characters in the content"),
 	})
+	.passthrough()
 	.describe("Document statistics");
 
 const documentSchema = z
@@ -21,7 +22,9 @@ const documentSchema = z
 		fullPath: z.string().describe("The full path to the file in the vault"),
 		metadata: metadataSchema,
 		stats: documentStatsSchema,
+		content: z.any().optional().describe("Document content if requested"),
 	})
+	.passthrough()
 	.describe("Document information");
 
 const vaultOverviewSchema = z
@@ -31,6 +34,7 @@ const vaultOverviewSchema = z
 			.describe("Total number of documents in the vault"),
 		showing: z.number().describe("Number of documents being displayed"),
 	})
+	.passthrough()
 	.describe("Vault overview statistics");
 
 const aiInstructionsSchema = z
@@ -49,6 +53,7 @@ export const listAllDocumentsDataSchema = z
 			.array(documentSchema)
 			.describe("List of all documents in the vault"),
 	})
+	.passthrough()
 	.describe("Complete response data for listing all documents");
 
 // list all documents response schema - 실제 MCP 응답 구조에 맞춤

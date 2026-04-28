@@ -3,18 +3,18 @@ import tools from "@/tools/index.js";
 import pkg from "../package.json" with { type: "json" };
 
 export default function createMcpServer(): McpServer {
-	const mcpServer = new McpServer(
-		{
-			version: pkg.version,
-			name: "obsidian-mcp-server",
-			title: "Obsidian MCP Server",
-		},
-		{
-			capabilities: {
-				logging: {},
-				tools: { listChanged: false },
-			},
-			instructions: `
+  const mcpServer = new McpServer(
+    {
+      version: pkg.version,
+      name: "obsidian-mcp-server",
+      title: "Obsidian MCP Server",
+    },
+    {
+      capabilities: {
+        logging: {},
+        tools: { listChanged: false },
+      },
+      instructions: `
 	        This server provides access to Obsidian vault documents and related tools.
 	        
 	        Available tools:
@@ -36,12 +36,12 @@ export default function createMcpServer(): McpServer {
 	        Local Search Optimization:
 	        - To enable high-performance local hybrid search, run 'bunx obsidian-mcp-setup' once.
 	      `,
-		},
-	);
+    },
+  );
 
-	for (const tool of Object.values(tools)) {
-		tool.register(mcpServer);
-	}
+  for (const tool of Object.values(tools)) {
+    tool.register(mcpServer);
+  }
 
-	return mcpServer;
+  return mcpServer;
 }

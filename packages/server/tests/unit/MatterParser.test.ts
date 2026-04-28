@@ -35,9 +35,9 @@ completed: true
 		const text = "# Just a heading\n\nSome paragraph text.";
 		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
-		// title이 필수 필드이므로 catch 블록의 fallback이 실행됩니다.
-		expect(result.frontmatter.title).toBe("test-note");
-		expect(result.frontmatter.tags).toEqual([""]);
+		// title이 optional이므로 파싱 성공, undefined 반환
+		expect(result.frontmatter.title).toBeUndefined();
+		expect(result.frontmatter.tags).toBeUndefined();
 		expect(result.content).toBe(text);
 	});
 
@@ -48,9 +48,9 @@ completed: true
 Content after empty frontmatter.`;
 		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
-		// title 누락으로 catch 블록 fallback이 실행됩니다.
-		expect(result.frontmatter.title).toBe("test-note");
-		expect(result.frontmatter.tags).toEqual([""]);
+		// title이 optional이므로 파싱 성공, undefined 반환
+		expect(result.frontmatter.title).toBeUndefined();
+		expect(result.frontmatter.tags).toBeUndefined();
 		expect(result.content).toContain("Content after empty frontmatter.");
 	});
 
@@ -68,7 +68,7 @@ Rest of the content.`;
 		expect(result.content).toContain("Rest of the content.");
 	});
 
-	test("스키마에 정의되지 않은 필드는 무시(strip)된다", () => {
+	test("스키마에 정의되지 않은 필드도 유지(passthrough)된다", () => {
 		const text = `---
 title: Test
 unknownField: some value
@@ -79,15 +79,15 @@ Content`;
 		const result = parse(DUMMY_FILE, DUMMY_BIRTH, text);
 
 		expect(result.frontmatter.title).toBe("Test");
-		expect(result.frontmatter).not.toHaveProperty("unknownField");
-		expect(result.frontmatter).not.toHaveProperty("anotherRandom");
+		expect(result.frontmatter).toHaveProperty("unknownField", "some value");
+		expect(result.frontmatter).toHaveProperty("anotherRandom", 42);
 	});
 
 	test("빈 문자열을 처리한다", () => {
 		const result = parse(DUMMY_FILE, DUMMY_BIRTH, "");
 
-		// title 누락으로 catch 블록 fallback이 실행됩니다.
-		expect(result.frontmatter.title).toBe("test-note");
+		// title이 optional이므로 파싱 성공, undefined 반환
+		expect(result.frontmatter.title).toBeUndefined();
 		expect(result.content).toBe("");
 	});
 

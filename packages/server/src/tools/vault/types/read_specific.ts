@@ -14,6 +14,7 @@ const statsSchema = z
 			.number()
 			.describe("Total number of characters in the content"),
 	})
+	.passthrough()
 	.describe("Basic statistics about the document content");
 
 const backlinkSchema = z.object({
@@ -38,6 +39,7 @@ export const readSpecificFileDocumentData = z
 		stats: statsSchema,
 		backlinks: z.array(backlinkSchema).optional(),
 	})
+	.passthrough()
 	.describe(
 		"Response schema for reading a specific file from the Obsidian vault",
 	);

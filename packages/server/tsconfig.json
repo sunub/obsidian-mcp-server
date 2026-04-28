@@ -1,17 +1,31 @@
 {
-        "extends": "../../tsconfig.base.json",
-        "compilerOptions": {
-                "outDir": "./dist",
-                "rootDir": "./src",
-                "baseUrl": ".",
-                "declaration": true,
-                "emitDeclarationOnly": true,
-                "declarationMap": true,
-                "paths": {
-                        "@/*": ["./src/*"],
-                        "@sunub/obsidian-mcp-core": ["../core/src/index.ts"]
-                }
-        },
-        "references": [{ "path": "../core" }],
-        "include": ["src/**/*"]
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "outDir": "./dist",
+    "rootDir": "./",
+    "baseUrl": ".",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": true,
+    "paths": {
+      "@/*": [
+        "src/*"
+      ],
+      "@sunub/obsidian-mcp-core": [
+        "../core/src/index.ts"
+      ]
+    }
+  },
+  "references": [
+    {
+      "path": "../core"
+    }
+  ],
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "package.json"
+  ]
 }
