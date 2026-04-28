@@ -251,7 +251,7 @@ export class VectorDB {
 		const inClause = filePaths
 			.map((fp) => `'${fp.replace(/'/g, "''")}'`)
 			.join(", ");
-		await table.delete(`filePath IN (${inClause})`);
+		await table.delete(`\`filePath\` IN (${inClause})`);
 		await table.add(records);
 	}
 
@@ -280,7 +280,7 @@ export class VectorDB {
 		}
 
 		const table = await this.db.openTable(this.fileMetaTableName);
-		await table.delete(`filePath = '${filePath.replace(/'/g, "''")}'`);
+		await table.delete(`\`filePath\` = '${filePath.replace(/'/g, "''")}'`);
 		await table.add([{ filePath, mtime }]);
 	}
 
@@ -309,7 +309,7 @@ export class VectorDB {
 		const inClause = entries
 			.map((e) => `'${e.filePath.replace(/'/g, "''")}'`)
 			.join(", ");
-		await table.delete(`filePath IN (${inClause})`);
+		await table.delete(`\`filePath\` IN (${inClause})`);
 		await table.add(entries);
 	}
 
@@ -323,7 +323,7 @@ export class VectorDB {
 		const table = await this.db.openTable(this.fileMetaTableName);
 		const rows = (await table
 			.query()
-			.where(`filePath = '${filePath.replace(/'/g, "''")}'`)
+			.where(`\`filePath\` = '${filePath.replace(/'/g, "''")}'`)
 			.toArray()) as FileMetaRecord[];
 
 		return rows.length > 0 ? rows[0].mtime : null;
@@ -332,7 +332,7 @@ export class VectorDB {
 	async deleteByFilePath(filePath: string) {
 		const table = await this.getTable();
 		if (table) {
-			await table.delete(`filePath = '${filePath.replace(/'/g, "''")}'`);
+			await table.delete(`\`filePath\` = '${filePath.replace(/'/g, "''")}'`);
 		}
 		if (!this.db) {
 			this.db = await this.connect();
@@ -340,7 +340,7 @@ export class VectorDB {
 		if ((await this.db.tableNames()).includes(this.fileMetaTableName)) {
 			const fileMetaTable = await this.db.openTable(this.fileMetaTableName);
 			await fileMetaTable.delete(
-				`filePath = '${filePath.replace(/'/g, "''")}'`,
+				`\`filePath\` = '${filePath.replace(/'/g, "''")}'`,
 			);
 		}
 	}
@@ -351,7 +351,7 @@ export class VectorDB {
 
 		try {
 			const count = await table.countRows(
-				`filePath = '${filePath.replace(/'/g, "''")}'`,
+				`\`filePath\` = '${filePath.replace(/'/g, "''")}'`,
 			);
 			return count > 0;
 		} catch {
