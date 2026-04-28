@@ -27,5 +27,10 @@
 	"type": "module",
 	"workspaces": [
 		"packages/*"
-	]
+	],
+	"dependencies": {
+		"glob": "^13.0.6",
+		"rimraf": "^6.1.3",
+		"tar": "^7.5.13"
+	}
 }
