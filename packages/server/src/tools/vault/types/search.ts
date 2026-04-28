@@ -21,21 +21,27 @@ const PreviewContentSchema = z.object({
 });
 
 // Schema for a single document
-export const DocumentSchema = z.object({
-	filename: z.string(),
-	fullPath: z.string(),
-	metadata: DocumentMetadataSchema,
-	stats: DocumentStatsSchema,
-	content: z.union([FullContentSchema, PreviewContentSchema]),
-});
+export const DocumentSchema = z
+	.object({
+		filename: z.string(),
+		fullPath: z.string(),
+		metadata: DocumentMetadataSchema,
+		stats: DocumentStatsSchema,
+		content: z.union([FullContentSchema, PreviewContentSchema]),
+	})
+	.passthrough();
 
 // Schema for the main successful search result
-export const SearchSuccessSchema = z.object({
-	query: z.string(),
-	found: z.number(),
-	total_in_vault: z.number(),
-	documents: z.array(DocumentSchema),
-});
+export const SearchSuccessSchema = z
+	.object({
+		query: z.string(),
+		found: z.number(),
+		matched_total: z.number().optional(),
+		total_in_vault: z.number(),
+		documents: z.array(DocumentSchema),
+		compression: z.any().optional(),
+	})
+	.passthrough();
 
 // Schema for when no documents are found
 export const SearchNotFoundSchema = z.object({

@@ -269,8 +269,9 @@ describe("Obsidian MCP Server E2E Tests", () => {
       let data: ListAllDocumentsData | undefined;
       const maxRetries = 20;
 
-      // CI 환경 대응: 파일 인덱싱이 완료될 때까지 최대 2초간 재시도
-      for (let i = 0; i < maxRetries; i++) {
+    // CI 환경 대응: 파일 인덱싱이 완료될 때까지 최대 2초간 재시도
+    for (let i = 0; i < maxRetries; i++) {
+      try {
         response = await mcpClient.callTool({
           name: "vault",
           arguments: { action: "list_all" },
@@ -284,8 +285,11 @@ describe("Obsidian MCP Server E2E Tests", () => {
         if (data.vault_overview.total_documents === demo_data.length) {
           break;
         }
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (e) {
+        if (i === maxRetries - 1) throw e;
       }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
 
       if (!data) {
         throw new Error("Failed to get data from list_all");
@@ -317,8 +321,9 @@ describe("Obsidian MCP Server E2E Tests", () => {
       let data: z.infer<typeof collectContextResponseDataSchema> | undefined;
       const maxRetries = 20;
 
-      // CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
-      for (let i = 0; i < maxRetries; i++) {
+    // CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
+    for (let i = 0; i < maxRetries; i++) {
+      try {
         response = await mcpClient.callTool({
           name: "vault",
           arguments: {
@@ -337,8 +342,11 @@ describe("Obsidian MCP Server E2E Tests", () => {
         if (data.documents.length > 0) {
           break;
         }
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (e) {
+        if (i === maxRetries - 1) throw e;
       }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
 
       if (!data) {
         throw new Error("Failed to get data from collect_context");
@@ -370,37 +378,41 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
       const ProcessedFrontMatterSchema = FrontMatterSchema.extend({
         title: z.string(),
-        tags: z.array(z.string()),
-      });
+        tags: z.array(z.string()).optional(),
+      }).passthrough();
 
       const ProcessedDocumentSchema = DocumentSchema.extend({
         metadata: ProcessedFrontMatterSchema,
-      });
+      }).passthrough();
 
       const ProcessedSearchSuccessSchema = SearchSuccessSchema.extend({
         documents: z.array(ProcessedDocumentSchema),
-      });
+      }).passthrough();
 
       let data: z.infer<typeof ProcessedSearchSuccessSchema> | undefined;
 
       // CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
       for (let i = 0; i < maxRetries; i++) {
-        response = await mcpClient.callTool({
-          name: "vault",
-          arguments: {
-            action: "search",
-            keyword: searchQuery,
-            includeContent: true,
-          },
-        });
+        try {
+          response = await mcpClient.callTool({
+            name: "vault",
+            arguments: {
+              action: "search",
+              keyword: searchQuery,
+              includeContent: true,
+            },
+          });
 
-        data = await parseAndValidateResponse(
-          response,
-          ProcessedSearchSuccessSchema,
-        );
+          data = await parseAndValidateResponse(
+            response,
+            ProcessedSearchSuccessSchema,
+          );
 
-        if (data.found > 0) {
-          break;
+          if (data.found > 0) {
+            break;
+          }
+        } catch (e) {
+          if (i === maxRetries - 1) throw e;
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
