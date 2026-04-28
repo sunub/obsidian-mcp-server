@@ -8,25 +8,27 @@ export function parse(
 	birthTime: string,
 	text: string,
 ): ParsedMatter {
-	try {
-		const parsed = matter(text);
-		const frontmatter = FrontMatterSchema.parse(parsed.data);
+	const parsed = matter(text);
+	const result = FrontMatterSchema.safeParse(parsed.data);
+
+	if (result.success) {
 		return {
-			frontmatter,
+			frontmatter: result.data,
 			content: parsed.content,
 		};
-	} catch {
-		return {
-			frontmatter: FrontMatterSchema.parse({
-				title: basename(filePath, ".md"),
-				date: birthTime,
-				category: "any",
-				tags: [""],
-				summary: text.slice(0, 200).replace(/\n/g, " "),
-				slug: basename(filePath, ".md").toLowerCase().replace(/\s+/g, "-"),
-				completed: false,
-			}),
-			content: text,
-		};
 	}
+
+	// gray-matter 파싱 자체가 실패한 극단적 케이스 (예: 바이너리 파일 혼입 등)
+	return {
+		frontmatter: FrontMatterSchema.parse({
+			title: basename(filePath, ".md"),
+			date: birthTime,
+			category: "any",
+			tags: [""],
+			summary: text.slice(0, 200).replace(/\n/g, " "),
+			slug: basename(filePath, ".md").toLowerCase().replace(/\s+/g, "-"),
+			completed: false,
+		}),
+		content: text,
+	};
 }

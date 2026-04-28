@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { FrontMatterSchema } from "@/utils/processor/types.js";
+import { FormattedMetadataSchema } from "@/utils/processor/types.js";
 
-const DocumentMetadataSchema = FrontMatterSchema;
+const DocumentMetadataSchema = FormattedMetadataSchema;
 const DocumentStatsSchema = z
 	.object({
 		contentLength: z.number(),

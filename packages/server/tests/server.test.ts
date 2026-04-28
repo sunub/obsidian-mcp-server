@@ -14,7 +14,6 @@ import {
   test,
 } from "vitest";
 import { type ZodSchema, z } from "zod";
-import type { McpToolResult } from "@sunub/obsidian-mcp-core";
 import state from "@/config";
 import createMcpServer from "@/server";
 import { OrganizeAttachmentsResultSchema } from "@/tools/organize_attachments/params";
@@ -28,7 +27,7 @@ import {
   DocumentSchema,
   SearchSuccessSchema,
 } from "@/tools/vault/types/search";
-import { FrontMatterSchema } from "@/utils/processor/types";
+import { FormattedMetadataSchema } from "@/utils/processor/types";
 import demo_data from "./assets/demo_data";
 
 const TEST_VAULT_PATH = path.join(
@@ -37,7 +36,7 @@ const TEST_VAULT_PATH = path.join(
 );
 
 async function parseAndValidateResponse<T extends ZodSchema>(
-  response: McpToolResult,
+  response: CompatibilityCallToolResult,
   schema: T,
 ): Promise<z.infer<T>> {
   if (response.isError) {
@@ -47,8 +46,8 @@ async function parseAndValidateResponse<T extends ZodSchema>(
     );
   }
   expect(response.isError).toBe(false);
-  const responseContent = response.content as { type: string; text: string }[];
-  let text = responseContent[0].text;
+  const responseContent = response.content as { type: string; text: unknown }[];
+  let text = responseContent[0].text as string;
 
   // Strip <system_directive> if present
   if (text.includes("<system_directive>")) {
@@ -61,8 +60,7 @@ async function parseAndValidateResponse<T extends ZodSchema>(
   const parsed = schema.safeParse(responseText);
 
   if (!parsed.success) {
-    console.error("Schema validation failed for response:", JSON.stringify(responseText, null, 2));
-    console.error("Validation errors:", JSON.stringify(parsed.error.format(), null, 2));
+    console.error("Schema validation failed:", parsed.error.format());
     throw new Error("Response schema validation failed");
   }
 
@@ -127,12 +125,13 @@ describe("Obsidian MCP Server E2E Tests", () => {
       try {
         const files = await fs.readdir(TEST_VAULT_PATH);
         await Promise.all(
-          files.map((file) =>
-            fs.rm(path.join(TEST_VAULT_PATH, file), {
+          files.map((file) => {
+            if (file === ".obsidian") return Promise.resolve();
+            return fs.rm(path.join(TEST_VAULT_PATH, file), {
               recursive: true,
               force: true,
-            }),
-          ),
+            });
+          }),
         );
         break; // 성공 시 루프 탈출
       } catch (err) {
@@ -163,8 +162,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
         });
 
         if (!response.isError) {
-          const text = (response.content as { type: string; text: string }[])[0]
-            .text;
+          const text = (response.content as { type: string; text: string }[])[0].text;
           const data = JSON.parse(text);
           if (data.vault_overview.total_documents === demo_data.length) {
             isReady = true;
@@ -172,19 +170,16 @@ describe("Obsidian MCP Server E2E Tests", () => {
           }
         }
       } catch (e) {
-        // 서버가 아직 준비 중일 수 있음
+        // ignore errors during initial indexing wait
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
+  });
 
-    if (!isReady) {
-      console.warn(
-        "WARNING: Server did not index all documents in time. Tests might fail.",
-      );
-    }
-  }, E2E_TIMEOUT);
-
-  afterEach(async () => { });
+  afterEach(async () => {
+    // 테스트 간 안정화 시간 부여
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
 
   // Increase default timeout for all tests in this suite
   const TEST_TIMEOUT = 60000;
@@ -271,27 +266,27 @@ describe("Obsidian MCP Server E2E Tests", () => {
       let data: ListAllDocumentsData | undefined;
       const maxRetries = 20;
 
-    // CI 환경 대응: 파일 인덱싱이 완료될 때까지 최대 2초간 재시도
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        response = await mcpClient.callTool({
-          name: "vault",
-          arguments: { action: "list_all" },
-        });
+      // CI 환경 대응: 파일 인덱싱이 완료될 때까지 최대 2초간 재시도
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          response = await mcpClient.callTool({
+            name: "vault",
+            arguments: { action: "list_all" },
+          });
 
-        data = (await parseAndValidateResponse(
-          response,
-          listAllDocumentsDataSchema,
-        )) as ListAllDocumentsData;
+          data = (await parseAndValidateResponse(
+            response,
+            listAllDocumentsDataSchema,
+          )) as ListAllDocumentsData;
 
-        if (data.vault_overview.total_documents === demo_data.length) {
-          break;
+          if (data.vault_overview.total_documents === demo_data.length) {
+            break;
+          }
+        } catch (e) {
+          if (i === maxRetries - 1) throw e;
         }
-      } catch (e) {
-        if (i === maxRetries - 1) throw e;
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
 
       if (!data) {
         throw new Error("Failed to get data from list_all");
@@ -323,32 +318,32 @@ describe("Obsidian MCP Server E2E Tests", () => {
       let data: z.infer<typeof collectContextResponseDataSchema> | undefined;
       const maxRetries = 20;
 
-    // CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        response = await mcpClient.callTool({
-          name: "vault",
-          arguments: {
-            action: "collect_context",
-            scope: "all",
-            maxDocs: 2,
-            maxCharsPerDoc: 350,
-          },
-        });
+      // CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          response = await mcpClient.callTool({
+            name: "vault",
+            arguments: {
+              action: "collect_context",
+              scope: "all",
+              maxDocs: 2,
+              maxCharsPerDoc: 350,
+            },
+          });
 
-        data = await parseAndValidateResponse(
-          response,
-          collectContextResponseDataSchema,
-        );
+          data = await parseAndValidateResponse(
+            response,
+            collectContextResponseDataSchema,
+          );
 
-        if (data.documents.length > 0) {
-          break;
+          if (data.documents.length > 0) {
+            break;
+          }
+        } catch (e) {
+          if (i === maxRetries - 1) throw e;
         }
-      } catch (e) {
-        if (i === maxRetries - 1) throw e;
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
 
       if (!data) {
         throw new Error("Failed to get data from collect_context");
@@ -378,13 +373,8 @@ describe("Obsidian MCP Server E2E Tests", () => {
       let response: CompatibilityCallToolResult | undefined;
       const maxRetries = 20;
 
-      const ProcessedFrontMatterSchema = FrontMatterSchema.extend({
-        title: z.string(),
-        tags: z.array(z.string()).optional(),
-      }).passthrough();
-
       const ProcessedDocumentSchema = DocumentSchema.extend({
-        metadata: ProcessedFrontMatterSchema,
+        metadata: FormattedMetadataSchema,
       }).passthrough();
 
       const ProcessedSearchSuccessSchema = SearchSuccessSchema.extend({

@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { responseTypeSchema } from "@/tools/vault/params.js";
-import { FrontMatterSchema } from "@/utils/processor/types.js";
+import { FormattedMetadataSchema } from "@/utils/processor/types.js";
 
 // import { metadataSchema } from '@/tools/vault/types/@/tools/vault/params.js';
 
 // 실제 응답 구조에 맞춘 스키마
-const metadataSchema = FrontMatterSchema;
+const metadataSchema = FormattedMetadataSchema;
 
 const documentStatsSchema = z
 	.object({
