@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { Connection } from "@lancedb/lancedb";
 import { connect, Index } from "@lancedb/lancedb";
-import { debugLogger } from "@sunub/obsidian-mcp-core";
 import * as arrow from "apache-arrow";
 import { debugLogger } from "@/shared/index.js";
 import state from "../config.js";
