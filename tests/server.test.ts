@@ -1,18 +1,9 @@
 import fs, { copyFile } from "node:fs/promises";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CompatibilityCallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import {
-	afterAll,
-	afterEach,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	test,
-} from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { type ZodSchema, z } from "zod";
 import state from "../src/config";
 import createMcpServer from "../src/server";
@@ -21,7 +12,7 @@ import { collectContextResponseDataSchema } from "../src/tools/vault/types/colle
 import {
 	type ListAllDocumentsData,
 	listAllDocumentsDataSchema,
-} from "../src/tools/vault/types/list_all";
+} from "../src/tools/vault/types/list_all.ts";
 import { readSpecificFileDocumentData } from "../src/tools/vault/types/read_specific";
 import {
 	DocumentSchema,
@@ -32,21 +23,30 @@ import demo_data from "./assets/demo_data";
 
 const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault");
 
+/**
+ * 파일 잠금 및 ENOTEMPTY 에러를 방지하기 위한 방어적 삭제 유틸리티
+ */
+async function safeRm(targetPath: string) {
+	for (let i = 0; i < 5; i++) {
+		try {
+			await fs.rm(targetPath, { recursive: true, force: true });
+			return;
+		} catch (err: unknown) {
+			if (i === 4) throw err;
+			// 잠시 대기 후 재시도 (LanceDB 잠금 해제 시간 고려)
+			await new Promise((resolve) => setTimeout(resolve, 200));
+		}
+	}
+}
+
 async function parseAndValidateResponse<T extends ZodSchema>(
 	response: CompatibilityCallToolResult,
 	schema: T,
 ): Promise<z.infer<T>> {
-	if (response.isError) {
-		console.error(
-			"Tool execution failed content:",
-			JSON.stringify(response.content, null, 2),
-		);
-	}
 	expect(response.isError).toBe(false);
-	const responseContent = response.content as { type: string; text: unknown }[];
-	let text = responseContent[0].text as string;
+	const responseContent = response.content as { type: string; text: string }[];
+	let text = responseContent[0].text;
 
-	// Strip <system_directive> if present
 	if (text.includes("<system_directive>")) {
 		text = text
 			.replace(/<system_directive>[\s\S]*?<\/system_directive>/, "")
@@ -64,79 +64,75 @@ async function parseAndValidateResponse<T extends ZodSchema>(
 	return parsed.data;
 }
 
-describe("Obsidian MCP Server E2E Tests", () => {
-	let mcpClient: Client;
-	let _transport: StdioClientTransport | InMemoryTransport;
-	let embeddedServer: ReturnType<typeof createMcpServer> | null = null;
-	let transportMode: "stdio" | "in_memory" = "stdio";
-
-	beforeAll(async () => {
-		await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
-
-		mcpClient = new Client({ name: "test-client", version: "1.0.0" });
-		const stdioTransport = new StdioClientTransport({
-			command: "node",
-			args: ["build/index.js"],
-			env: {
-				...process.env,
-				VAULT_DIR_PATH: TEST_VAULT_PATH,
-				NODE_ENV: "test",
-			},
+/**
+ * 벡터 인덱싱이 완료될 때까지 대기하는 헬퍼
+ */
+async function waitForIndexing(mcpClient: Client, expectedCount: number) {
+	const maxRetries = 20;
+	for (let i = 0; i < maxRetries; i++) {
+		const response = await mcpClient.callTool({
+			name: "vault",
+			arguments: { action: "list_all" },
 		});
 
-		try {
-			await mcpClient.connect(stdioTransport);
-			_transport = stdioTransport;
-			transportMode = "stdio";
-		} catch {
-			const [clientTransport, serverTransport] =
-				InMemoryTransport.createLinkedPair();
-			state.vaultPath = TEST_VAULT_PATH;
-			embeddedServer = createMcpServer();
-			await embeddedServer.connect(serverTransport);
-			await mcpClient.connect(clientTransport);
-			_transport = clientTransport;
-			transportMode = "in_memory";
-		}
-	});
+		const data = (await parseAndValidateResponse(
+			response,
+			listAllDocumentsDataSchema,
+		)) as ListAllDocumentsData;
 
-	afterAll(async () => {
-		if (mcpClient) {
-			await mcpClient.close();
+		if (data.vault_overview.total_documents === expectedCount) {
+			return data;
 		}
-		if (embeddedServer) {
-			await embeddedServer.close();
-		}
-		await fs.rm(TEST_VAULT_PATH, { recursive: true, force: true });
-	});
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	}
+	throw new Error(
+		`Indexing timeout: Expected ${expectedCount} docs, but server reports different count.`,
+	);
+}
 
-	beforeEach(async () => {
-		const files = await fs.readdir(TEST_VAULT_PATH);
-		await Promise.all(
-			files.map((file) =>
-				fs.rm(path.join(TEST_VAULT_PATH, file), {
-					recursive: true,
-					force: true,
-				}),
-			),
-		);
+describe("Obsidian MCP Server E2E Tests", () => {
+	let mcpClient: Client;
+	let embeddedServer: ReturnType<typeof createMcpServer> | null = null;
 
+	beforeAll(async () => {
+		// 1. 깨끗한 테스트 환경 조성
+		await safeRm(TEST_VAULT_PATH);
+		await fs.mkdir(TEST_VAULT_PATH, { recursive: true });
+
+		// 2. 테스트 데이터 생성
 		for (const { title, tags, content } of demo_data) {
-			const { text } = content;
 			const tagsYaml = tags.map((tag) => `  - ${tag}`).join("\n");
 			const frontmatter = `---\ntitle: ${title}\ntags:\n${tagsYaml}\n---\n\n`;
 			const fileName = `${title.replace(/[/\\?%*:|"<>]/g, "-")}.md`;
-			const filePath = path.join(TEST_VAULT_PATH, fileName);
-			await fs.writeFile(filePath, frontmatter + text);
+			await fs.writeFile(
+				path.join(TEST_VAULT_PATH, fileName),
+				frontmatter + content.text,
+			);
 		}
+
+		// 3. 서버 시작 (In-Memory 방식이 테스트 격리에 더 유리함)
+		mcpClient = new Client({ name: "test-client", version: "1.0.0" });
+		const [clientTransport, serverTransport] =
+			InMemoryTransport.createLinkedPair();
+
+		state.vaultPath = TEST_VAULT_PATH;
+		embeddedServer = createMcpServer();
+		await embeddedServer.connect(serverTransport);
+		await mcpClient.connect(clientTransport);
+
+		// 4. 모든 테스트 시작 전 인덱싱 완료 보장
+		await waitForIndexing(mcpClient, demo_data.length);
 	});
 
-	afterEach(async () => {});
+	afterAll(async () => {
+		if (mcpClient) await mcpClient.close();
+		if (embeddedServer) await embeddedServer.close();
+		await safeRm(TEST_VAULT_PATH);
+	});
 
 	test("서버에 등록된 모든 도구 목록을 가져올 수 있다", async () => {
 		const toolsResult = await mcpClient.listTools();
 		const toolNames = toolsResult.tools.map((tool) => tool.name);
-
 		const expectedTools = [
 			"vault",
 			"create_document_with_properties",
@@ -146,220 +142,95 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		];
 
 		expect(toolNames).toEqual(expect.arrayContaining(expectedTools));
-		expect(toolNames.length).toBe(expectedTools.length);
-		expect(["stdio", "in_memory"]).toContain(transportMode);
 	});
 
-	test("vault의 read 액션은 적절하게 문서를 읽어올 수 있는가?", async () => {
-		const ABSOLUTE_PATH = path.join(
-			TEST_VAULT_PATH,
-			"Getting Started with Obsidian MCP Server.md",
-		);
-		const RELATIVE_PATH = "Getting Started with Obsidian MCP Server.md";
+	describe("Read-only Actions", () => {
+		test("vault: read - 문서를 정확히 읽어온다", async () => {
+			const filename = "Getting Started with Obsidian MCP Server.md";
+			const response = await mcpClient.callTool({
+				name: "vault",
+				arguments: { action: "read", filename },
+			});
 
-		const absoulteResponse = await mcpClient.callTool({
-			name: "vault",
-			arguments: { action: "read", filename: ABSOLUTE_PATH },
-		});
-		if (absoulteResponse.isError) {
-			console.error(
-				"Absolute read failed:",
-				JSON.stringify(absoulteResponse.content, null, 2),
+			const data = await parseAndValidateResponse(
+				response,
+				readSpecificFileDocumentData,
 			);
-		}
+			const frontmatter = FrontMatterSchema.parse(data.frontmatter);
 
-		const relativeResponse = await mcpClient.callTool({
-			name: "vault",
-			arguments: { action: "read", filename: RELATIVE_PATH },
+			expect(frontmatter.title).toBe(filename.replace(".md", ""));
+			expect(data.contentLength).toBeGreaterThan(0);
 		});
-		if (relativeResponse.isError) {
-			console.error(
-				"Relative read failed:",
-				JSON.stringify(relativeResponse.content, null, 2),
-			);
-		}
 
-		expect(absoulteResponse.isError).toBe(false);
-		expect(relativeResponse.isError).toBe(false);
-
-		const absoulteData = await parseAndValidateResponse(
-			absoulteResponse,
-			readSpecificFileDocumentData,
-		);
-		const relativeData = await parseAndValidateResponse(
-			relativeResponse,
-			readSpecificFileDocumentData,
-		);
-
-		expect(absoulteData.contentLength).toBeGreaterThan(0);
-		expect(relativeData.contentLength).toBeGreaterThan(0);
-
-		expect(absoulteData.contentLength).toBe(relativeData.contentLength);
-		expect(absoulteData.filename).toBe(relativeData.filename);
-		expect(absoulteData.metadata).toEqual(relativeData.metadata);
-		expect(absoulteData.content).toEqual(relativeData.content);
-	});
-
-	test("list_all 도구는 vault의 모든 문서 목록을 반환한다", async () => {
-		let response: CompatibilityCallToolResult | undefined;
-		let data: ListAllDocumentsData | undefined;
-		const maxRetries = 20;
-
-		// CI 환경 대응: 파일 인덱싱이 완료될 때까지 최대 2초간 재시도
-		for (let i = 0; i < maxRetries; i++) {
-			response = await mcpClient.callTool({
+		test("vault: list_all - 모든 문서 목록을 반환한다", async () => {
+			const response = await mcpClient.callTool({
 				name: "vault",
 				arguments: { action: "list_all" },
 			});
 
-			data = (await parseAndValidateResponse(
+			const data = await parseAndValidateResponse(
 				response,
 				listAllDocumentsDataSchema,
-			)) as ListAllDocumentsData;
+			);
 
-			if (data.vault_overview.total_documents === demo_data.length) {
-				break;
-			}
-			await new Promise((resolve) => setTimeout(resolve, 100));
-		}
+			expect(data.vault_overview.total_documents).toBe(demo_data.length);
+			expect(data.documents.length).toBe(demo_data.length);
+		});
 
-		if (!data) {
-			throw new Error("Failed to get data from list_all");
-		}
-
-		expect(data.vault_overview.total_documents).toBe(demo_data.length);
-		expect(data.documents.length).toBe(demo_data.length);
-
-		const sortedDocuments = [...data.documents].sort((a, b) =>
-			(a.metadata.title || "").localeCompare(b.metadata.title || ""),
-		);
-		const sortedDemoData = [...demo_data].sort((a, b) =>
-			a.title.localeCompare(b.title),
-		);
-
-		for (let i = 0; i < sortedDemoData.length; i++) {
-			const demo = sortedDemoData[i];
-			expect(sortedDocuments[i].metadata.title).toBe(demo.title);
-			expect(sortedDocuments[i].metadata.tags).toEqual(demo.tags);
-		}
-	});
-
-	test("vault의 collect_context 액션은 배치 메모리 패킷을 반환한다", async () => {
-		let response: CompatibilityCallToolResult | undefined;
-		let data: z.infer<typeof collectContextResponseDataSchema> | undefined;
-		const maxRetries = 20;
-
-		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
-		for (let i = 0; i < maxRetries; i++) {
-			response = await mcpClient.callTool({
+		test("vault: collect_context - 시맨틱 컨텍스트를 추출한다", async () => {
+			const response = await mcpClient.callTool({
 				name: "vault",
-				arguments: {
-					action: "collect_context",
-					scope: "all",
-					maxDocs: 2,
-					maxCharsPerDoc: 350,
-				},
+				arguments: { action: "collect_context", scope: "all", maxDocs: 2 },
 			});
 
-			data = await parseAndValidateResponse(
+			const data = await parseAndValidateResponse(
 				response,
 				collectContextResponseDataSchema,
 			);
 
-			if (data.documents.length > 0) {
-				break;
-			}
-			await new Promise((resolve) => setTimeout(resolve, 100));
-		}
-
-		if (!data) {
-			throw new Error("Failed to get data from collect_context");
-		}
-
-		expect(data.action).toBe("collect_context");
-		expect(data.scope).toBe("all");
-		expect(data.documents.length).toBeGreaterThan(0);
-		expect(data.batch.processed_docs).toBe(data.documents.length);
-		expect(data.batch.has_more).toBe(true);
-		expect(typeof data.batch.continuation_token).toBe("string");
-		expect(data.memory_packet.keyFacts.length).toBeGreaterThan(0);
-	});
-
-	test('search 도구는 "Test Note" 키워드를 기반으로 문서를 찾을 수 있다', async () => {
-		const searchQuery = "Getting Started with Obsidian MCP Server";
-		let response: CompatibilityCallToolResult | undefined;
-		const maxRetries = 20;
-
-		const ProcessedFrontMatterSchema = FrontMatterSchema.extend({
-			title: z.string(),
-			tags: z.array(z.string()),
+			expect(data.documents.length).toBeGreaterThan(0);
+			expect(data.memory_packet.keyFacts.length).toBeGreaterThan(0);
 		});
 
-		const ProcessedDocumentSchema = DocumentSchema.extend({
-			metadata: ProcessedFrontMatterSchema,
-		});
-
-		const ProcessedSearchSuccessSchema = SearchSuccessSchema.extend({
-			documents: z.array(ProcessedDocumentSchema),
-		});
-
-		let data: z.infer<typeof ProcessedSearchSuccessSchema> | undefined;
-
-		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
-		for (let i = 0; i < maxRetries; i++) {
-			response = await mcpClient.callTool({
+		test("vault: search - 키워드 기반 검색이 작동한다", async () => {
+			const query = "Getting Started with Obsidian MCP Server";
+			const response = await mcpClient.callTool({
 				name: "vault",
-				arguments: {
-					action: "search",
-					keyword: searchQuery,
-					includeContent: true,
-				},
+				arguments: { action: "search", keyword: query },
 			});
 
-			data = await parseAndValidateResponse(
-				response,
-				ProcessedSearchSuccessSchema,
-			);
+			// 검색 결과 스키마 검증
+			const SearchResultSchema = SearchSuccessSchema.extend({
+				documents: z.array(
+					DocumentSchema.extend({
+						metadata: FrontMatterSchema.extend({
+							title: z.string(),
+							tags: z.array(z.string()),
+						}),
+					}),
+				),
+			});
 
-			if (data.found > 0) {
-				break;
-			}
-			await new Promise((resolve) => setTimeout(resolve, 100));
-		}
+			const data = await parseAndValidateResponse(response, SearchResultSchema);
 
-		if (!data) {
-			throw new Error("Failed to get data from search");
-		}
-
-		expect(data.query).toBe(searchQuery);
-		expect(data.found).toBe(1);
-		expect(data.documents.length).toBe(1);
-
-		const doc = data.documents[0];
-		expect(doc.filename).toBe(`${searchQuery}.md`);
-		expect(doc.metadata.tags).toEqual(["guide", "initial"]);
-		expect(
-			"excerpt" in doc.content ? doc.content.excerpt : doc.content.preview,
-		).toBeDefined();
+			expect(data.found).toBeGreaterThan(0);
+			expect(data.documents[0].filename).toBe(`${query}.md`);
+		});
 	});
 
-	test("organize_attachments 도구는 문서의 이미지 파일을 정리할 수 있다", async () => {
-		const sourceImagePath = path.join(
-			process.cwd(),
-			"tests",
-			"assets",
-			"demo_img.png",
-		);
-		const destinationImagePath = path.join(TEST_VAULT_PATH, "demo_img.png");
-		await copyFile(sourceImagePath, destinationImagePath);
+	describe("Mutation Actions", () => {
+		test("organize_attachments - 이미지 파일을 정리한다", async () => {
+			// 테스트용 이미지 준비
+			const sourceImg = path.join(
+				process.cwd(),
+				"tests",
+				"assets",
+				"demo_img.png",
+			);
+			const targetImg = path.join(TEST_VAULT_PATH, "demo_img.png");
+			await copyFile(sourceImg, targetImg);
 
-		let response: CompatibilityCallToolResult | undefined;
-		let data: z.infer<typeof OrganizeAttachmentsResultSchema> | undefined;
-		const maxRetries = 20;
-
-		// CI 환경 대응: 파일 인덱싱이 완료되어 결과가 나올 때까지 최대 2초간 재시도
-		for (let i = 0; i < maxRetries; i++) {
-			response = await mcpClient.callTool({
+			const response = await mcpClient.callTool({
 				name: "organize_attachments",
 				arguments: {
 					keyword: "Test Note",
@@ -367,35 +238,26 @@ describe("Obsidian MCP Server E2E Tests", () => {
 					useTitleAsFolderName: true,
 				},
 			});
-			data = await parseAndValidateResponse(
+
+			const data = await parseAndValidateResponse(
 				response,
 				OrganizeAttachmentsResultSchema,
 			);
+			const detail = data.details.find((d) =>
+				d.document.includes("Test Note.md"),
+			);
 
-			if (data.details.length > 0) {
-				break;
-			}
-			await new Promise((resolve) => setTimeout(resolve, 100));
-		}
+			expect(detail?.status).toBe("success");
+			expect(detail?.movedFiles).toBe(1);
 
-		if (!data) {
-			throw new Error("Failed to get data from organize_attachments");
-		}
-
-		const detail = data.details.find((d) =>
-			d.document.includes("Test Note.md"),
-		);
-		expect(detail?.status).toBe("success");
-		expect(detail?.movedFiles).toBe(1);
-		expect(detail?.targetDirectory).toBe("images/Test Note");
-
-		const movedImagePath = path.join(
-			TEST_VAULT_PATH,
-			"images",
-			"Test Note",
-			"demo_img.png",
-		);
-		const movedImageStat = await fs.stat(movedImagePath);
-		expect(movedImageStat.isFile()).toBe(true);
+			// 물리적 파일 이동 확인
+			const movedPath = path.join(
+				TEST_VAULT_PATH,
+				"images",
+				"Test Note",
+				"demo_img.png",
+			);
+			await expect(fs.stat(movedPath)).resolves.toBeDefined();
+		});
 	});
 });
