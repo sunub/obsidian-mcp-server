@@ -1,6 +1,6 @@
 {
   "name": "@sunub/obsidian-mcp-server",
-  "version": "0.3.15",
+  "version": "0.3.16",
   "description": "Obsidian Local RAG MCP Server",
   "type": "module",
   "main": "dist/index.js",

@@ -53,6 +53,21 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: Sync package versions from tag
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          # 모든 공개 패키지의 버전을 태그와 동기화
+          node -e "
+            const fs = require('fs');
+            const pkgs = ['packages/core/package.json', 'packages/server/package.json'];
+            for (const p of pkgs) {
+              const json = JSON.parse(fs.readFileSync(p, 'utf8'));
+              json.version = '${VERSION}';
+              fs.writeFileSync(p, JSON.stringify(json, null, 2) + '\n');
+              console.log(p + ' -> ' + '${VERSION}');
+            }
+          "
+
       - name: Publish NPM Packages
         run: |
           # 1. 토큰 존재 여부 확인
