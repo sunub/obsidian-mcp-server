@@ -52,6 +52,7 @@ export function formatDocument(
 		filename: doc.filePath.split("/").pop() || doc.filePath,
 		fullPath: doc.filePath,
 		metadata: {
+			...doc.frontmatter,
 			title: doc.frontmatter.title || "Untitled",
 			tags: doc.frontmatter.tags || [],
 		},

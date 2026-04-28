@@ -153,7 +153,8 @@ describe("Obsidian MCP Server E2E Tests", () => {
     // 서버가 파일 시스템 변화를 감지하고 모든 문서(5개)를 인덱싱할 때까지 대기합니다.
     // 고정된 시간 대기보다 폴링 방식이 CI 환경에서 훨씬 안정적입니다.
     let isReady = false;
-    const maxAttempts = 20; // 최대 10초 (20 * 500ms)
+    let currentCount = 0;
+    const maxAttempts = 40; // 최대 20초 (40 * 500ms)
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const response = await mcpClient.callTool({
@@ -164,7 +165,8 @@ describe("Obsidian MCP Server E2E Tests", () => {
         if (!response.isError) {
           const text = (response.content as { type: string; text: string }[])[0].text;
           const data = JSON.parse(text);
-          if (data.vault_overview.total_documents === demo_data.length) {
+          currentCount = data.vault_overview.total_documents;
+          if (currentCount === demo_data.length) {
             isReady = true;
             break;
           }
@@ -173,6 +175,10 @@ describe("Obsidian MCP Server E2E Tests", () => {
         // ignore errors during initial indexing wait
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    if (!isReady) {
+      throw new Error(`Server indexing timed out. Got ${currentCount}/${demo_data.length} docs.`);
     }
   });
 

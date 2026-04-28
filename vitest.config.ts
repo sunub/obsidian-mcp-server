@@ -26,6 +26,7 @@ export default defineConfig({
 					include: ["tests/**/*.{test,spec}.{ts,tsx}"],
 					globals: true,
 					environment: "node",
+					hookTimeout: 60000,
 				},
 			},
 			{

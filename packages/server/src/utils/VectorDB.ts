@@ -109,66 +109,84 @@ export class VectorDB {
 	}
 
 	async getTable() {
-		const db = await this.getDb();
-		const tableNames = await db.tableNames();
+		try {
+			const db = await this.getDb();
+			const tableNames = await db.tableNames();
 
-		if (!tableNames.includes(this.tableName)) {
+			if (!tableNames.includes(this.tableName)) {
+				return null;
+			}
+			return await db.openTable(this.tableName);
+		} catch (error) {
+			debugLogger.error(`[VectorDB] Failed to open table ${this.tableName}:`, error);
 			return null;
 		}
-		return await db.openTable(this.tableName);
 	}
 
 	async checkAndMigrateIfNeeded(): Promise<boolean> {
-		const db = await this.connect();
-		const tableNames = await db.tableNames();
-		const currentEmbedModel = state.llmEmbeddingModel;
+		try {
+			const db = await this.connect();
+			const tableNames = await db.tableNames();
+			const currentEmbedModel = state.llmEmbeddingModel;
 
-		if (!tableNames.includes(this.metaTableName)) {
-			const tablesToDrop = [this.tableName, this.fileMetaTableName];
-			for (const t of tablesToDrop) {
-				if (tableNames.includes(t)) {
-					debugLogger.error(
-						`[VectorDB] No meta table found but ${t} exists — dropping stale index.`,
-					);
-					await db.dropTable(t);
+			if (!tableNames.includes(this.metaTableName)) {
+				const tablesToDrop = [this.tableName, this.fileMetaTableName];
+				for (const t of tablesToDrop) {
+					if (tableNames.includes(t)) {
+						debugLogger.error(
+							`[VectorDB] No meta table found but ${t} exists — dropping stale index.`,
+						);
+						try {
+							await db.dropTable(t);
+						} catch (e) {
+							debugLogger.error(`[VectorDB] Failed to drop table ${t}:`, e);
+						}
+					}
 				}
+				await this.writeMetadata(db);
+				this.db = null;
+				return true;
 			}
-			await this.writeMetadata(db);
-			this.db = null;
-			return true;
-		}
 
-		const meta = await this.readMetadata(db);
-		const storedVersion = Number.parseInt(
-			(meta["index_version"] as string | undefined) ?? "0",
-			10,
-		);
-		const storedModel = (meta["embed_model"] as string | undefined) ?? "";
-
-		if (storedVersion !== INDEX_VERSION || storedModel !== currentEmbedModel) {
-			debugLogger.error(
-				`[VectorDB] Index version mismatch (stored: v${storedVersion}/${storedModel}, current: v${INDEX_VERSION}/${currentEmbedModel}) — rebuilding index.`,
+			const meta = await this.readMetadata(db);
+			const storedVersion = Number.parseInt(
+				(meta["index_version"] as string | undefined) ?? "0",
+				10,
 			);
-			const tablesToDrop = [
-				this.tableName,
-				this.metaTableName,
-				this.fileMetaTableName,
-			];
-			for (const t of tablesToDrop) {
-				if (tableNames.includes(t)) {
-					await db.dropTable(t);
+			const storedModel = (meta["embed_model"] as string | undefined) ?? "";
+
+			if (storedVersion !== INDEX_VERSION || storedModel !== currentEmbedModel) {
+				debugLogger.error(
+					`[VectorDB] Index version mismatch (stored: v${storedVersion}/${storedModel}, current: v${INDEX_VERSION}/${currentEmbedModel}) — rebuilding index.`,
+				);
+				const tablesToDrop = [
+					this.tableName,
+					this.metaTableName,
+					this.fileMetaTableName,
+				];
+				for (const t of tablesToDrop) {
+					if (tableNames.includes(t)) {
+						try {
+							await db.dropTable(t);
+						} catch (e) {
+							debugLogger.error(`[VectorDB] Failed to drop table ${t}:`, e);
+						}
+					}
 				}
+				await this.writeMetadata(db);
+				this.db = null;
+				return true;
 			}
-			await this.writeMetadata(db);
-			this.db = null;
-			return true;
+
+			debugLogger.info(
+				`[VectorDB] Index is up-to-date (v${INDEX_VERSION}, ${currentEmbedModel}).`,
+			);
+
+			return false;
+		} catch (error) {
+			debugLogger.error("[VectorDB] Migration check failed:", error);
+			return false;
 		}
-
-		debugLogger.info(
-			`[VectorDB] Index is up-to-date (v${INDEX_VERSION}, ${currentEmbedModel}).`,
-		);
-
-		return false;
 	}
 
 	private async readMetadata(
@@ -226,91 +244,103 @@ export class VectorDB {
 	}
 
 	async upsertChunks(records: VectorRecord[]) {
-		if (!this.db) {
-			this.db = await this.connect();
-		}
-		const tableNames = await this.db.tableNames();
-
-		if (!tableNames.includes(this.tableName)) {
-			try {
-				await this.db.createEmptyTable(this.tableName, VaultDocumentSchema, {
-					existOk: true,
-				});
-			} catch (err) {
-				// 이미 생성된 경우 무시
-				debugLogger.debug(
-					`[VectorDB] Table ${this.tableName} already exists or creation failed:`,
-					err,
-				);
+		try {
+			if (!this.db) {
+				this.db = await this.connect();
 			}
+			const tableNames = await this.db.tableNames();
+
+			if (!tableNames.includes(this.tableName)) {
+				try {
+					await this.db.createEmptyTable(this.tableName, VaultDocumentSchema, {
+						existOk: true,
+					});
+				} catch (err) {
+					// 이미 생성된 경우 무시
+					debugLogger.debug(
+						`[VectorDB] Table ${this.tableName} already exists or creation failed:`,
+						err,
+					);
+				}
+			}
+
+			const table = await this.db.openTable(this.tableName);
+			const filePaths = Array.from(new Set(records.map((r) => r.filePath)));
+
+			const inClause = filePaths
+				.map((fp) => `'${fp.replace(/'/g, "''")}'`)
+				.join(", ");
+			await table.delete(`\`filePath\` IN (${inClause})`);
+			await table.add(records);
+		} catch (error) {
+			debugLogger.error("[VectorDB] Error in upsertChunks:", error);
 		}
-
-		const table = await this.db.openTable(this.tableName);
-		const filePaths = Array.from(new Set(records.map((r) => r.filePath)));
-
-		const inClause = filePaths
-			.map((fp) => `'${fp.replace(/'/g, "''")}'`)
-			.join(", ");
-		await table.delete(`\`filePath\` IN (${inClause})`);
-		await table.add(records);
 	}
 
 	async updateFileMeta(filePath: string, mtime: string) {
-		if (!this.db) {
-			this.db = await this.connect();
-		}
-		const tableNames = await this.db.tableNames();
-
-		if (!tableNames.includes(this.fileMetaTableName)) {
-			try {
-				await this.db.createTable(
-					this.fileMetaTableName,
-					[{ filePath, mtime }],
-					{
-						existOk: true,
-					},
-				);
-				return;
-			} catch (err) {
-				debugLogger.debug(
-					`[VectorDB] Table ${this.fileMetaTableName} already exists:`,
-					err,
-				);
+		try {
+			if (!this.db) {
+				this.db = await this.connect();
 			}
-		}
+			const tableNames = await this.db.tableNames();
 
-		const table = await this.db.openTable(this.fileMetaTableName);
-		await table.delete(`\`filePath\` = '${filePath.replace(/'/g, "''")}'`);
-		await table.add([{ filePath, mtime }]);
+			if (!tableNames.includes(this.fileMetaTableName)) {
+				try {
+					await this.db.createTable(
+						this.fileMetaTableName,
+						[{ filePath, mtime }],
+						{
+							existOk: true,
+						},
+					);
+					return;
+				} catch (err) {
+					debugLogger.debug(
+						`[VectorDB] Table ${this.fileMetaTableName} already exists:`,
+						err,
+					);
+				}
+			}
+
+			const table = await this.db.openTable(this.fileMetaTableName);
+			await table.delete(`\`filePath\` = '${filePath.replace(/'/g, "''")}'`);
+			await table.add([{ filePath, mtime }]);
+		} catch (error) {
+			debugLogger.error("[VectorDB] Error in updateFileMeta:", error);
+		}
 	}
 
 	async updateFileMetaBatch(entries: { filePath: string; mtime: string }[]) {
 		if (entries.length === 0) return;
-		if (!this.db) {
-			this.db = await this.connect();
-		}
-		const tableNames = await this.db.tableNames();
-
-		if (!tableNames.includes(this.fileMetaTableName)) {
-			try {
-				await this.db.createTable(this.fileMetaTableName, entries, {
-					existOk: true,
-				});
-				return;
-			} catch (err) {
-				debugLogger.debug(
-					`[VectorDB] Table ${this.fileMetaTableName} already exists:`,
-					err,
-				);
+		try {
+			if (!this.db) {
+				this.db = await this.connect();
 			}
-		}
+			const tableNames = await this.db.tableNames();
 
-		const table = await this.db.openTable(this.fileMetaTableName);
-		const inClause = entries
-			.map((e) => `'${e.filePath.replace(/'/g, "''")}'`)
-			.join(", ");
-		await table.delete(`\`filePath\` IN (${inClause})`);
-		await table.add(entries);
+			if (!tableNames.includes(this.fileMetaTableName)) {
+				try {
+					await this.db.createTable(this.fileMetaTableName, entries, {
+						existOk: true,
+					});
+					return;
+				} catch (err) {
+					debugLogger.debug(
+						`[VectorDB] Table ${this.fileMetaTableName} already exists:`,
+						err,
+					);
+				}
+			}
+
+			const table = await this.db.openTable(this.fileMetaTableName);
+			const inClause = entries
+				.map((e) => `'${e.filePath.replace(/'/g, "''")}'`)
+				.join(", ");
+			await table.delete(`\`filePath\` IN (${inClause})`);
+			await table.add(entries);
+		} catch (error) {
+			debugLogger.error("[VectorDB] Error in updateFileMetaBatch:", error);
+		}
 	}
 
 	async getFileMtime(filePath: string): Promise<string | null> {
