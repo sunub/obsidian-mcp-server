@@ -8,8 +8,7 @@ import { localReranker } from "./utils/LocalReranker.js";
 import { vaultWatcher } from "./utils/VaultWatcher.js";
 
 async function main() {
-	// 셋업 명령 확인
-	if (process.argv[2] === "setup") {
+	if (process.argv.slice(2).some((arg) => arg === "setup")) {
 		const { setup } = await import("./setup.js");
 		const success = await setup({ force: true });
 		process.exit(success ? 0 : 1);
