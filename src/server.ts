@@ -33,7 +33,7 @@ export default function createMcpServer(): McpServer {
 	        - LLM_API_URL: (Optional) Remote chat server URL (default: http://127.0.0.1:8080).
 	        
 	        Local Search Optimization:
-	        - To enable high-performance local hybrid search, run 'bunx obsidian-mcp-setup' once.
+	        - To enable high-performance local hybrid search, run 'npx @sunub/obsidian-mcp-server setup' once.
 	      `,
 		},
 	);

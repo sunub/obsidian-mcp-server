@@ -94,7 +94,7 @@ export class VaultManager {
 
 			if (!this.hasNotifiedMissingModels) {
 				diagnostic_message =
-					"💡 [검색 품질 안내] 현재 로컬 모델이 설치되어 있지 않아 기본 키워드 검색으로 동작했습니다. 터미널에서 `bunx obsidian-mcp-setup`을 실행하시면 고성능 하이브리드 검색을 사용할 수 있습니다.";
+					"💡 [검색 품질 안내] 현재 로컬 모델이 설치되어 있지 않아 기본 키워드 검색으로 동작했습니다. 터미널에서 `npx @sunub/obsidian-mcp-server setup`을 실행하시면 고성능 하이브리드 검색을 사용할 수 있습니다.";
 				this.hasNotifiedMissingModels = true;
 			}
 
