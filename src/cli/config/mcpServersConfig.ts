@@ -74,8 +74,6 @@ function buildFallbackConfig(): McpServerConfig[] {
 		vaultPath: process.env["VAULT_DIR_PATH"],
 		loggingLevel: process.env["LOGGING_LEVEL"],
 		llmApiUrl: process.env["LLM_API_URL"],
-		llmEmbeddingApiUrl: process.env["LLM_EMBEDDING_API_URL"],
-		llmEmbeddingModel: process.env["LLM_EMBEDDING_MODEL"],
 		llmChatModel: process.env["LLM_CHAT_MODEL"],
 	});
 
@@ -107,9 +105,6 @@ function buildFallbackConfig(): McpServerConfig[] {
 				env: {
 					VAULT_DIR_PATH: vaultPath,
 					LLM_API_URL: env?.llmApiUrl ?? "http://127.0.0.1:8080",
-					LLM_EMBEDDING_API_URL:
-						env?.llmEmbeddingApiUrl ?? "http://127.0.0.1:8081",
-					LLM_EMBEDDING_MODEL: env?.llmEmbeddingModel ?? "nomic-embed-text",
 					LLM_CHAT_MODEL: env?.llmChatModel ?? "llama3",
 					LOGGING_LEVEL: process.env["LOGGING_LEVEL"] ?? "info",
 				},

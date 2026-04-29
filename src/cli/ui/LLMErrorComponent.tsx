@@ -15,7 +15,7 @@ export function LLMErrorComponent({
 		"To use semantic search and RAG features, a local LLM server (such as llama.cpp) must be running.",
 		"[Action Required]",
 		"1. Start your local LLM server.",
-		"2. Ensure the environment variables (LLM_API_URL, LLM_EMBEDDING_API_URL) correctly match the running server's URL.",
+		"2. Ensure the environment variables (LLM_API_URL) correctly match the running server's URL.",
 		"3. Restart the service with the synchronized settings.",
 	];
 
