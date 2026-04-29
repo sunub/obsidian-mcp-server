@@ -50,9 +50,6 @@ const _rawConfig = {
 
 const _parseResult = configSchema.safeParse(_rawConfig);
 
-// safeParse를 사용하여 모듈 로드 시점에 throw하지 않는다.
-// 유효한 환경(프로덕션 CLI)에서는 getOptions()가 전체 검증을 수행한다.
-// 테스트 환경에서는 beforeAll에서 state.vaultPath를 직접 할당한다.
 const state: ObsidianMcpConfig = _parseResult.success
 	? _parseResult.data
 	: (_rawConfig as unknown as ObsidianMcpConfig);
@@ -82,6 +79,7 @@ export function getOptions(): ObsidianMcpConfig | false {
 			process.env["LLM_CHAT_MODEL"] ?? "llama3",
 		)
 		.allowUnknownOption()
+		.allowExcessArguments(true)
 		.parse(process.argv);
 	const options = program.opts();
 	const parseResult = configSchema.safeParse(options);
