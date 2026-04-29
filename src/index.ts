@@ -8,6 +8,13 @@ import { localReranker } from "./utils/LocalReranker.js";
 import { vaultWatcher } from "./utils/VaultWatcher.js";
 
 async function main() {
+	// 셋업 명령 확인
+	if (process.argv[2] === "setup") {
+		const { setup } = await import("./setup.js");
+		const success = await setup({ force: true });
+		process.exit(success ? 0 : 1);
+	}
+
 	const options = getOptions();
 	if (!options) {
 		console.error(
@@ -43,7 +50,7 @@ async function main() {
 	} else {
 		console.error(
 			chalk.yellow(
-				"ℹ Basic Keyword Search is active. Run 'bunx obsidian-mcp-setup' to enable Hybrid Search.\n",
+				"ℹ Basic Keyword Search is active. Run 'npx @sunub/obsidian-mcp-server setup' to enable Hybrid Search.\n",
 			),
 		);
 	}

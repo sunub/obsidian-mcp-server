@@ -145,7 +145,6 @@ export async function setup(options = { force: false }) {
 
 const isMain =
 	process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
-console.log(isMain, import.meta.url);
 
 if (isMain || process.argv[1]?.endsWith("setup.js")) {
 	setup({ force: true })
