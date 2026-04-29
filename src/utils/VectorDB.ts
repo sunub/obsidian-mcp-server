@@ -118,7 +118,6 @@ export class VectorDB {
 	async checkAndMigrateIfNeeded(): Promise<boolean> {
 		const db = await this.connect();
 		const tableNames = await db.tableNames();
-		const currentEmbedModel = state.llmEmbeddingModel;
 
 		if (!tableNames.includes(this.metaTableName)) {
 			const tablesToDrop = [this.tableName, this.fileMetaTableName];
@@ -142,9 +141,9 @@ export class VectorDB {
 		);
 		const storedModel = (meta["embed_model"] as string | undefined) ?? "";
 
-		if (storedVersion !== INDEX_VERSION || storedModel !== currentEmbedModel) {
+		if (storedVersion !== INDEX_VERSION) {
 			debugLogger.error(
-				`[VectorDB] Index version mismatch (stored: v${storedVersion}/${storedModel}, current: v${INDEX_VERSION}/${currentEmbedModel}) — rebuilding index.`,
+				`[VectorDB] Index version mismatch (stored: v${storedVersion}/${storedModel}, current: v${INDEX_VERSION}) — rebuilding index.`,
 			);
 			const tablesToDrop = [
 				this.tableName,
@@ -161,9 +160,7 @@ export class VectorDB {
 			return true;
 		}
 
-		debugLogger.info(
-			`[VectorDB] Index is up-to-date (v${INDEX_VERSION}, ${currentEmbedModel}).`,
-		);
+		debugLogger.info(`[VectorDB] Index is up-to-date (v${INDEX_VERSION}).`);
 
 		return false;
 	}
@@ -189,7 +186,6 @@ export class VectorDB {
 	): Promise<void> {
 		const records: MetaRecord[] = [
 			{ key: "index_version", value: String(INDEX_VERSION) },
-			{ key: "embed_model", value: state.llmEmbeddingModel },
 		];
 		await db.createTable(this.metaTableName, records, { mode: "overwrite" });
 	}

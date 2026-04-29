@@ -22,6 +22,7 @@ async function start() {
 		stdout: monkeyStdout,
 		stderr: monkeySterr,
 		stdin: process.stdin,
+		alternateBuffer: false,
 	});
 
 	await waitUntilExit();

@@ -26,7 +26,11 @@ export interface LlmStreamState {
 	streamingState: StreamingState;
 	isLoading: boolean;
 	error: Error | null;
-	sendMessage: (text: string, ragContext?: string | null) => Promise<void>;
+	sendMessage: (
+		text: string,
+		ragContext?: string | null,
+		overrideTools?: McpToolInfo[],
+	) => Promise<void>;
 	reset: () => void;
 	clearStreamingHistory: () => void;
 }
@@ -66,7 +70,11 @@ export const useLlmStream = (
 	}, []);
 
 	const sendMessage = useCallback(
-		async (rawText: string, ragContext?: string | null) => {
+		async (
+			rawText: string,
+			ragContext?: string | null,
+			overrideTools?: McpToolInfo[],
+		) => {
 			const text = stripAnsi(rawText).trim();
 			setStreamingState("thinking");
 			setPendingItem({ type: "assistant", content: "", isComplete: false });
@@ -90,9 +98,10 @@ export const useLlmStream = (
 
 				conversationRef.current.push(userMessage);
 
+				const toolsToUse = overrideTools ?? availableTools;
 				const openAITools =
-					callTool && availableTools.length > 0
-						? mcpToolsToOpenAI(availableTools)
+					callTool && toolsToUse.length > 0
+						? mcpToolsToOpenAI(toolsToUse)
 						: undefined;
 
 				let progressLog = "";

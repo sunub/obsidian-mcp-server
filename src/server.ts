@@ -31,7 +31,6 @@ export default function createMcpServer(): McpServer {
 	        Environment requirements:
 	        - VAULT_DIR_PATH: Path to your Obsidian vault directory.
 	        - LLM_API_URL: (Optional) Remote chat server URL (default: http://127.0.0.1:8080).
-	        - LLM_EMBEDDING_API_URL: (Optional) Remote embedding server URL (default: http://127.0.0.1:8081).
 	        
 	        Local Search Optimization:
 	        - To enable high-performance local hybrid search, run 'bunx obsidian-mcp-setup' once.

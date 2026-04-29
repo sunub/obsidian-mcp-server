@@ -5,7 +5,6 @@ import { encodingForModel } from "js-tiktoken";
 import ora, { type Ora } from "ora";
 import { DirectoryWalker } from "./DirectoryWalker.js";
 import { localEmbedder } from "./Embedder.js";
-import { llmClient } from "./LLMClient.js";
 import { parse as parseMatter } from "./processor/MatterParser.js";
 import { Semaphore } from "./semaphore.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
@@ -173,13 +172,11 @@ export class RAGIndexer {
 			let vector: number[];
 			try {
 				const isLocalReady = await localEmbedder.checkModelPresence();
-				if (isLocalReady) {
-					vector = await localEmbedder.embed(`search_document: ${safeText}`);
-				} else {
-					vector = await llmClient.generateEmbedding(
-						`search_document: ${safeText}`,
-					);
+				if (!isLocalReady) {
+					await localEmbedder.init();
 				}
+
+				vector = await localEmbedder.embed(`search_document: ${safeText}`);
 			} finally {
 				this.embeddingSemaphore.release();
 			}

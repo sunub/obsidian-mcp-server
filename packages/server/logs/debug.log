@@ -1,5 +1,0 @@
-[2026-04-27T05:35:12.578Z] [INFO] [VectorDB] Index is up-to-date (v5, nomic-embed-text).
-[2026-04-27T05:40:12.665Z] [INFO] [VectorDB] Index is up-to-date (v5, nomic-embed-text).
-[2026-04-27T17:42:52.209Z] [DEBUG] [VectorDB] Table obsidian_chunks already exists or creation failed: [Error: lance error: Encountered internal error. Please file a bug report at https://github.com/lancedb/lance/issues. Commit conflict, /Users/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/lance-table-0.17.0/src/io/commit.rs:670:27] {
-  code: 'GenericFailure'
-}
