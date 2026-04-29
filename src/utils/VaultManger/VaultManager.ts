@@ -14,7 +14,6 @@ import matter from "gray-matter";
 import { DirectoryWalker } from "../DirectoryWalker.js";
 import { localEmbedder } from "../Embedder.js";
 import { Indexer } from "../Indexer.js";
-import { llmClient } from "../LLMClient.js";
 import { localReranker } from "../LocalReranker.js";
 import type { DocumentIndex } from "../processor/types.js";
 import { ragIndexer } from "../RAGIndexer.js";
@@ -83,16 +82,12 @@ export class VaultManager {
 		}
 	}
 
-	/**
-	 * 키워드 검색과 벡터 검색을 병합하고 Reranker로 최적화하는 하이브리드 검색
-	 */
 	public async hybridSearch(
 		query: string,
 		limit: number = 5,
 	): Promise<{ results: HybridSearchResult[]; diagnostic_message?: string }> {
 		await this.initialize();
 
-		// 1. AI 가용성 확인 및 Fallback 처리
 		if (!this.isLocalAIReady) {
 			const keywordResults = this.indexer.search(query);
 			let diagnostic_message: string | undefined;
@@ -103,7 +98,6 @@ export class VaultManager {
 				this.hasNotifiedMissingModels = true;
 			}
 
-			// 인덱싱 상태 추가
 			const ragStatus = this.getRagIndexingStatus();
 			if (ragStatus.isIndexing) {
 				const indexingMsg = `⏳ [인덱싱 진행 중] 백그라운드에서 의미 기반 검색 인덱싱이 진행 중입니다 (${ragStatus.progress}% - ${ragStatus.processed}/${ragStatus.total}). 검색 결과가 일부 누락될 수 있습니다.`;
@@ -234,9 +228,12 @@ export class VaultManager {
 			return [];
 		}
 		try {
-			const queryVector = await llmClient.generateEmbedding(
-				`search_query: ${query}`,
-			);
+			const isLocalReady = await localEmbedder.checkModelPresence();
+			if (!isLocalReady) {
+				await localEmbedder.init();
+			}
+
+			const queryVector = await localEmbedder.embed(`search_query: ${query}`);
 			return await vectorDB.search(queryVector, limit);
 		} catch (_error) {
 			return [];
@@ -249,10 +246,8 @@ export class VaultManager {
 			await this.executeSync();
 			return;
 		}
-
-		// 로컬 모델이 없는 경우 원격 서버 확인
-		const isHealthy = await llmClient.isEmbeddingServerHealthy();
-		if (isHealthy) {
+		const isLocalReady = await localEmbedder.checkModelPresence();
+		if (isLocalReady) {
 			await this.executeSync();
 		} else {
 			// 아무것도 없으면 조용히 종료 (로그는 이미 index.ts에서 나옴)
@@ -305,8 +300,8 @@ export class VaultManager {
 			return;
 		}
 
-		const isHealthy = await llmClient.isEmbeddingServerHealthy();
-		if (isHealthy) {
+		const isLocalReady = await localEmbedder.checkModelPresence();
+		if (isLocalReady) {
 			try {
 				await ragIndexer.processFile(filePath);
 			} catch (error) {
