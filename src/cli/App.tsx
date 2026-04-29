@@ -19,6 +19,7 @@ import { historyStorage } from "@cli/utils/historyStorage.js";
 import { Box, Text } from "ink";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { debugLogger } from "@/shared/index.js";
+import { disableMouseEvents } from "./utils/terminal.js";
 
 export const App = () => {
 	const [shellModeActive] = useState(false);
@@ -31,15 +32,20 @@ export const App = () => {
 	const { columns: terminalWidth, rows: terminalHeight } = useTerminalSize();
 
 	useEffect(() => {
-		if (copyModeEnabled) {
-			process.stdout.write("\x1b[?1000l\x1b[?1003l\x1b[?1015l\x1b[?1006l");
-		} else {
-			process.stdout.write("\x1b[?1000h\x1b[?1003h\x1b[?1015h\x1b[?1006h");
-		}
-		return () => {
-			process.stdout.write("\x1b[?1000l\x1b[?1003l\x1b[?1015l\x1b[?1006l");
-		};
-	}, [copyModeEnabled]);
+		disableMouseEvents();
+	}, []);
+
+	//
+	// useEffect(() => {
+	//   if (copyModeEnabled) {
+	//     process.stdout.write("\x1b[?1000l\x1b[?1003l\x1b[?1015l\x1b[?1006l");
+	//   } else {
+	//     process.stdout.write("\x1b[?1000h\x1b[?1003h\x1b[?1015h\x1b[?1006h");
+	//   }
+	//   return () => {
+	//     process.stdout.write("\x1b[?1000l\x1b[?1003l\x1b[?1015l\x1b[?1006l");
+	//   };
+	// }, [copyModeEnabled]);
 
 	const mainAreaWidth = terminalWidth;
 	const { inputWidth, suggestionsWidth } = useMemo(() => {
@@ -292,21 +298,51 @@ export const App = () => {
 				});
 
 				buffer.setText("");
-				const ragContext = await fetchContext(value);
-				void sendMessage(value, ragContext);
+
+				// 1. 도구 트리거 감지 (도구 이름이나 서버 이름이 포함된 경우)
+				const triggeredTools: typeof mcpTools = [];
+				const lowerValue = value.toLowerCase();
+
+				for (const [serverName, serverTools] of mcpToolsByServer.entries()) {
+					// 서버 이름이 언급된 경우 해당 서버의 모든 도구 활성화
+					if (lowerValue.includes(serverName.toLowerCase())) {
+						triggeredTools.push(...serverTools);
+						continue;
+					}
+
+					// 특정 도구 이름이 언급된 경우 해당 도구만 활성화
+					for (const tool of serverTools) {
+						if (lowerValue.includes(tool.name.toLowerCase())) {
+							triggeredTools.push(tool);
+						}
+					}
+				}
+
+				// 중복 제거
+				const uniqueTriggered = Array.from(new Set(triggeredTools));
+
+				// 2. Vault 도구가 트리거된 경우에만 RAG 컨텍스트 수집
+				const isVaultTriggered = uniqueTriggered.some(
+					(t) => t.name === "vault",
+				);
+				const ragContext = isVaultTriggered ? await fetchContext(value) : null;
+
+				// 3. 트리거된 도구만 LLM에 전달
+				void sendMessage(value, ragContext, uniqueTriggered);
 			}
 		},
 		[
 			addInput,
 			buffer,
-			callTool,
-			fetchContext,
-			genMcpToolsText,
 			handleDispatch,
+			callTool,
 			historyManager,
+			clearStreamingHistory,
+			genMcpToolsText,
+			mcpToolsByServer,
+			fetchContext,
 			sendMessage,
 			isLoading,
-			clearStreamingHistory,
 			addInfoMessage,
 		],
 	);
