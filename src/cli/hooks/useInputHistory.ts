@@ -14,7 +14,7 @@ export interface UseInputHistoryStoreReturn {
 
 interface UseInputHistoryProps {
 	userMessages: readonly string[];
-	onSubmit: (value: string) => void;
+	onSubmit: (value: string) => void | Promise<void>;
 	isActive: boolean;
 	currentQuery: string; // Renamed from query to avoid confusion
 	currentCursorOffset: number;
@@ -22,7 +22,7 @@ interface UseInputHistoryProps {
 }
 
 export interface UseInputHistoryReturn {
-	handleSubmit: (value: string) => void;
+	handleSubmit: (value: string) => void | Promise<void>;
 	navigateUp: () => boolean;
 	navigateDown: () => boolean;
 }
@@ -54,10 +54,10 @@ export function useInputHistory({
 	}, []);
 
 	const handleSubmit = useCallback(
-		(value: string) => {
+		async (value: string) => {
 			const trimmedValue = value.trim();
 			if (trimmedValue) {
-				onSubmit(trimmedValue); // Parent handles clearing the query
+				await onSubmit(trimmedValue); // Parent handles clearing the query
 			}
 			resetHistoryNav();
 		},

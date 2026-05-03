@@ -1,4 +1,4 @@
-import type { TextBuffer } from "@cli/key/text-buffer.js";
+import type { TextBuffer } from "@cli/key/textBuffer/index.js";
 import type { Suggestion } from "@cli/ui/SuggestionsDisplay.js";
 import type React from "react";
 
@@ -19,7 +19,6 @@ export interface UsePromptCompletionOptions {
 	setIsLoadingSuggestions?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-/** Stub: Prompt (history/MCP) completion. */
 export function usePromptCompletion(
 	_options: UsePromptCompletionOptions,
 ): PromptCompletion {

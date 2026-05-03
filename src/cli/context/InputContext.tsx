@@ -1,4 +1,4 @@
-import type { TextBuffer } from "@cli/key/text-buffer.js";
+import type { TextBuffer } from "@cli/key/textBuffer/index.js";
 import { createContext, useContext } from "react";
 
 export interface InputState {

@@ -22,7 +22,7 @@ export const LLMHealthChecker = ({
 						`[CLI] LLM endpoint ${llmApi_URL} returned ${response.status}. Continuing anyway...`,
 					);
 				}
-				setLLMStatus("success");
+				setLLMStatus("loading");
 			} catch (_error) {
 				setLLMStatus("error");
 			}

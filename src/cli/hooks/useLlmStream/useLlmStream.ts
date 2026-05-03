@@ -18,6 +18,11 @@ import {
 import type { McpToolInfo } from "@cli/services/McpClientService.js";
 import type { CallToolFn, PendingItem, StreamingState } from "@cli/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	AppEvent,
+	appEvents,
+	TransientMessageType,
+} from "@/cli/utils/events.js";
 import state from "@/config.js";
 import { debugLogger } from "@/shared/index.js";
 
@@ -31,7 +36,7 @@ export interface LlmStreamState {
 		ragContext?: string | null,
 		overrideTools?: McpToolInfo[],
 	) => Promise<void>;
-	reset: () => void;
+	abortCurrentStream: () => void;
 	clearStreamingHistory: () => void;
 }
 
@@ -57,7 +62,13 @@ export const useLlmStream = (
 						signal: AbortSignal.timeout(3000),
 					});
 					if (resp.ok) {
-						debugLogger.info(`[CLI] LLM Server verified at ${state.llmApiUrl}`);
+						appEvents.emit(AppEvent.TransientMessage, {
+							type: TransientMessageType.Hint,
+							message: `LLM Server verified at ${state.llmApiUrl}`,
+						});
+						debugLogger.writeInfo(
+							`[CLI] LLM Server verified at ${state.llmApiUrl}`,
+						);
 						return;
 					}
 				} catch {}
@@ -75,6 +86,7 @@ export const useLlmStream = (
 			ragContext?: string | null,
 			overrideTools?: McpToolInfo[],
 		) => {
+			// ... (omitting for brevity in thought, but I will provide full implementation in tool call)
 			const text = stripAnsi(rawText).trim();
 			setStreamingState("thinking");
 			setPendingItem({ type: "assistant", content: "", isComplete: false });
@@ -227,7 +239,7 @@ export const useLlmStream = (
 		[callTool, availableTools],
 	);
 
-	const reset = useCallback(() => {
+	const abortCurrentStream = useCallback(() => {
 		if (abortControllerRef.current) {
 			abortControllerRef.current.abort();
 			abortControllerRef.current = null;
@@ -247,7 +259,7 @@ export const useLlmStream = (
 		isLoading,
 		error,
 		sendMessage,
-		reset,
+		abortCurrentStream,
 		clearStreamingHistory,
 	};
 };

@@ -2,7 +2,6 @@ import { HELP_COMMAND_MARKER } from "@cli/constants.js";
 import type { HistoryItem, PendingItem, StreamingState } from "@cli/types.js";
 import { HelpCommands } from "@cli/ui/HelpCommands.js";
 import { HistoryItemDisplay } from "@cli/ui/HistoryItemDisplay.js";
-import { ThinkingIndicator } from "@cli/ui/ThinkingIndicator.js";
 import { Box, Static, Text } from "ink";
 import type React from "react";
 
@@ -62,17 +61,8 @@ function ThinkingBlock({
 export const MainContent: React.FC<MainContentProps> = ({
 	history,
 	pendingItem,
-	streamingState,
-	isRagFetching,
-	isCommandProcessing,
 	width,
 }) => {
-	const isBusy =
-		isRagFetching ||
-		isCommandProcessing ||
-		streamingState === "thinking" ||
-		streamingState === "executing";
-
 	return (
 		<>
 			<Static items={history}>
@@ -83,9 +73,6 @@ export const MainContent: React.FC<MainContentProps> = ({
 					return <HistoryItemDisplay key={item.id} item={item} width={width} />;
 				}}
 			</Static>
-
-			{isBusy && <ThinkingIndicator />}
-
 			{pendingItem && (
 				<Box flexDirection="column" width={width} paddingX={1} marginBottom={1}>
 					{pendingItem.thinkingContent && (

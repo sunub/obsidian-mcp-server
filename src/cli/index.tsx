@@ -1,7 +1,9 @@
-import { AppContainer } from "@cli/AppContainer.js";
+import { renderBootLogo } from "@cli/utils/bootLogo.js";
 import { registerSyncCleanup } from "@cli/utils/cleanup.js";
 import { createWorkingStdio } from "@cli/utils/stdio.js";
 import { render } from "ink";
+import { TerminalInfoProvider } from "ink-picture";
+import { AppContainer } from "./AppContainer.js";
 import "dotenv/config";
 
 async function start() {
@@ -18,12 +20,21 @@ async function start() {
 	process.stdin.resume();
 	process.stdin.resume();
 
-	const { waitUntilExit } = render(<AppContainer />, {
+	await renderBootLogo(monkeyStdout);
+
+	const inkOptions = {
 		stdout: monkeyStdout,
 		stderr: monkeySterr,
 		stdin: process.stdin,
 		alternateBuffer: false,
-	});
+	} as const;
+
+	const { waitUntilExit } = render(
+		<TerminalInfoProvider>
+			<AppContainer />
+		</TerminalInfoProvider>,
+		inkOptions,
+	);
 
 	await waitUntilExit();
 }

@@ -94,11 +94,6 @@ function bufferBackslashEnter(
 	};
 }
 
-/**
- * Buffers paste events between paste-start and paste-end sequences.
- * Will flush the buffer if no data is received for PASTE_TIMEOUT ms or
- * when a null key is received.
- */
 function bufferPaste(keypressHandler: KeypressHandler): KeypressHandler {
 	const bufferer = (function* (): Generator<void, void, Key | null> {
 		while (true) {
@@ -259,6 +254,7 @@ export function KeypressProvider({ children }: { children: React.ReactNode }) {
 		let processor = nonKeyboardEventFilter(broadcast);
 		processor = bufferBackslashEnter(processor);
 		processor = bufferPaste(processor);
+
 		const dataListener = createDataListener(processor);
 
 		stdin.on("data", dataListener);

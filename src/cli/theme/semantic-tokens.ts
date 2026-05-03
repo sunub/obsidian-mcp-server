@@ -46,8 +46,8 @@ export const lightSemanticColors: SemanticColors = {
 	text: {
 		primary: lightTheme.Foreground,
 		secondary: lightTheme.Gray,
-		link: lightTheme.AccentBlue,
-		accent: lightTheme.AccentPurple,
+		link: lightTheme.Brand ?? lightTheme.AccentBlue,
+		accent: lightTheme.Brand ?? lightTheme.AccentPurple,
 		response: lightTheme.Foreground,
 	},
 	background: {
@@ -66,9 +66,9 @@ export const lightSemanticColors: SemanticColors = {
 	ui: {
 		comment: lightTheme.Comment,
 		symbol: lightTheme.Gray,
-		active: lightTheme.AccentBlue,
+		active: lightTheme.Brand ?? lightTheme.AccentBlue,
 		dark: lightTheme.DarkGray,
-		focus: lightTheme.AccentGreen,
+		focus: lightTheme.Brand ?? lightTheme.AccentGreen,
 		gradient: lightTheme.GradientColors,
 	},
 	status: {
@@ -82,8 +82,8 @@ export const darkSemanticColors: SemanticColors = {
 	text: {
 		primary: darkTheme.Foreground,
 		secondary: darkTheme.Gray,
-		link: darkTheme.AccentBlue,
-		accent: darkTheme.AccentPurple,
+		link: darkTheme.Brand ?? darkTheme.AccentBlue,
+		accent: darkTheme.Brand ?? darkTheme.AccentPurple,
 		response: darkTheme.Foreground,
 	},
 	background: {
@@ -102,9 +102,9 @@ export const darkSemanticColors: SemanticColors = {
 	ui: {
 		comment: darkTheme.Comment,
 		symbol: darkTheme.Gray,
-		active: darkTheme.AccentBlue,
+		active: darkTheme.Brand ?? darkTheme.AccentBlue,
 		dark: darkTheme.DarkGray,
-		focus: darkTheme.AccentGreen,
+		focus: darkTheme.Brand ?? darkTheme.AccentGreen,
 		gradient: darkTheme.GradientColors,
 	},
 	status: {

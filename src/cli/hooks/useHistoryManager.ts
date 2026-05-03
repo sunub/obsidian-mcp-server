@@ -1,5 +1,6 @@
 import type { HistoryItem } from "@cli/types.js";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { debugLogger } from "@/shared/index.js";
 
 export enum MessageType {
 	INFO = "info",
@@ -98,6 +99,16 @@ export function useHistoryManager(initialItems: HistoryItem[] = []) {
 		lastIdRef.current = Math.max(lastIdRef.current, maxId);
 	}, []);
 
+	const pruneAndCompressHistory = useCallback((maxTurns = 20) => {
+		setHistory((prevHistory) => {
+			if (prevHistory.length <= maxTurns) return prevHistory;
+			debugLogger.info(
+				`[HistoryManager] Pruning history: ${prevHistory.length} -> ${maxTurns}`,
+			);
+			return prevHistory.slice(-maxTurns);
+		});
+	}, []);
+
 	return useMemo(
 		() => ({
 			history,
@@ -106,7 +117,16 @@ export function useHistoryManager(initialItems: HistoryItem[] = []) {
 			removeItem,
 			clearItems,
 			loadHistory,
+			pruneAndCompressHistory,
 		}),
-		[history, addItem, updateItem, removeItem, clearItems, loadHistory],
+		[
+			history,
+			addItem,
+			updateItem,
+			removeItem,
+			clearItems,
+			loadHistory,
+			pruneAndCompressHistory,
+		],
 	);
 }

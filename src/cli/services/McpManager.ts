@@ -6,6 +6,7 @@ import type {
 import { McpClientService } from "@cli/services/McpClientService.js";
 import type { McpConnectionState, McpToolResult } from "@cli/types.js";
 import { debugLogger } from "@/shared/index.js";
+import { AppEvent, appEvents } from "../utils/events.js";
 
 interface ToolRouteEntry {
 	serverName: string;
@@ -89,7 +90,11 @@ export class McpManager {
 		const succeeded = results.filter((r) => r.status === "fulfilled").length;
 		const failed = results.filter((r) => r.status === "rejected").length;
 
-		debugLogger.info(
+		appEvents.emit(
+			AppEvent.OpenDebugConsole,
+			`[McpManager] 연결 완료: ${succeeded}/${serverConfigs.length} 성공, ${failed} 실패`,
+		);
+		debugLogger.writeInfo(
 			`[McpManager] 연결 완료: ${succeeded}/${serverConfigs.length} 성공, ${failed} 실패`,
 		);
 	}
@@ -175,7 +180,7 @@ export class McpManager {
 			this.serverTools.set(config.name, tools);
 			this.registerTools(config.name, tools);
 
-			debugLogger.info(
+			debugLogger.writeInfo(
 				`[McpManager] "${config.name}" 연결 완료 — ${tools.length}개 도구: ${tools.map((t) => t.name).join(", ")}`,
 			);
 			onStateChange?.();

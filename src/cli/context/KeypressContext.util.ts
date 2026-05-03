@@ -324,7 +324,6 @@ export function* emitKeys(
 
 				if (match) {
 					if (match[1] === "27" && match[3] && match[4] === "~") {
-						console.log("Detected modifyOtherKeys format");
 						// modifyOtherKeys format: CSI 27 ; modifier ; key ~
 						// Treat as CSI u: key + 'u'
 						code += `${match[3]}u`;
@@ -410,7 +409,7 @@ export function* emitKeys(
 			name = "space";
 			alt = escaped;
 			insertable = true;
-		} else if (!escaped && ch.length > 0 && ch <= "\x1a") {
+		} else if (!escaped && ch <= "\x1a") {
 			// ctrl+letter
 			name = String.fromCharCode(ch.charCodeAt(0) + "a".charCodeAt(0) - 1);
 			ctrl = true;

@@ -3,6 +3,7 @@ import path, { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { configSchema, debugLogger } from "@/shared/index.js";
+import { AppEvent, appEvents, TransientMessageType } from "../utils/events.js";
 
 const mcpServerEntrySchema = z.object({
 	command: z.string().min(1),
@@ -55,6 +56,10 @@ function substituteEnvInRecord(
 }
 
 function findConfigFile(): string | null {
+	appEvents.emit(
+		AppEvent.OpenDebugConsole,
+		"Searching for MCP server configuration...",
+	);
 	const candidates = [
 		join(process.cwd(), "mcp-servers.json"),
 		join(process.cwd(), ".mcp-servers.json"),
@@ -62,6 +67,10 @@ function findConfigFile(): string | null {
 
 	for (const candidate of candidates) {
 		if (existsSync(candidate)) {
+			appEvents.emit(
+				AppEvent.OpenDebugConsole,
+				`Found config at: ${candidate}`,
+			);
 			return candidate;
 		}
 	}
@@ -70,6 +79,10 @@ function findConfigFile(): string | null {
 }
 
 function buildFallbackConfig(): McpServerConfig[] {
+	appEvents.emit(
+		AppEvent.OpenDebugConsole,
+		"Building fallback configuration from environment...",
+	);
 	const parseResult = configSchema.safeParse({
 		vaultPath: process.env["VAULT_DIR_PATH"],
 		loggingLevel: process.env["LOGGING_LEVEL"],
@@ -81,9 +94,10 @@ function buildFallbackConfig(): McpServerConfig[] {
 	const vaultPath = env?.vaultPath || (process.env["VAULT_DIR_PATH"] as string);
 
 	if (!vaultPath) {
-		debugLogger.warn(
-			"[McpConfig] VAULT_DIR_PATH가 설정되지 않아 폴백 서버를 생성할 수 없습니다.",
-		);
+		const msg =
+			"[McpConfig] VAULT_DIR_PATH가 설정되지 않아 폴백 서버를 생성할 수 없습니다.";
+		appEvents.emit(AppEvent.OpenDebugConsole, msg);
+		debugLogger.warn(msg);
 		return [];
 	}
 
@@ -95,6 +109,11 @@ function buildFallbackConfig(): McpServerConfig[] {
 			"../../../server/dist/index.js",
 		);
 		const projectRoot = path.resolve(__dirname, "../../../../");
+
+		appEvents.emit(
+			AppEvent.OpenDebugConsole,
+			`Fallback server path: ${serverEntry}`,
+		);
 
 		return [
 			{
@@ -111,6 +130,7 @@ function buildFallbackConfig(): McpServerConfig[] {
 			},
 		];
 	} catch (err) {
+		appEvents.emit(AppEvent.OpenDebugConsole, `Fallback config failed: ${err}`);
 		debugLogger.error("[McpConfig] 폴백 설정 생성 실패:", err);
 		return [];
 	}
@@ -120,6 +140,15 @@ export function loadMcpServersConfig(): McpServerConfig[] {
 	const configPath = findConfigFile();
 
 	if (!configPath) {
+		appEvents.emit(
+			AppEvent.OpenDebugConsole,
+			"No config file found. Using environment fallback.",
+		);
+		appEvents.emit(AppEvent.TransientMessage, {
+			message:
+				"[McpConfig] mcp-servers.json을 찾을 수 없습니다. 환경변수 폴백을 사용합니다.",
+			type: TransientMessageType.Hint,
+		});
 		debugLogger.warn(
 			"[McpConfig] mcp-servers.json을 찾을 수 없습니다. 환경변수 폴백을 사용합니다.",
 		);
@@ -127,6 +156,10 @@ export function loadMcpServersConfig(): McpServerConfig[] {
 	}
 
 	try {
+		appEvents.emit(
+			AppEvent.OpenDebugConsole,
+			`Loading config from ${configPath}...`,
+		);
 		const raw = readFileSync(configPath, "utf-8");
 		const parsed = JSON.parse(raw) as unknown;
 		const validated = mcpServersFileSchema.parse(parsed);
@@ -135,6 +168,10 @@ export function loadMcpServersConfig(): McpServerConfig[] {
 
 		for (const [name, entry] of Object.entries(validated.mcpServers)) {
 			if (entry.disabled) {
+				appEvents.emit(
+					AppEvent.OpenDebugConsole,
+					`Server "${name}" is disabled, skipping.`,
+				);
 				debugLogger.info(
 					`[McpConfig] "${name}" 서버가 비활성화되어 있어 건너뜁니다.`,
 				);
@@ -150,12 +187,17 @@ export function loadMcpServersConfig(): McpServerConfig[] {
 			});
 		}
 
-		debugLogger.info(
+		appEvents.emit(
+			AppEvent.OpenDebugConsole,
+			`Loaded ${configs.length} MCP server configurations.`,
+		);
+		debugLogger.writeInfo(
 			`[McpConfig] ${configPath}에서 ${configs.length}개의 MCP 서버 설정을 로드했습니다.`,
 		);
 
 		return configs;
 	} catch (err) {
+		appEvents.emit(AppEvent.OpenDebugConsole, `Config parsing failed: ${err}`);
 		debugLogger.error(`[McpConfig] 설정 파일 파싱 실패 (${configPath}):`, err);
 		debugLogger.warn("[McpConfig] 환경변수 폴백을 사용합니다.");
 		return buildFallbackConfig();

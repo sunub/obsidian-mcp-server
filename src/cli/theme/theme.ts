@@ -1,9 +1,3 @@
-/**
- * @license
- * Copyright 2025 Google LLC
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import {
 	DEFAULT_INPUT_BACKGROUND_OPACITY,
 	DEFAULT_SELECTION_OPACITY,
@@ -13,7 +7,6 @@ import type { CSSProperties } from "react";
 import tinycolor from "tinycolor2";
 import tinygradient from "tinygradient";
 
-// Define the set of Ink's named colors for quick lookup
 export const INK_SUPPORTED_NAMES = new Set([
 	"black",
 	"red",
@@ -35,14 +28,12 @@ export const INK_SUPPORTED_NAMES = new Set([
 	"whitebright",
 ]);
 
-// Use tinycolor's built-in names map for CSS colors, excluding ones Ink supports
 export const CSS_NAME_TO_HEX_MAP = Object.fromEntries(
 	Object.entries(tinycolor.names)
 		.filter(([name]) => !INK_SUPPORTED_NAMES.has(name))
 		.map(([name, hex]) => [name, `#${hex}`]),
 );
 
-// Mapping for ANSI bright colors that are not in tinycolor's standard CSS names
 export const INK_NAME_TO_HEX_MAP: Readonly<Record<string, string>> = {
 	blackbright: "#555555",
 	redbright: "#ff5555",
@@ -54,13 +45,6 @@ export const INK_NAME_TO_HEX_MAP: Readonly<Record<string, string>> = {
 	whitebright: "#ffffff",
 };
 
-/**
- * Calculates the relative luminance of a color.
- * See https://www.w3.org/TR/WCAG20/#relativeluminancedef
- *
- * @param color Color string (hex or Ink-supported name)
- * @returns Luminance value (0-255)
- */
 export function getLuminance(color: string): number {
 	const resolved = color.toLowerCase();
 	const hex = INK_NAME_TO_HEX_MAP[resolved] || resolved;
@@ -175,6 +159,7 @@ export interface ColorsTheme {
 	FocusBackground?: string;
 	FocusColor?: string;
 	GradientColors?: string[];
+	Brand?: string;
 }
 
 export const lightTheme: ColorsTheme = {
@@ -197,6 +182,7 @@ export const lightTheme: ColorsTheme = {
 	MessageBackground: "#FAFAFA",
 	FocusBackground: "#D7FFD7",
 	GradientColors: ["#4796E4", "#847ACE", "#C3677F"],
+	Brand: "#9B7FF6",
 };
 
 export const darkTheme: ColorsTheme = {
@@ -219,6 +205,7 @@ export const darkTheme: ColorsTheme = {
 	MessageBackground: "#5F5F5F",
 	FocusBackground: "#005F00",
 	GradientColors: ["#4796E4", "#847ACE", "#C3677F"],
+	Brand: "#9B7FF6",
 };
 
 export const ansiTheme: ColorsTheme = {
@@ -240,6 +227,7 @@ export const ansiTheme: ColorsTheme = {
 	InputBackground: "black",
 	MessageBackground: "black",
 	FocusBackground: "black",
+	Brand: "#9B7FF6",
 };
 
 export class Theme {
@@ -267,12 +255,15 @@ export class Theme {
 		readonly colors: ColorsTheme,
 		semanticColors?: SemanticColors,
 	) {
+		const brandColor =
+			this.colors.Brand ?? this.colors.AccentPurple ?? this.colors.AccentBlue;
+
 		this.semanticColors = semanticColors ?? {
 			text: {
 				primary: this.colors.Foreground,
 				secondary: this.colors.Gray,
-				link: this.colors.AccentBlue,
-				accent: this.colors.AccentPurple,
+				link: brandColor,
+				accent: brandColor,
 				response: this.colors.Foreground,
 			},
 			background: {
@@ -295,7 +286,9 @@ export class Theme {
 					this.colors.FocusBackground ??
 					interpolateColor(
 						this.colors.Background,
-						this.colors.FocusColor ?? this.colors.AccentGreen,
+						this.colors.Brand ??
+							this.colors.FocusColor ??
+							this.colors.AccentGreen,
 						DEFAULT_SELECTION_OPACITY,
 					),
 				diff: {
@@ -309,9 +302,9 @@ export class Theme {
 			ui: {
 				comment: this.colors.Gray,
 				symbol: this.colors.AccentCyan,
-				active: this.colors.AccentBlue,
+				active: brandColor,
 				dark: this.colors.DarkGray,
-				focus: this.colors.FocusColor ?? this.colors.AccentGreen,
+				focus: brandColor,
 				gradient: this.colors.GradientColors,
 			},
 			status: {
@@ -381,17 +374,6 @@ export class Theme {
 	}
 }
 
-/**
- * Picks a default theme name based on terminal background color.
- * It first tries to find a theme with an exact background color match.
- * If no match is found, it falls back to a light or dark theme based on the
- * luminance of the background color.
- * @param terminalBackground The hex color string of the terminal background.
- * @param availableThemes A list of available themes to search through.
- * @param defaultDarkThemeName The name of the fallback dark theme.
- * @param defaultLightThemeName The name of the fallback light theme.
- * @returns The name of the chosen theme.
- */
 export function pickDefaultThemeName(
 	terminalBackground: string | undefined,
 	availableThemes: readonly Theme[],

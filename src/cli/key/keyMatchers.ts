@@ -14,20 +14,13 @@ function matchCommand(
 
 type KeyMatcher = (key: Key) => boolean;
 
-/**
- * Type for key matchers mapped to Command enum
- */
 export type KeyMatchers = {
 	readonly [C in Command]: KeyMatcher;
 };
 
-/**
- * Creates key matchers from a key binding configuration
- */
 export function createKeyMatchers(
 	config: KeyBindingConfig = defaultKeyBindingConfig,
 ): KeyMatchers {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 	const matchers = {} as { [C in Command]: KeyMatcher };
 
 	for (const command of Object.values(Command)) {
@@ -37,12 +30,8 @@ export function createKeyMatchers(
 	return matchers as KeyMatchers;
 }
 
-/**
- * Default key binding matchers using the default configuration
- */
 export const defaultKeyMatchers: KeyMatchers = createKeyMatchers(
 	defaultKeyBindingConfig,
 );
 
-// Re-export Command for convenience
 export { Command };

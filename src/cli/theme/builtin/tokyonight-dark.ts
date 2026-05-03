@@ -59,6 +59,7 @@ const tokyoNightColors: ColorsTheme = {
 	DarkGray: palette.fg_gutter,
 	FocusColor: palette.blue,
 	GradientColors: [palette.blue, palette.magenta, palette.cyan],
+	Brand: "#9B7FF6",
 };
 
 export const TokyoNight: Theme = new Theme(
