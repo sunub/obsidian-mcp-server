@@ -14,8 +14,8 @@ import {
 } from "@cli/hooks/usePromptCompletion.js";
 import { useShellCompletion } from "@cli/hooks/useShellCompletion.js";
 import { useSlashCompletion } from "@cli/hooks/useSlashCompletion.js";
-import type { TextBuffer } from "@cli/key/text-buffer.js";
-import { logicalPosToOffset } from "@cli/key/text-buffer.js";
+import type { TextBuffer } from "@cli/key/textBuffer/index.js";
+import { logicalPosToOffset } from "@cli/key/textBuffer/index.js";
 import type { Suggestion } from "@cli/ui/SuggestionsDisplay.js";
 import { isSlashCommand } from "@cli/utils/commandUtils.js";
 import { toCodePoints } from "@cli/utils/textUtil.js";

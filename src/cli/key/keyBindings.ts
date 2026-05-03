@@ -1,12 +1,3 @@
-/**
- * @license
- * Copyright 2025 Google LLC
- * SPDX-License-Identifier: Apache-2.0
- */
-
-/**
- * Command enum for all available keyboard shortcuts
- */
 import type { Key } from "@cli/hooks/useKeypress.js";
 import { z } from "zod";
 
@@ -113,14 +104,10 @@ export enum Command {
 	STOP_RECORDING = "app.stopRecording",
 }
 
-/**
- * Data-driven key binding structure for user configuration
- */
 export class KeyBinding {
 	private static readonly VALID_LONG_KEYS = new Set([
 		...Array.from({ length: 35 }, (_, i) => `f${i + 1}`), // Function Keys
 		...Array.from({ length: 10 }, (_, i) => `numpad${i}`), // Numpad Numbers
-		// Navigation & Actions
 		"left",
 		"up",
 		"right",
@@ -150,7 +137,6 @@ export class KeyBinding {
 		"numpad_divide",
 	]);
 
-	/** The key name (e.g., 'a', 'enter', 'tab', 'escape') */
 	readonly name: string;
 	readonly shift: boolean;
 	readonly alt: boolean;
@@ -239,15 +225,8 @@ export class KeyBinding {
 	}
 }
 
-/**
- * Configuration type mapping commands to their key bindings
- */
 export type KeyBindingConfig = Map<Command, readonly KeyBinding[]>;
 
-/**
- * Default key binding configuration
- * Matches the original hard-coded logic exactly
- */
 export const defaultKeyBindingConfig: KeyBindingConfig = new Map([
 	// Basic Controls
 	[Command.RETURN, [new KeyBinding("enter")]],

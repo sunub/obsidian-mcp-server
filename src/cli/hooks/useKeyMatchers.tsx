@@ -1,9 +1,3 @@
-/**
- * @license
- * Copyright 2026 Google LLC
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { defaultKeyMatchers, type KeyMatchers } from "@cli/key/keyMatchers.js";
 import type React from "react";
 import { createContext, useContext } from "react";
@@ -23,10 +17,6 @@ export const KeyMatchersProvider = ({
 	</KeyMatchersContext.Provider>
 );
 
-/**
- * Hook to retrieve the currently active key matchers.
- * Defaults to defaultKeyMatchers if no provider is present, allowing tests to run without explicit wrappers.
- */
 export function useKeyMatchers(): KeyMatchers {
 	return useContext(KeyMatchersContext);
 }

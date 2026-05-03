@@ -7,30 +7,21 @@ import {
 import type { McpToolResult } from "@cli/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { debugLogger } from "@/shared/index.js";
+import { AppEvent, appEvents } from "../utils/events.js";
 
 export interface UseMcpManagerReturn {
-	/** 하나라도 연결되었는지 (Partial Readiness) */
 	isConnected: boolean;
-	/** 서버별 연결 상태 */
 	connections: Map<string, ServerConnectionInfo>;
-	/** 모든 서버에서 수집된 통합 도구 목록 */
 	tools: McpToolInfo[];
-	/** 서버별 도구 목록 (UI 그룹핑용) */
 	toolsByServer: Map<string, McpToolInfo[]>;
-	/** 내부 라우팅된 도구 호출 함수 */
 	callTool: (
 		name: string,
 		args: Record<string, unknown>,
 	) => Promise<McpToolResult>;
-	/** 서버별 에러 맵 */
 	errors: Map<string, Error>;
-	/** 설정된 서버 수 */
 	serverCount: number;
-	/** 연결된 서버 수 */
 	connectedCount: number;
-	/** 현재 연결 중인 서버가 있는지 여부 */
 	isAnyConnecting: boolean;
-	/** 에러가 발생한 서버가 있는지 여부 */
 	hasAnyError: boolean;
 }
 
@@ -76,13 +67,25 @@ export const useMcpManager = (): UseMcpManagerReturn => {
 
 		async function initConnections(): Promise<void> {
 			try {
+				appEvents.emit(
+					AppEvent.OpenDebugConsole,
+					"Initializing MCP connections...",
+				);
 				const configs = loadMcpServersConfig();
 
 				if (configs.length === 0) {
+					appEvents.emit(
+						AppEvent.OpenDebugConsole,
+						"No MCP servers configured.",
+					);
 					debugLogger.warn("[useMcpManager] 설정된 MCP 서버가 없습니다.");
 					return;
 				}
 
+				appEvents.emit(
+					AppEvent.OpenDebugConsole,
+					`Connecting to ${configs.length} servers...`,
+				);
 				await manager.connectAll(configs, () => {
 					if (!cancelled) {
 						syncState();
@@ -90,9 +93,17 @@ export const useMcpManager = (): UseMcpManagerReturn => {
 				});
 
 				if (!cancelled) {
+					appEvents.emit(
+						AppEvent.OpenDebugConsole,
+						"MCP connections established.",
+					);
 					syncState();
 				}
 			} catch (err) {
+				appEvents.emit(
+					AppEvent.OpenDebugConsole,
+					`MCP initialization failed: ${err}`,
+				);
 				debugLogger.error("[useMcpManager] 초기화 실패:", err);
 				if (!cancelled) {
 					syncState();

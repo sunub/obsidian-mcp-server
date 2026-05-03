@@ -11,9 +11,6 @@ interface ExpandableTextProps {
 	isExpanded?: boolean;
 }
 
-/**
- * Renders a suggestion label, highlighting the matched portion if provided.
- */
 export function ExpandableText({
 	label,
 	matchedIndex,
