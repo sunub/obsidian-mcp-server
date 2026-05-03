@@ -55,3 +55,38 @@ Focus implementation exclusively on:
 3. `useInputHistory.ts`: Hook for managing historical input logs.
 4. `useLlmStream.ts`: Hook for API communication and stream state.
 5. `AppContainer.tsx`: The primary orchestrator.
+
+## 4. Theme System and Brand Color
+
+The CLI theme flow is intentionally layered. UI components should consume semantic
+tokens, not raw palette values.
+
+1. `theme.ts`
+   - Defines `ColorsTheme`, low-level palette slots, and the `Theme` class.
+   - Converts raw theme palettes into semantic UI tokens such as `text.accent`,
+     `ui.focus`, `status.warning`, and `background.input`.
+   - This is the bridge between syntax-highlight palettes and actual CLI chrome.
+2. `builtin/*.ts`
+   - Provide concrete theme palettes such as Tokyo Night and Default Dark.
+   - These files define the raw source colors used by the `Theme` constructor.
+3. `theme-manager.ts`
+   - Owns the active theme and optional terminal background color.
+   - Caches computed colors and blends message/input/focus backgrounds against the
+     real terminal background when the active theme is compatible.
+4. `semantic-colors.ts`
+   - Exposes the active semantic tokens through the `theme` object.
+   - UI components should import `theme` from here and never reach into raw theme
+     palettes directly.
+
+### Brand color rule
+
+- The CLI brand color is `#9B7FF6`.
+- Brand-driven UI surfaces should use semantic tokens that resolve to the brand
+  color, primarily:
+  - `theme.text.accent`
+  - `theme.ui.active`
+  - `theme.ui.focus`
+  - `theme.text.link`
+- Do not hardcode `#9B7FF6` in UI components when a semantic token is available.
+- Keep syntax highlighting theme-specific. Use the brand color for CLI chrome,
+  prompts, focus states, active selections, and branded headers/logos.
