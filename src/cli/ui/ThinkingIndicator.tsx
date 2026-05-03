@@ -1,11 +1,10 @@
 import { Box, Text } from "ink";
-import type React from "react";
 import { useEffect, useState } from "react";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const FRAME_INTERVAL_MS = 80;
 
-export const ThinkingIndicator: React.FC = () => {
+export const ThinkingIndicator = ({ isBusy }: { isBusy: boolean }) => {
 	const [frameIndex, setFrameIndex] = useState(0);
 
 	useEffect(() => {
@@ -17,8 +16,16 @@ export const ThinkingIndicator: React.FC = () => {
 	}, []);
 
 	return (
-		<Box paddingX={1} marginBottom={1} marginTop={1}>
-			<Text color="cyan">{SPINNER_FRAMES[frameIndex]} Thinking...</Text>
-		</Box>
+		<>
+			{isBusy ? (
+				<Box paddingX={1} marginBottom={1} marginTop={1}>
+					<Text color="cyan">{SPINNER_FRAMES[frameIndex]} Thinking...</Text>
+				</Box>
+			) : (
+				<Box paddingX={1} marginBottom={1} marginTop={1}>
+					<Text> </Text>
+				</Box>
+			)}
+		</>
 	);
 };
