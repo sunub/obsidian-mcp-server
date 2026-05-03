@@ -2,6 +2,7 @@ import type { McpToolResult } from "@cli/types.js";
 import { Client } from "@modelcontextprotocol/sdk/client";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { debugLogger } from "@/shared/index.js";
+import { AppEvent, appEvents } from "../utils/events.js";
 
 export interface McpConnectionOptions {
 	command: string;
@@ -44,7 +45,7 @@ export class McpClientService {
 
 		for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
 			try {
-				debugLogger.debug(
+				debugLogger.writeDebug(
 					`[McpClient] Connection attempt ${attempt}/${MAX_RETRIES}...`,
 				);
 
@@ -75,14 +76,20 @@ export class McpClientService {
 						!text.startsWith("File added:") &&
 						!text.startsWith("Frontmatter")
 					) {
-						debugLogger.debug(`[McpServer:stderr] ${text}`);
+						debugLogger.writeDebug(`[McpServer:stderr] ${text}`);
 					}
 				});
 
 				await this.client.connect(this.transport);
 				this._isConnected = true;
 
-				debugLogger.info("[McpClient] Successfully connected to MCP server.");
+				appEvents.emit(
+					AppEvent.OpenDebugConsole,
+					"[McpClient] Successfully connected to MCP server.",
+				);
+				debugLogger.writeInfo(
+					"[McpClient] Successfully connected to MCP server.",
+				);
 				return;
 			} catch (err) {
 				lastError = err instanceof Error ? err : new Error(String(err));
