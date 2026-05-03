@@ -4,6 +4,7 @@ import ansiRegex from "ansi-regex";
 import { LRUCache } from "mnemonist";
 import stringWidth from "string-width";
 import stripAnsi from "strip-ansi";
+import type { ExpandedPasteInfo } from "../key/textBuffer/types.js";
 
 /**
  * Calculates the maximum width of a multi-line ASCII art string.
@@ -270,4 +271,52 @@ export function escapeAnsiCtrlCodes<T>(obj: T): T {
 	}
 
 	return newObj !== null ? newObj : obj;
+}
+
+export function shiftExpandedRegions(
+	expandedPaste: ExpandedPasteInfo | null,
+	changeStartLine: number,
+	lineDelta: number,
+	changeEndLine?: number, // Inclusive
+): {
+	newInfo: ExpandedPasteInfo | null;
+	isDetached: boolean;
+} {
+	if (!expandedPaste) return { newInfo: null, isDetached: false };
+
+	const effectiveEndLine = changeEndLine ?? changeStartLine;
+	const infoEndLine = expandedPaste.startLine + expandedPaste.lineCount - 1;
+
+	// 1. Check for overlap/intersection with the changed range
+	const isOverlapping =
+		changeStartLine <= infoEndLine &&
+		effectiveEndLine >= expandedPaste.startLine;
+
+	if (isOverlapping) {
+		// If the change is a deletion (lineDelta < 0) that touches this region, we detach.
+		// If it's an insertion, we only detach if it's a multi-line insertion (lineDelta > 0)
+		// that isn't at the very start of the region (which would shift it).
+		// Regular character typing (lineDelta === 0) does NOT detach.
+		if (
+			lineDelta < 0 ||
+			(lineDelta > 0 &&
+				changeStartLine > expandedPaste.startLine &&
+				changeStartLine <= infoEndLine)
+		) {
+			return { newInfo: null, isDetached: true };
+		}
+	}
+
+	// 2. Shift regions that start at or after the change point
+	if (expandedPaste.startLine >= changeStartLine) {
+		return {
+			newInfo: {
+				...expandedPaste,
+				startLine: expandedPaste.startLine + lineDelta,
+			},
+			isDetached: false,
+		};
+	}
+
+	return { newInfo: expandedPaste, isDetached: false };
 }
