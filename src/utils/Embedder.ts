@@ -1,6 +1,8 @@
 import {
+	AutoTokenizer,
 	env,
 	type FeatureExtractionPipeline,
+	type PreTrainedTokenizer,
 	pipeline,
 } from "@huggingface/transformers";
 import { MODELS_DIR } from "./constants.js";
@@ -8,6 +10,7 @@ import { MODELS_DIR } from "./constants.js";
 class EmbedderService {
 	private modelName = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
 	private extractor: FeatureExtractionPipeline | null = null;
+	private tokenizer: PreTrainedTokenizer | null = null;
 	private initPromise: Promise<void> | null = null;
 
 	constructor() {
@@ -21,6 +24,9 @@ class EmbedderService {
 			await pipeline("feature-extraction", this.modelName, {
 				local_files_only: true,
 			});
+			await AutoTokenizer.from_pretrained(this.modelName, {
+				local_files_only: true,
+			});
 			return true;
 		} catch (_e) {
 			return false;
@@ -32,9 +38,18 @@ class EmbedderService {
 
 		this.initPromise = (async () => {
 			this.extractor = await pipeline("feature-extraction", this.modelName);
+			this.tokenizer = await AutoTokenizer.from_pretrained(this.modelName);
 		})();
 
 		return this.initPromise;
+	}
+
+	public getTokenCount(text: string): number {
+		if (!this.tokenizer) {
+			return Math.ceil(text.length / 4);
+		}
+		const result = this.tokenizer(text);
+		return result.input_ids.data.length;
 	}
 
 	public async embed(text: string): Promise<number[]> {

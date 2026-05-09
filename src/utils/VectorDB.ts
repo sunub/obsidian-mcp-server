@@ -6,9 +6,9 @@ import * as arrow from "apache-arrow";
 import { debugLogger } from "@/shared/index.js";
 import state from "../config.js";
 
-export const INDEX_VERSION = 5;
+export const INDEX_VERSION = 6;
 
-const VECTOR_DIM = 768;
+const VECTOR_DIM = 384;
 
 export interface ChunkMetadata {
 	id: string;

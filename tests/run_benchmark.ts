@@ -66,7 +66,7 @@ async function run() {
 
 		try {
 			await vectorDB.connect();
-			const dummyVector = new Array(768).fill(0).map(() => Math.random());
+			const dummyVector = new Array(384).fill(0).map(() => Math.random());
 			const startVec = performance.now();
 			await vectorDB.search(dummyVector, 5);
 			const endVec = performance.now();
