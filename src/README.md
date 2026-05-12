@@ -164,3 +164,4 @@ npm run cli
 - 이 README의 실행 방법은 **개발용 CLI UI 진입점** 기준입니다.
 - CLI가 MCP 서버에 연결되려면 현재 디렉터리의 `mcp-servers.json` 또는 `.mcp-servers.json`이 유효해야 합니다.
 - 설정 파일이 없으면 환경 변수 기반 fallback을 시도하지만, 현재 코드 기준으로는 저장소의 기본 설정 파일을 사용하는 경로가 더 명확합니다.
+
