@@ -1094,7 +1094,7 @@ function layoutWrappedLine(
 	};
 }
 
-function calculateLayout(
+export function calculateLayout(
 	logicalLines: string[],
 	viewportWidth: number,
 	logicalCursor: [number, number],

@@ -136,6 +136,7 @@ export class RAGIndexer {
 			.filter(Boolean)
 			.join("\n");
 
+		await localEmbedder.init();
 		const chunks = await this.splitter.splitText(body);
 		const records: VectorRecord[] = [];
 
@@ -157,7 +158,7 @@ export class RAGIndexer {
 				.join("\n\n");
 
 			const MAX_EMBED_TOKENS = 500;
-			const combinedTokenCount = this.enc.encode(combined).length;
+			const combinedTokenCount = localEmbedder.getTokenCount(combined);
 			const safeText =
 				combinedTokenCount > MAX_EMBED_TOKENS
 					? combined.slice(

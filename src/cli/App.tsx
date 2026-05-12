@@ -274,7 +274,6 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 				const submittedPastedContent =
 					submissionContext?.pastedContent ?? buffer.pastedContent;
 
-				// Pre-process for offloading (Core Interceptor logic)
 				const tempHistoryId = Date.now();
 				const optimizedPrompt = await InputOffloadService.processPastedContent(
 					value,
@@ -282,21 +281,17 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 					tempHistoryId,
 				);
 
-				// Add to UI state session & past session recalculator
 				addInput(value);
 
-				// Save to physical file via storage utility
 				void historyStorage.appendMessage(value);
 
 				if (value.startsWith("/")) {
-					// 슬래시 커맨드 → Dispatcher → MCP 도구 호출
 					buffer.setText("");
 					setIsCommandProcessing(true);
 
 					try {
 						const result = await handleDispatch(value, callTool);
 
-						// 로컬 액션 처리
 						if (result.content === "__CLEAR_HISTORY__") {
 							historyManager.clearItems();
 							clearStreamingHistory();

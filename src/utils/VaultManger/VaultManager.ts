@@ -234,7 +234,28 @@ export class VaultManager {
 			}
 
 			const queryVector = await localEmbedder.embed(`search_query: ${query}`);
-			return await vectorDB.search(queryVector, limit);
+
+			const recallLimit = Math.max(limit * 3, 15);
+			const initialResults = await vectorDB.search(queryVector, recallLimit);
+			if (initialResults.length === 0) return [];
+
+			const isRerankerReady = await localReranker.checkModelPresence();
+			if (!isRerankerReady) {
+				await localReranker.init();
+			}
+
+			const documents = initialResults.map((r) => r.content);
+			const reranked = await localReranker.rerank(query, documents);
+
+			const finalResults = reranked
+				.slice(0, limit)
+				.map((r) => {
+					const originalIndex = documents.indexOf(r.document);
+					return initialResults[originalIndex];
+				})
+				.filter((r) => r !== undefined);
+
+			return finalResults;
 		} catch (_error) {
 			return [];
 		}
