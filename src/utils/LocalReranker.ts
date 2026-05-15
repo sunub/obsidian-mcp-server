@@ -31,9 +31,7 @@ class Reranker {
 
 	public async checkModelPresence(): Promise<boolean> {
 		try {
-			await AutoTokenizer.from_pretrained(this.modelName, {
-				local_files_only: true,
-			});
+			await this.init();
 			return true;
 		} catch (_e) {
 			return false;

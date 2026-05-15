@@ -14,6 +14,8 @@ export class Indexer {
 		return this.documentMap.size;
 	}
 
+	private sourceToLinksMap: Map<string, string[]> = new Map();
+
 	public async build(
 		filePaths: string[],
 		ioSemaphore: Semaphore,
@@ -23,7 +25,8 @@ export class Indexer {
 			this.processFile(filePath, ioSemaphore),
 		);
 		await Promise.all(tasks);
-		this.buildBacklinkIndex();
+		// 전체 빌드 시에는 한 번만 호출
+		this.rebuildBacklinkIndex();
 	}
 
 	public async upsertFile(
@@ -32,10 +35,28 @@ export class Indexer {
 	): Promise<void> {
 		this.removeFileEntries(filePath);
 		await this.processFile(filePath, ioSemaphore);
-		this.buildBacklinkIndex();
+		// 증분 업데이트
+		const doc = this.documentMap.get(filePath);
+		if (doc) {
+			this.updateBacklinksForFile(filePath, doc.documentLinks);
+		}
 	}
 
 	public removeFileEntries(filePath: string): void {
+		// 기존 링크 제거
+		const oldLinks = this.sourceToLinksMap.get(filePath) || [];
+		for (const link of oldLinks) {
+			const normalized = this.normalizeLink(link);
+			const sources = this.backlinkIndex.get(normalized);
+			if (sources) {
+				sources.delete(filePath);
+				if (sources.size === 0) {
+					this.backlinkIndex.delete(normalized);
+				}
+			}
+		}
+		this.sourceToLinksMap.delete(filePath);
+
 		for (const [token, fileSet] of this.invertedIndex.entries()) {
 			if (fileSet.has(filePath)) {
 				fileSet.delete(filePath);
@@ -83,7 +104,9 @@ export class Indexer {
 
 		return Array.from(resultPaths)
 			.map((filePath) => this.documentMap.get(filePath))
-			.filter((documentIndex) => documentIndex !== undefined);
+			.filter(
+				(documentIndex) => documentIndex !== undefined,
+			) as DocumentIndex[];
 	}
 
 	public getDocument(filePath: string): DocumentIndex | null {
@@ -109,6 +132,7 @@ export class Indexer {
 		this.documentMap.clear();
 		this.invertedIndex.clear();
 		this.backlinkIndex.clear();
+		this.sourceToLinksMap.clear();
 	}
 
 	private async processFile(
@@ -200,16 +224,22 @@ export class Indexer {
 		}
 	}
 
-	private buildBacklinkIndex(): void {
-		this.backlinkIndex.clear();
-		for (const [sourcePath, sourceDoc] of this.documentMap.entries()) {
-			for (const targetLink of sourceDoc.documentLinks) {
-				const normalizedTarget = this.normalizeLink(targetLink);
-				if (!this.backlinkIndex.has(normalizedTarget)) {
-					this.backlinkIndex.set(normalizedTarget, new Set());
-				}
-				this.backlinkIndex.get(normalizedTarget)?.add(sourcePath);
+	private updateBacklinksForFile(sourcePath: string, links: string[]): void {
+		this.sourceToLinksMap.set(sourcePath, links);
+		for (const targetLink of links) {
+			const normalizedTarget = this.normalizeLink(targetLink);
+			if (!this.backlinkIndex.has(normalizedTarget)) {
+				this.backlinkIndex.set(normalizedTarget, new Set());
 			}
+			this.backlinkIndex.get(normalizedTarget)?.add(sourcePath);
+		}
+	}
+
+	private rebuildBacklinkIndex(): void {
+		this.backlinkIndex.clear();
+		this.sourceToLinksMap.clear();
+		for (const [sourcePath, sourceDoc] of this.documentMap.entries()) {
+			this.updateBacklinksForFile(sourcePath, sourceDoc.documentLinks);
 		}
 	}
 
