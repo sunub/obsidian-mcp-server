@@ -1,20 +1,18 @@
 import * as fs from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import * as util from "node:util";
 import chalk from "chalk";
-import dotenv from "dotenv";
-
-dotenv.config();
+import { APP_DATA_DIR } from "../../utils/constants.js";
 
 class DebugLogger {
 	private logStream: fs.WriteStream | undefined;
 
 	constructor() {
-		const logFilePath = process.env["DEBUG_LOG_FILE"] || "logs/debug.log";
+		const defaultLogPath = resolve(APP_DATA_DIR, "logs", "debug.log");
+		const logFilePath = process.env["DEBUG_LOG_FILE"] || defaultLogPath;
 
-		if (logFilePath) {
+		try {
 			const logDir = dirname(logFilePath);
-
 			if (!fs.existsSync(logDir)) {
 				fs.mkdirSync(logDir, { recursive: true });
 			}
@@ -22,14 +20,19 @@ class DebugLogger {
 			this.logStream = fs.createWriteStream(logFilePath, {
 				flags: "a",
 			});
-		}
 
-		this.logStream?.on("error", (err) => {
+			this.logStream.on("error", (err) => {
+				console.error(
+					chalk.red("[STREAM_ERROR]"),
+					chalk.gray(util.format("Error writing to debug log stream:", err)),
+				);
+			});
+		} catch (err) {
 			console.error(
-				chalk.red("[STREAM_ERROR]"),
-				chalk.gray(util.format("Error writing to debug log stream:", err)),
+				chalk.red("[LOGGER_INIT_ERROR]"),
+				chalk.gray(util.format("Failed to initialize log stream:", err)),
 			);
-		});
+		}
 	}
 
 	private writeToFile(level: string, args: unknown[]) {
@@ -84,3 +87,4 @@ class DebugLogger {
 }
 
 export const debugLogger = new DebugLogger();
+

@@ -172,11 +172,6 @@ export class RAGIndexer {
 			await this.embeddingSemaphore.acquire();
 			let vector: number[];
 			try {
-				const isLocalReady = await localEmbedder.checkModelPresence();
-				if (!isLocalReady) {
-					await localEmbedder.init();
-				}
-
 				vector = await localEmbedder.embed(`search_document: ${safeText}`);
 			} finally {
 				this.embeddingSemaphore.release();
@@ -248,28 +243,37 @@ export class RAGIndexer {
 
 			this.setSpinner(markdownFiles.length);
 
-			const allRecords: VectorRecord[] = [];
-			const allMeta: { filePath: string; mtime: string }[] = [];
+			const BATCH_SIZE = 50; // 50개 파일마다 DB에 기록하고 메모리 비움
+			let currentBatch: VectorRecord[] = [];
+			let currentMeta: { filePath: string; mtime: string }[] = [];
 			const fileSemaphore = new Semaphore(8);
 
-			await Promise.all(
-				markdownFiles.map(async (filePath) => {
-					await fileSemaphore.acquire();
-					try {
-						const result = await this.processFileInMemory(filePath);
-						if (result && result.records.length > 0) {
-							allRecords.push(...result.records);
-							allMeta.push({ filePath, mtime: result.mtime });
-						}
-					} finally {
-						fileSemaphore.release();
-					}
-				}),
-			);
+			for (let i = 0; i < markdownFiles.length; i += BATCH_SIZE) {
+				const batchFiles = markdownFiles.slice(i, i + BATCH_SIZE);
 
-			if (allRecords.length > 0) {
-				await vectorDB.upsertChunks(allRecords);
-				await vectorDB.updateFileMetaBatch(allMeta);
+				await Promise.all(
+					batchFiles.map(async (filePath) => {
+						await fileSemaphore.acquire();
+						try {
+							const result = await this.processFileInMemory(filePath);
+							if (result && result.records.length > 0) {
+								currentBatch.push(...result.records);
+								currentMeta.push({ filePath, mtime: result.mtime });
+							}
+						} finally {
+							fileSemaphore.release();
+						}
+					}),
+				);
+
+				// 현재 배치를 DB에 기록하고 메모리 해제
+				if (currentBatch.length > 0) {
+					await vectorDB.upsertChunks(currentBatch);
+					await vectorDB.updateFileMetaBatch(currentMeta);
+					// 배열 초기화로 가비지 컬렉션 유도
+					currentBatch = [];
+					currentMeta = [];
+				}
 			}
 		} finally {
 			this._isIndexing = false;

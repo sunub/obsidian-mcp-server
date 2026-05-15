@@ -6,8 +6,10 @@ import createMcpServer from "./server.js";
 import { localEmbedder } from "./utils/Embedder.js";
 import { localReranker } from "./utils/LocalReranker.js";
 import { vaultWatcher } from "./utils/VaultWatcher.js";
+import { ensureAppDataDirs } from "./utils/constants.js";
 
 async function main() {
+	ensureAppDataDirs();
 	if (process.argv.slice(2).some((arg) => arg === "setup")) {
 		const { setup } = await import("./setup.js");
 		const success = await setup({ force: true });
@@ -55,15 +57,25 @@ async function main() {
 	}
 
 	try {
-		vaultWatcher.start(options.vaultPath).catch((error) => {
-			console.error(
-				chalk.red("[VaultWatcher] Background indexing error:"),
-				error,
-			);
-		});
+		await vaultWatcher.start(options.vaultPath);
+	} catch (error) {
+		console.error(chalk.red("[VaultWatcher] Failed to start indexing:"), error);
+		process.exit(1);
+	}
 
-		const server = createMcpServer();
-		const transport = new StdioServerTransport();
+	const server = createMcpServer();
+	const transport = new StdioServerTransport();
+
+	const cleanup = async () => {
+		console.error(chalk.yellow("\n🛑 Shutting down MCP server..."));
+		await vaultWatcher.stop();
+		process.exit(0);
+	};
+
+	process.on("SIGINT", cleanup);
+	process.on("SIGTERM", cleanup);
+
+	try {
 		await server.connect(transport);
 	} catch (error) {
 		console.error(chalk.red("Failed to start MCP server:"), error);
