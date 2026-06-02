@@ -268,8 +268,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 	);
 
 	useKeypress(handleInput, { isActive: true, priority: true });
-	const [cursorVisualRowAbsolute, cursorVisualColAbsolute] =
-		buffer.visualCursor;
+	const [cursorVisualRowAbsolute, _] = buffer.visualCursor;
 
 	const showCursor = focus;
 
@@ -306,7 +305,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 				const segLen = cpLen(seg.text);
 				let display = seg.text;
 				if (isOnCursorLine) {
-					const relCol = cursorVisualColAbsolute;
+					const relCol = buffer.visualCursorColIndex;
 					const segStart = charCount;
 					const segEnd = segStart + segLen;
 					if (relCol >= segStart && relCol < segEnd) {
@@ -340,15 +339,17 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 				);
 			});
 
-			if (isOnCursorLine && cursorVisualColAbsolute === cpLen(lineText)) {
+			if (isOnCursorLine && buffer.visualCursorColIndex === cpLen(lineText)) {
 				renderedLine.push(
-					<Text key={`cursor-end-${cursorVisualColAbsolute}`}>
+					<Text key={`cursor-end-${buffer.visualCursorColIndex}`}>
 						{showCursor ? chalk.inverse(" ") : " "}
 					</Text>,
 				);
 			}
 			const showCursorBeforeGhost =
-				focus && isOnCursorLine && cursorVisualColAbsolute === cpLen(lineText);
+				focus &&
+				isOnCursorLine &&
+				buffer.visualCursorColIndex === cpLen(lineText);
 
 			return (
 				<Box height={1} key={absoluteVisualIdx}>
@@ -356,7 +357,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 						terminalCursorFocus={showCursor && isOnCursorLine}
 						terminalCursorPosition={cpIndexToOffset(
 							lineText,
-							cursorVisualColAbsolute,
+							buffer.visualCursorColIndex,
 						)}
 					>
 						{renderedLine}
@@ -369,7 +370,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
 			buffer,
 			focus,
 			cursorVisualRowAbsolute,
-			cursorVisualColAbsolute,
+			buffer.visualCursorColIndex,
 			showCursor,
 		],
 	);
