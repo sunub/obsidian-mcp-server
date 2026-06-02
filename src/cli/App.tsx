@@ -31,6 +31,7 @@ import { Box } from "ink";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { debugLogger } from "@/shared/index.js";
 import { cleanupManager } from "@/utils/cleanup.js";
+import { useSlashCommand } from "./hooks/useSlashCommand.js";
 import { ThinkingIndicator } from "./ui/ThinkingIndicator.js";
 import { disableMouseEvents } from "./utils/terminal.js";
 
@@ -107,30 +108,23 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 			suggestionsWidth,
 		],
 	);
+
+	const historyManager = useHistoryManager();
 	const {
 		pendingItem,
 		streamingState,
 		isLoading,
 		error,
-		sendMessage,
+		submitQuery,
 		abortCurrentStream,
 		clearStreamingHistory,
-	} = useLlmStream(callTool, mcpTools);
+	} = useLlmStream({
+		addItem: historyManager.addItem,
+		callTool,
+		availableTools: mcpTools,
+	});
+
 	const { transientMessage, showTransientMessage } = useTransientMessage();
-	const isBusy =
-		isRagFetching ||
-		isCommandProcessing ||
-		streamingState === "thinking" ||
-		streamingState === "executing";
-
-	useEffect(() => {
-		cleanupManager.registerSoftAbort(abortCurrentStream);
-		cleanupManager.register("offload-files", () => {
-			InputOffloadService.cleanupAll();
-		});
-	}, [abortCurrentStream]);
-
-	const historyManager = useHistoryManager();
 
 	const addInfoMessage = useCallback(
 		(content: string) => {
@@ -164,25 +158,33 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 		return `Mcp List:\n${toolsText}`;
 	}, [mcpConnected, mcpToolsByServer]);
 
+	const { executeCommand } = useSlashCommand({
+		historyManager,
+		clearStreamingHistory,
+		callTool,
+		handleDispatch,
+		genMcpToolsText,
+		addInfoMessage,
+		setIsCommandProcessing,
+	});
+
+	const isBusy =
+		isRagFetching ||
+		isCommandProcessing ||
+		streamingState === "thinking" ||
+		streamingState === "executing";
+
+	useEffect(() => {
+		cleanupManager.registerSoftAbort(abortCurrentStream);
+		cleanupManager.register("offload-files", () => {
+			InputOffloadService.cleanupAll();
+		});
+	}, [abortCurrentStream]);
+
 	useEffect(() => {
 		void initializeFromLogger(historyStorage);
 	}, [initializeFromLogger]);
 
-	useEffect(() => {
-		if (pendingItem?.isComplete) {
-			historyManager.addItem({
-				type: "assistant",
-				content: pendingItem.content,
-				timestamp: Date.now(),
-			});
-			abortCurrentStream();
-
-			// Prune history to prevent OOM
-			historyManager.pruneAndCompressHistory(20);
-		}
-	}, [pendingItem, abortCurrentStream, historyManager]);
-
-	// 에러 로깅
 	useEffect(() => {
 		if (error) {
 			debugLogger.error("[AppContainer] LLM stream error:", error.message);
@@ -203,48 +205,57 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 
 	const handleGlobalKeypress = useCallback(
 		(key: Key) => {
-			// 1. Ctrl+C Handling (Consistent with CleanupManager)
 			if (
 				keyMatchers[Command.QUIT](key) ||
 				keyMatchers[Command.CLEAR_INPUT](key)
 			) {
-				// Stage 1: Clear Input
 				if (buffer.text.length > 0) {
 					buffer.setText("");
 					lastCtrlCPress.current = 0;
 					return true;
 				}
 
-				// Stage 2: Soft Abort
 				if (isLoading || isCommandProcessing) {
 					abortCurrentStream();
 					setIsCommandProcessing(false);
 					lastCtrlCPress.current = 0;
 
-					addInfoMessage("요청이 취소되었습니다.");
+					// Helper for info messages
+					const id = historyManager.addItem({
+						type: "info",
+						content: "요청이 취소되었습니다.",
+						timestamp: Date.now(),
+					});
+					setTimeout(() => historyManager.removeItem(id), 2000);
 					return true;
 				}
 
-				// Stage 3: Quit Program
 				const now = Date.now();
 				if (now - lastCtrlCPress.current < 1000) {
 					cleanupManager.gracefulShutdown("user-quit (double-tap)");
 				} else {
 					lastCtrlCPress.current = now;
-					addInfoMessage("한 번 더 누르면 종료됩니다.");
+					const id = historyManager.addItem({
+						type: "info",
+						content: "한 번 더 누르면 종료됩니다.",
+						timestamp: Date.now(),
+					});
+					setTimeout(() => historyManager.removeItem(id), 2000);
 					abortCurrentStream();
 				}
 				return true;
 			}
 
-			// 2. Toggle Copy Mode (F9)
 			if (keyMatchers[Command.TOGGLE_COPY_MODE](key)) {
 				setCopyModeEnabled((prev) => !prev);
-				addInfoMessage(
-					!copyModeEnabled
+				const id = historyManager.addItem({
+					type: "info",
+					content: !copyModeEnabled
 						? "복사 모드가 활성화되었습니다. (마우스 드래그 가능)"
 						: "복사 모드가 비활성화되었습니다. (마우스 트래킹 활성)",
-				);
+					timestamp: Date.now(),
+				});
+				setTimeout(() => historyManager.removeItem(id), 2000);
 				return true;
 			}
 
@@ -256,10 +267,11 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 			isCommandProcessing,
 			copyModeEnabled,
 			keyMatchers,
-			addInfoMessage,
+			historyManager,
 			abortCurrentStream,
 		],
 	);
+
 	useKeypress(handleGlobalKeypress, { isActive: true, priority: true });
 
 	const handleFinalSubmit = useCallback(
@@ -282,67 +294,46 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 				);
 
 				addInput(value);
-
 				void historyStorage.appendMessage(value);
 
+				buffer.setText("");
+
 				if (value.startsWith("/")) {
-					buffer.setText("");
-					setIsCommandProcessing(true);
+					const result = await executeCommand(value, tempHistoryId);
+					if (result.type === "llm_required") {
+						const triggeredTools: typeof mcpTools = [];
+						const lowerIntent = result.userIntent.toLowerCase();
 
-					try {
-						const result = await handleDispatch(value, callTool);
-
-						if (result.content === "__CLEAR_HISTORY__") {
-							historyManager.clearItems();
-							clearStreamingHistory();
-							InputOffloadService.cleanupAll(); // Clear all offloaded files
-							addInfoMessage("대화 히스토리가 초기화되었습니다.");
-							return;
-						}
-
-						if (result.content === "__LIST_TOOLS__") {
-							addInfoMessage(genMcpToolsText());
-							return;
-						}
-
-						if (result.type === "llm_required") {
-							historyManager.addItem({
-								type: "user",
-								content: result.userIntent ?? value,
-								timestamp: tempHistoryId,
-							});
-
-							void sendMessage(result.userIntent ?? value, result.content);
-						} else {
-							// result.type is "tool_result" | "local_action" | "unknown_command"
-							if (
-								(result.type as string) === "info" ||
-								result.type === "unknown_command"
-							) {
-								addInfoMessage(result.content);
-							} else {
-								const historyType =
-									result.type === "tool_result" ? "assistant" : "info";
-								historyManager.addItem({
-									type: historyType,
-									content: result.content,
-									timestamp: tempHistoryId,
-								});
+						for (const [
+							serverName,
+							serverTools,
+						] of mcpToolsByServer.entries()) {
+							if (lowerIntent.includes(serverName.toLowerCase())) {
+								triggeredTools.push(...serverTools);
+								continue;
+							}
+							for (const tool of serverTools) {
+								if (lowerIntent.includes(tool.name.toLowerCase())) {
+									triggeredTools.push(tool);
+								}
 							}
 						}
-					} finally {
-						setIsCommandProcessing(false);
+
+						const uniqueTriggered = Array.from(new Set(triggeredTools));
+						const isVaultTriggered = uniqueTriggered.some(
+							(t) => t.name === "vault",
+						);
+						const ragContext = isVaultTriggered
+							? await fetchContext(result.userIntent)
+							: null;
+
+						await submitQuery(result.userIntent, {
+							overrideTools: uniqueTriggered,
+							ragContext,
+							timestamp: tempHistoryId,
+						});
 					}
 				} else {
-					historyManager.addItem({
-						type: "user",
-						content: value,
-						timestamp: tempHistoryId,
-					});
-
-					buffer.setText("");
-
-					// Prune check for GC
 					const maxTurns = 20;
 					if (historyManager.history.length >= maxTurns) {
 						historyManager.pruneAndCompressHistory(maxTurns);
@@ -350,18 +341,14 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 						InputOffloadService.prune(currentIds);
 					}
 
-					// 1. 도구 트리거 감지 (도구 이름이나 서버 이름이 포함된 경우)
 					const triggeredTools: typeof mcpTools = [];
 					const lowerValue = value.toLowerCase();
 
 					for (const [serverName, serverTools] of mcpToolsByServer.entries()) {
-						// 서버 이름이 언급된 경우 해당 서버의 모든 도구 활성화
 						if (lowerValue.includes(serverName.toLowerCase())) {
 							triggeredTools.push(...serverTools);
 							continue;
 						}
-
-						// 특정 도구 이름이 언급된 경우 해당 도구만 활성화
 						for (const tool of serverTools) {
 							if (lowerValue.includes(tool.name.toLowerCase())) {
 								triggeredTools.push(tool);
@@ -369,10 +356,7 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 						}
 					}
 
-					// 중복 제거
 					const uniqueTriggered = Array.from(new Set(triggeredTools));
-
-					// 2. Vault 도구가 트리거된 경우에만 RAG 컨텍스트 수집
 					const isVaultTriggered = uniqueTriggered.some(
 						(t) => t.name === "vault",
 					);
@@ -380,8 +364,11 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 						? await fetchContext(value)
 						: null;
 
-					// 3. 트리거된 도구만 LLM에 전달
-					void sendMessage(optimizedPrompt, ragContext, uniqueTriggered);
+					await submitQuery(optimizedPrompt, {
+						overrideTools: uniqueTriggered,
+						ragContext,
+						timestamp: tempHistoryId,
+					});
 				}
 			} finally {
 				isSubmittingRef.current = false;
@@ -390,16 +377,12 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 		[
 			addInput,
 			buffer,
-			handleDispatch,
-			callTool,
+			executeCommand,
 			historyManager,
-			clearStreamingHistory,
-			genMcpToolsText,
 			mcpToolsByServer,
 			fetchContext,
-			sendMessage,
+			submitQuery,
 			isLoading,
-			addInfoMessage,
 		],
 	);
 
