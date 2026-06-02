@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { debugLogger } from "@/shared/index.js";
 import { createToolError } from "@/utils/createToolError.js";
-import { rerankerClient } from "@/utils/RerankerClient.js";
+import { localReranker } from "@/utils/LocalReranker.js";
 import type { EnrichedDocument } from "../../../../utils/VaultManger/types.js";
 import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
@@ -784,15 +784,18 @@ export async function collectContext(
 				}),
 			);
 
-			const rerankedResults = await rerankerClient.rerank(
+			const rerankedResults = await localReranker.rerank(
 				topic,
 				candidateContents,
-				maxDocs,
 			);
 
-			const reranked = rerankedResults.map(
-				(result) => candidatesToRerank[result.index],
-			);
+			const reranked = rerankedResults
+				.slice(0, maxDocs)
+				.map((result) => {
+					const idx = candidateContents.indexOf(result.document);
+					return idx !== -1 ? candidatesToRerank[idx] : null;
+				})
+				.filter((c): c is (typeof candidatesToRerank)[number] => c !== null);
 			const remaining = orderedCandidates.filter(
 				(c) => !reranked.some((r) => r.filePath === c.filePath),
 			);

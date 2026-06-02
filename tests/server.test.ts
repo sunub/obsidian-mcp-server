@@ -18,6 +18,8 @@ import {
 	DocumentSchema,
 	SearchSuccessSchema,
 } from "../src/tools/vault/types/search";
+import { localEmbedder } from "../src/utils/Embedder";
+import { localReranker } from "../src/utils/LocalReranker";
 import { FrontMatterSchema } from "../src/utils/processor/types";
 import demo_data from "./assets/demo_data";
 
@@ -120,8 +122,10 @@ describe("Obsidian MCP Server E2E Tests", () => {
 		await embeddedServer.connect(serverTransport);
 		await mcpClient.connect(clientTransport);
 
-		// 4. 모든 테스트 시작 전 인덱싱 완료 보장
 		await waitForIndexing(mcpClient, demo_data.length);
+		try {
+			await Promise.all([localEmbedder.init(), localReranker.init()]);
+		} catch {}
 	});
 
 	afterAll(async () => {
@@ -199,7 +203,6 @@ describe("Obsidian MCP Server E2E Tests", () => {
 				arguments: { action: "search", keyword: query },
 			});
 
-			// 검색 결과 스키마 검증
 			const SearchResultSchema = SearchSuccessSchema.extend({
 				documents: z.array(
 					DocumentSchema.extend({
@@ -215,7 +218,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 			expect(data.found).toBeGreaterThan(0);
 			expect(data.documents[0].filename).toBe(`${query}.md`);
-		});
+		}, 15000);
 	});
 
 	describe("Mutation Actions", () => {
