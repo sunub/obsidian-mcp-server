@@ -1,0 +1,13 @@
+
+[2026-04-30T12:47:46.195Z] CRASH DETECTED:
+ReferenceError: completion is not defined
+    at InputPrompt (/Users/sunub/workspace/obsidian-mcp-server/src/cli/ui/InputPrompt.tsx:84:31)
+    at react-stack-bottom-frame (/Users/sunub/workspace/obsidian-mcp-server/node_modules/react-reconciler/cjs/react-reconciler.development.js:15859:20)
+    at renderWithHooks (/Users/sunub/workspace/obsidian-mcp-server/node_modules/react-reconciler/cjs/react-reconciler.development.js:3221:22)
+    at updateFunctionComponent (/Users/sunub/workspace/obsidian-mcp-server/node_modules/react-reconciler/cjs/react-reconciler.development.js:6475:19)
+    at runWithFiberInDEV (/Users/sunub/workspace/obsidian-mcp-server/node_modules/react-reconciler/cjs/react-reconciler.development.js:1738:13)
+    at performUnitOfWork (/Users/sunub/workspace/obsidian-mcp-server/node_modules/react-reconciler/cjs/react-reconciler.development.js:12834:22)
+    at workLoopSync (/Users/sunub/workspace/obsidian-mcp-server/node_modules/react-reconciler/cjs/react-reconciler.development.js:12644:41)
+    at renderRootSync (/Users/sunub/workspace/obsidian-mcp-server/node_modules/react-reconciler/cjs/react-reconciler.development.js:12624:11)
+    at performWorkOnRoot (/Users/sunub/workspace/obsidian-mcp-server/node_modules/react-reconciler/cjs/react-reconciler.development.js:12135:44)
+    at performWorkOnRootViaSchedulerTask (/Users/sunub/workspace/obsidian-mcp-server/node_modules/react-reconciler/cjs/react-reconciler.development.js:2431:7)
