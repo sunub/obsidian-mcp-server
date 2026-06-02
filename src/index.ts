@@ -3,10 +3,10 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import chalk from "chalk";
 import { getOptions, setLocalLLMEnvSetting } from "./config.js";
 import createMcpServer from "./server.js";
+import { ensureAppDataDirs } from "./utils/constants.js";
 import { localEmbedder } from "./utils/Embedder.js";
 import { localReranker } from "./utils/LocalReranker.js";
 import { vaultWatcher } from "./utils/VaultWatcher.js";
-import { ensureAppDataDirs } from "./utils/constants.js";
 
 async function main() {
 	ensureAppDataDirs();

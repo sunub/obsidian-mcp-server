@@ -28,12 +28,18 @@ const LABEL_MAP: Record<
 	user: {
 		type: "user",
 		label: "▶ You",
-		fontColor: "#F1F5F9",
-		highlightColor: "#F1F5F9",
+		fontColor: "#0070af",
+		highlightColor: "#0070af",
 	},
 	assistant: {
 		type: "assistant",
 		label: "◀ Assistant",
+		fontColor: "white",
+		highlightColor: "magenta",
+	},
+	assistant_chunk: {
+		type: "assistant",
+		label: "",
 		fontColor: "white",
 		highlightColor: "magenta",
 	},
@@ -124,11 +130,13 @@ export const HistoryItemDisplay: React.FC<HistoryItemDisplayProps> = ({
 				</>
 			) : (
 				<>
-					<Box paddingBottom={1}>
-						<Text bold color={highlightColor}>
-							{label}
-						</Text>
-					</Box>
+					{label && (
+						<Box paddingBottom={1}>
+							<Text bold color={highlightColor}>
+								{label}
+							</Text>
+						</Box>
+					)}
 					<Text color={fontColor}>
 						{renderContentWithOffload(item.content)}
 					</Text>

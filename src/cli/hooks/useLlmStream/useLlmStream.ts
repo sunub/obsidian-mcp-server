@@ -25,32 +25,56 @@ import {
 } from "@/cli/utils/events.js";
 import state from "@/config.js";
 import { debugLogger } from "@/shared/index.js";
+import type { useHistoryManager } from "../useHistoryManager.js";
+import { useStateAndRef } from "../useStateAndRef.js";
+import { findLastSafeSplitPoint } from "./markdownUtils.js";
 
 export interface LlmStreamState {
 	pendingItem: PendingItem | null;
 	streamingState: StreamingState;
 	isLoading: boolean;
 	error: Error | null;
+	lastOutputTime: number;
 	sendMessage: (
 		text: string,
 		ragContext?: string | null,
 		overrideTools?: McpToolInfo[],
 	) => Promise<void>;
+	submitQuery: (
+		query: string,
+		options?: {
+			overrideTools?: McpToolInfo[];
+			ragContext?: string | null;
+			timestamp?: number;
+		},
+	) => Promise<void>;
 	abortCurrentStream: () => void;
 	clearStreamingHistory: () => void;
 }
 
-export const useLlmStream = (
-	callTool?: CallToolFn,
-	availableTools: McpToolInfo[] = [],
-): LlmStreamState => {
-	const [pendingItem, setPendingItem] = useState<PendingItem | null>(null);
+export interface LLMStreamOptions {
+	addItem: ReturnType<typeof useHistoryManager>["addItem"];
+	callTool?: CallToolFn;
+	availableTools: McpToolInfo[];
+}
+
+export const useLlmStream = ({
+	addItem,
+	callTool,
+	availableTools,
+}: LLMStreamOptions): LlmStreamState => {
 	const [streamingState, setStreamingState] = useState<StreamingState>("idle");
 	const [error, setError] = useState<Error | null>(null);
+	const [lastOutputTime, setLastOutputTime] = useState<number>(Date.now());
+	const [pendingItem, pendingItemRef, setPendingItem] =
+		useStateAndRef<PendingItem | null>(null);
+	const userMessageTimestampRef = useRef<number>(0);
+	const isFirstChunkRef = useRef<boolean>(true);
 
 	const conversationRef = useRef<ConversationMessage[]>([]);
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const isLoading = useMemo(() => streamingState !== "idle", [streamingState]);
+	const llmMessageBufferRef = useRef<string>("");
 
 	useEffect(() => {
 		async function bootCheck() {
@@ -80,15 +104,29 @@ export const useLlmStream = (
 		void bootCheck();
 	}, []);
 
+	const flushPendingText = useCallback(() => {
+		if (pendingItemRef.current) {
+			addItem({
+				type: isFirstChunkRef.current ? "assistant" : "assistant_chunk",
+				content: pendingItemRef.current.content,
+				timestamp: userMessageTimestampRef.current,
+			});
+			isFirstChunkRef.current = false;
+			setPendingItem(null);
+			llmMessageBufferRef.current = "";
+		}
+	}, [addItem, pendingItemRef, setPendingItem]);
+
 	const sendMessage = useCallback(
 		async (
 			rawText: string,
 			ragContext?: string | null,
 			overrideTools?: McpToolInfo[],
 		) => {
-			// ... (omitting for brevity in thought, but I will provide full implementation in tool call)
 			const text = stripAnsi(rawText).trim();
 			setStreamingState("thinking");
+			isFirstChunkRef.current = true;
+			llmMessageBufferRef.current = "";
 			setPendingItem({ type: "assistant", content: "", isComplete: false });
 			setError(null);
 
@@ -134,22 +172,57 @@ export const useLlmStream = (
 							firstEventReceived = true;
 						}
 
+						setLastOutputTime(Date.now());
 						if (event.type === "content") {
 							contentAccum += event.chunk;
 							const { thinking, main, isThinking } =
 								parseThinkingContent(contentAccum);
 							const display = progressLog ? `${progressLog}\n${main}` : main;
-							setPendingItem({
-								type: "assistant",
-								content: display,
-								thinkingContent: thinking || undefined,
-								isThinking,
-								isComplete: false,
-							});
+							llmMessageBufferRef.current += event.chunk;
+
+							const splitPoint = findLastSafeSplitPoint(
+								llmMessageBufferRef.current,
+							);
+
+							if (splitPoint === llmMessageBufferRef.current.length) {
+								setPendingItem({
+									type: "assistant",
+									content: display,
+									thinkingContent: thinking || undefined,
+									isThinking,
+									isComplete: false,
+								});
+							} else {
+								const before = llmMessageBufferRef.current.substring(
+									0,
+									splitPoint,
+								);
+								const after = llmMessageBufferRef.current.substring(splitPoint);
+
+								addItem({
+									type: isFirstChunkRef.current
+										? "assistant"
+										: "assistant_chunk",
+									content: before,
+									timestamp: userMessageTimestampRef.current,
+								});
+								isFirstChunkRef.current = false;
+
+								llmMessageBufferRef.current = after;
+								setPendingItem({
+									type: "assistant",
+									content: after,
+									thinkingContent: thinking || undefined,
+									isThinking,
+									isComplete: false,
+								});
+							}
 						} else if (event.type === "tool_calls") {
 							toolCallsReceived = event.calls;
 						}
 					}
+
+					flushPendingText();
 
 					if (toolCallsReceived && toolCallsReceived.length > 0 && callTool) {
 						debugLogger.debug(
@@ -180,7 +253,7 @@ export const useLlmStream = (
 								.join("")
 								.slice(0, MAX_TOOL_RESULT_CHARS);
 
-							progressLog += `  ✓ 완료\n`;
+							progressLog += `✓ 완료\n`;
 							setPendingItem({
 								type: "assistant",
 								content: progressLog,
@@ -201,15 +274,8 @@ export const useLlmStream = (
 							content: finalContent,
 						});
 
-						const display = progressLog
-							? `${progressLog}\n${finalContent}`
-							: finalContent;
-
-						setPendingItem({
-							type: "assistant",
-							content: display,
-							isComplete: true,
-						});
+						setPendingItem(null);
+						setStreamingState("idle");
 						break;
 					}
 
@@ -233,10 +299,12 @@ export const useLlmStream = (
 				const message = err instanceof Error ? err.message : String(err);
 				setError(new Error(`LLM 통신 실패: ${message}`));
 				conversationRef.current.pop();
+				llmMessageBufferRef.current = "";
+				isFirstChunkRef.current = true;
 				setPendingItem(null);
 			}
 		},
-		[callTool, availableTools],
+		[callTool, availableTools, addItem, flushPendingText, setPendingItem],
 	);
 
 	const abortCurrentStream = useCallback(() => {
@@ -247,11 +315,35 @@ export const useLlmStream = (
 		setPendingItem(null);
 		setStreamingState("idle");
 		setError(null);
-	}, []);
+	}, [setPendingItem]);
 
 	const clearStreamingHistory = useCallback(() => {
 		conversationRef.current = [];
 	}, []);
+
+	const submitQuery = useCallback(
+		async (
+			query: string,
+			options?: {
+				overrideTools?: McpToolInfo[];
+				ragContext?: string | null;
+				timestamp?: number;
+			},
+		) => {
+			const timestamp = options?.timestamp ?? Date.now();
+			userMessageTimestampRef.current = timestamp;
+
+			addItem({
+				type: "user",
+				content: query,
+				timestamp,
+			});
+
+			llmMessageBufferRef.current = "";
+			await sendMessage(query, options?.ragContext, options?.overrideTools);
+		},
+		[addItem, sendMessage],
+	);
 
 	return {
 		pendingItem,
@@ -259,7 +351,9 @@ export const useLlmStream = (
 		isLoading,
 		error,
 		sendMessage,
+		submitQuery,
 		abortCurrentStream,
 		clearStreamingHistory,
+		lastOutputTime,
 	};
 };

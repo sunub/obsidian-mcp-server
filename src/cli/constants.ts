@@ -119,4 +119,8 @@ export const SLASH_COMMANDS = [
 		command: "/help",
 		desc: "이 도움말 표시",
 	},
+	{
+		command: "/quit, /exit",
+		desc: "CLI 프로그램 종료 및 백그라운드 리소스 정리",
+	},
 ];
