@@ -1,4 +1,9 @@
-export type HistoryType = "user" | "assistant" | "error" | "info";
+export type HistoryType =
+	| "user"
+	| "assistant"
+	| "assistant_chunk"
+	| "error"
+	| "info";
 
 export interface HistoryItem {
 	id: number;
