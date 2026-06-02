@@ -2,6 +2,10 @@ import {
 	emitKeys,
 	nonKeyboardEventFilter,
 } from "@cli/context/KeypressContext.util.js";
+import {
+	disableBracketedPasteMode,
+	enableBracketedPasteMode,
+} from "@cli/utils/terminal.js";
 import { useStdin } from "ink";
 import { MultiMap } from "mnemonist";
 import type React from "react";
@@ -249,6 +253,8 @@ export function KeypressProvider({ children }: { children: React.ReactNode }) {
 			setRawMode(true);
 		}
 
+		enableBracketedPasteMode();
+
 		process.stdin.setEncoding("utf8");
 
 		let processor = nonKeyboardEventFilter(broadcast);
@@ -259,6 +265,7 @@ export function KeypressProvider({ children }: { children: React.ReactNode }) {
 
 		stdin.on("data", dataListener);
 		return () => {
+			disableBracketedPasteMode();
 			stdin.removeListener("data", dataListener);
 			if (wasRaw === false) {
 				setRawMode(false);
