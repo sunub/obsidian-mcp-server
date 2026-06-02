@@ -248,6 +248,9 @@ export function useDispatcher(
 					return { type: "local_action", content: "__CLEAR_HISTORY__" };
 				case "/tools":
 					return { type: "local_action", content: "__LIST_TOOLS__" };
+				case "/quit":
+				case "/exit":
+					return { type: "local_action", content: "__EXIT__" };
 			}
 
 			const mapping = COMMAND_MAP[command];
