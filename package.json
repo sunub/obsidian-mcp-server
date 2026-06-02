@@ -36,8 +36,6 @@
 		"check": "npx biome check --write",
 		"cli": "npx tsx src/cli/index.tsx"
 	},
-	"author": "sunub",
-	"license": "ISC",
 	"dependencies": {
 		"@huggingface/transformers": "^4.2.0",
 		"@lancedb/lancedb": "^0.27.2",
