@@ -766,42 +766,69 @@ export async function collectContext(
 
 	// Apply Reranking if topic is present and we have candidates
 	if (topic && orderedCandidates.length > 0) {
-		// Only rerank a reasonable number of top candidates to preserve performance
-		const rerankCandidatesLimit = 30;
-		const candidatesToRerank = orderedCandidates.slice(
-			0,
-			rerankCandidatesLimit,
-		);
-
-		try {
-			// Fetch contents for these candidates to perform reranking
-			const candidateContents = await Promise.all(
-				candidatesToRerank.map(async (c) => {
-					const doc = await vaultManager.getDocumentInfo(c.filePath, {
-						maxContentPreview: 1000, // Sufficient for reranking
-					});
-					return doc?.content || "";
-				}),
+		// 1. 후보군이 2개 이하인 경우 리랭킹이 불필요하므로 건너뜀
+		if (orderedCandidates.length <= 2) {
+			debugLogger.debug(
+				`[CollectContext] Candidates count is ${orderedCandidates.length}. Skipping rerank.`,
 			);
+		} else {
+			// 2. 완벽한 제목 매칭(Exact Title Match)이 있는 경우 리랭커 호출 스킵
+			const exactMatchIndex = orderedCandidates.slice(0, 15).findIndex((c) => {
+				const filename = c.filePath.split("/").pop() || c.filePath;
+				const title = c.frontmatter?.title || filename.replace(/\.mdx?$/i, "");
+				return title.toLowerCase() === topic.toLowerCase();
+			});
 
-			const rerankedResults = await localReranker.rerank(
-				topic,
-				candidateContents,
-			);
+			if (exactMatchIndex !== -1) {
+				const exactMatchDoc = orderedCandidates[exactMatchIndex];
+				debugLogger.debug(
+					`[CollectContext] Exact title match found: "${exactMatchDoc.filePath}". Skipping rerank.`,
+				);
+				const remaining = orderedCandidates.filter(
+					(c) => c.filePath !== exactMatchDoc.filePath,
+				);
+				orderedCandidates = [exactMatchDoc, ...remaining];
+			} else {
+				// Only rerank a reasonable number of top candidates to preserve performance
+				const rerankCandidatesLimit = 30;
+				const candidatesToRerank = orderedCandidates.slice(
+					0,
+					rerankCandidatesLimit,
+				);
 
-			const reranked = rerankedResults
-				.slice(0, maxDocs)
-				.map((result) => {
-					const idx = candidateContents.indexOf(result.document);
-					return idx !== -1 ? candidatesToRerank[idx] : null;
-				})
-				.filter((c): c is (typeof candidatesToRerank)[number] => c !== null);
-			const remaining = orderedCandidates.filter(
-				(c) => !reranked.some((r) => r.filePath === c.filePath),
-			);
-			orderedCandidates = [...reranked, ...remaining];
-		} catch (error) {
-			debugLogger.error("[CollectContext] Reranking failed:", error);
+				try {
+					// Fetch contents for these candidates to perform reranking
+					const candidateContents = await Promise.all(
+						candidatesToRerank.map(async (c) => {
+							const doc = await vaultManager.getDocumentInfo(c.filePath, {
+								maxContentPreview: 1000, // Sufficient for reranking
+							});
+							return doc?.content || "";
+						}),
+					);
+
+					const rerankedResults = await localReranker.rerank(
+						topic,
+						candidateContents,
+					);
+
+					const reranked = rerankedResults
+						.slice(0, maxDocs)
+						.map((result) => {
+							const idx = candidateContents.indexOf(result.document);
+							return idx !== -1 ? candidatesToRerank[idx] : null;
+						})
+						.filter(
+							(c): c is (typeof candidatesToRerank)[number] => c !== null,
+						);
+					const remaining = orderedCandidates.filter(
+						(c) => !reranked.some((r) => r.filePath === c.filePath),
+					);
+					orderedCandidates = [...reranked, ...remaining];
+				} catch (error) {
+					debugLogger.error("[CollectContext] Reranking failed:", error);
+				}
+			}
 		}
 	}
 
