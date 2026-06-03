@@ -3,10 +3,14 @@ import { registerSyncCleanup } from "@cli/utils/cleanup.js";
 import { createWorkingStdio } from "@cli/utils/stdio.js";
 import { render } from "ink";
 import { TerminalInfoProvider } from "ink-picture";
+import { cleanupCheckpoints, setupSignalHandlers } from "@/utils/cleanup.js";
 import { AppContainer } from "./AppContainer.js";
 import "dotenv/config";
 
 async function start() {
+	setupSignalHandlers();
+	await cleanupCheckpoints();
+
 	const wasRaw = process.stdin.isRaw;
 	const { stdout: monkeyStdout, stderr: monkeySterr } = createWorkingStdio();
 	if (!wasRaw && process.stdin.isTTY) {

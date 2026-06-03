@@ -135,6 +135,33 @@ function prune(activeHistoryIds: number[]) {
 	}
 }
 
+function isValidOffloadedPath(
+	filePath: string,
+	activeHistoryIds: number[],
+	currentHistoryId?: number,
+): boolean {
+	const file = offloadedFiles.find((f) => f.filePath === filePath);
+	if (!file) {
+		debugLogger.warn(
+			`[OffloadService] Unauthorized path or expired file: ${filePath}`,
+		);
+		return false;
+	}
+
+	const isActive =
+		activeHistoryIds.includes(file.historyId) ||
+		(currentHistoryId !== undefined && file.historyId === currentHistoryId);
+
+	if (!isActive) {
+		debugLogger.warn(
+			`[OffloadService] Access rejected: File historyId '${file.historyId}' is not active.`,
+		);
+		return false;
+	}
+
+	return true;
+}
+
 export const InputOffloadService = {
 	processPastedContent,
 	cleanupForHistory,
@@ -142,4 +169,5 @@ export const InputOffloadService = {
 	isOffloaded,
 	getOffloadedPath,
 	prune,
+	isValidOffloadedPath,
 };
