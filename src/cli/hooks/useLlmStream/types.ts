@@ -54,7 +54,7 @@ export const SSEMessageSchema = z.object({
 
 			try {
 				return JSON.parse(str);
-			} catch (e) {
+			} catch {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: "Invalid JSON string",

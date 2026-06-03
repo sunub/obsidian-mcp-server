@@ -5,7 +5,7 @@ export interface RetryOptions {
 	maxAttempts: number;
 	initialDelayMs: number;
 	maxDelayMs: number;
-	shouldRetryOnError: (error: Error, retryFetchErrors?: boolean) => boolean;
+	shouldRetryOnError: (error: unknown, retryFetchErrors?: boolean) => boolean;
 	retryFetchErrors?: boolean;
 	signal?: AbortSignal;
 	onRetry?: (attempt: number, error: unknown, delayMs: number) => void;
@@ -162,8 +162,7 @@ export async function retryWithBackoff<T>(
 			const is500 =
 				errorStatus !== undefined && errorStatus >= 500 && errorStatus < 600;
 
-			const isRetryable =
-				is500 || shouldRetryOnError(error as Error, retryFetchErrors);
+			const isRetryable = is500 || shouldRetryOnError(error, retryFetchErrors);
 
 			if (attempt >= maxAttempts || !isRetryable) {
 				throw error;

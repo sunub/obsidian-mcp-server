@@ -29,13 +29,10 @@ export function getErrorStatus(error: unknown): number | undefined {
 		// Check for error.response.status (common in axios errors)
 		if (
 			"response" in error &&
-			typeof (error as { response?: unknown }).response === "object" &&
-			(error as { response?: unknown }).response !== null
+			typeof error.response === "object" &&
+			error.response !== null
 		) {
-			const response =
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-				(error as { response: { status?: unknown; headers?: unknown } })
-					.response;
+			const response = error.response;
 			if ("status" in response && typeof response.status === "number") {
 				return response.status;
 			}
@@ -49,8 +46,8 @@ export function getNetworkErrorCode(error: unknown): string | undefined {
 		if (typeof obj !== "object" || obj === null) {
 			return undefined;
 		}
-		if ("code" in obj && typeof (obj as { code: unknown }).code === "string") {
-			return (obj as { code: string }).code;
+		if ("code" in obj && typeof obj.code === "string") {
+			return obj.code;
 		}
 		return undefined;
 	};
@@ -70,7 +67,7 @@ export function getNetworkErrorCode(error: unknown): string | undefined {
 		) {
 			break;
 		}
-		current = (current as { cause: unknown }).cause;
+		current = current.cause;
 		const code = getCode(current);
 		if (code) {
 			return code;

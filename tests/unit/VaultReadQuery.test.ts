@@ -1,6 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test, vi } from "vitest";
-import { z } from "zod";
 import { readSpecificFile } from "../../src/tools/vault/utils.js";
 import type { DocumentIndex } from "../../src/utils/processor/types.js";
 import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";

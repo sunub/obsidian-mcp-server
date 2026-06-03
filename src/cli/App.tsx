@@ -129,14 +129,14 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 	const wrappedCallTool = useCallback(
 		async (name: string, args: Record<string, unknown>) => {
 			if (name === "read_offloaded_file") {
-				const filePath = args["path"] as string;
-				if (!filePath) {
+				const filePath = args["path"];
+				if (typeof filePath !== "string" || !filePath) {
 					return {
 						isError: true,
 						content: [
 							{
 								type: "text",
-								text: "Error: 'path' argument is required.",
+								text: "Error: 'path' argument is required and must be a string.",
 							},
 						],
 					};
@@ -167,12 +167,14 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 						content: [{ type: "text", text: content }],
 					};
 				} catch (error) {
+					const errorMessage =
+						error instanceof Error ? error.message : String(error);
 					return {
 						isError: true,
 						content: [
 							{
 								type: "text",
-								text: `Error reading file: ${(error as Error).message}`,
+								text: `Error reading file: ${errorMessage}`,
 							},
 						],
 					};

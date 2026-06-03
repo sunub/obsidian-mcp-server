@@ -75,7 +75,7 @@ export async function readSpecificFile(
 				);
 				compressedContent = selectedParagraphs.join("\n\n");
 				shouldTruncateContent = paragraphs.length > selectedParagraphs.length;
-			} catch (e) {
+			} catch {
 				const readContentMaxChars =
 					params.excerptLength ??
 					(mode === "none"
