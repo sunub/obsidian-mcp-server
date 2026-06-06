@@ -1,64 +1,24 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { encodingForModel } from "js-tiktoken";
 import ora, { type Ora } from "ora";
 import { DirectoryWalker } from "./DirectoryWalker.js";
 import { localEmbedder } from "./Embedder.js";
-import { parse as parseMatter } from "./processor/MatterParser.js";
 import { Semaphore } from "./semaphore.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
+import { WorkerPool } from "./worker/WorkerPool.js";
 
-type HeadingEntry = { heading: string; pos: number; depth: number };
-
-function extractHeadingsWithPositions(body: string): HeadingEntry[] {
-	const headingRegex = /^(#{1,3})\s+(.+)$/gm;
-	const results: HeadingEntry[] = [];
-	const matches = body.matchAll(headingRegex);
-	for (const match of matches) {
-		results.push({
-			heading: match[2].trim(),
-			pos: match.index,
-			depth: match[1].length,
-		});
-	}
-	return results;
-}
-
-function findSectionForChunk(
-	body: string,
-	chunk: string,
-	headings: HeadingEntry[],
-): string | null {
-	if (headings.length === 0) return null;
-	const pos = body.indexOf(chunk.slice(0, 60));
-	if (pos === -1) return null;
-	let section: string | null = null;
-	for (const h of headings) {
-		if (h.pos <= pos) section = h.heading;
-	}
-	return section;
-}
+export type HeadingEntry = { heading: string; pos: number; depth: number };
 
 export class RAGIndexer {
-	private splitter: RecursiveCharacterTextSplitter;
 	private embeddingSemaphore: Semaphore;
 	private ioSemaphore: Semaphore;
 	private spinner: Ora | null = null;
 	private totalFiles = 0;
 	private processedFiles = 0;
 	private _isIndexing = false;
-	private enc = encodingForModel("gpt-3.5-turbo");
+	private chukingWorkerPool = new WorkerPool(4);
 
 	constructor() {
-		this.splitter = new RecursiveCharacterTextSplitter({
-			chunkSize: 500,
-			chunkOverlap: 50,
-			lengthFunction: (text: string) => {
-				return this.enc.encode(text).length;
-			},
-		});
-
 		this.embeddingSemaphore = new Semaphore(3);
 		this.ioSemaphore = new Semaphore(10);
 	}
@@ -111,49 +71,20 @@ export class RAGIndexer {
 	): Promise<{ records: VectorRecord[]; mtime: string }> {
 		const fileStat = await fs.stat(filePath);
 		const fileContent = content ?? (await fs.readFile(filePath, "utf-8"));
-		const { frontmatter, content: body } = parseMatter(
+		const chunkMetadatas = await this.chukingWorkerPool.runTask({
 			filePath,
-			fileStat.birthtime.toISOString(),
 			fileContent,
-		);
-		const fileName = path.basename(filePath);
-
-		const headings = extractHeadingsWithPositions(body);
-		const titleFromBody = headings.find((h) => h.depth === 1)?.heading ?? null;
-		const docTitle = frontmatter.title || titleFromBody || fileName;
-		const docStructure = headings
-			.filter((h) => h.depth <= 2)
-			.slice(0, 4)
-			.map((h) => h.heading.slice(0, 25));
-
-		const metadataPrefix = [
-			`Title: ${docTitle.slice(0, 50)}`,
-			frontmatter.tags?.length
-				? `Tags: ${frontmatter.tags.slice(0, 3).join(", ")}`
-				: "",
-			frontmatter.summary ? `Summary: ${frontmatter.summary.slice(0, 60)}` : "",
-		]
-			.filter(Boolean)
-			.join("\n");
+			birthTime: fileStat.birthtime.toISOString(),
+		});
 
 		await localEmbedder.init();
-		const chunks = await this.splitter.splitText(body);
 		const records: VectorRecord[] = [];
 
-		for (let i = 0; i < chunks.length; i++) {
-			const chunk = chunks[i];
-
-			const sectionHeading = findSectionForChunk(body, chunk, headings);
-			const context = [
-				sectionHeading ? `Section: ${sectionHeading.slice(0, 30)}` : "",
-				docStructure.length > 1
-					? `Outline: ${docStructure.slice(0, 3).join(" > ")}`
-					: "",
+		for (const metadata of chunkMetadatas) {
+			const combined = [
+				metadata.context ? metadata.context : "",
+				metadata.content,
 			]
-				.filter(Boolean)
-				.join("\n");
-
-			const combined = [metadataPrefix, context, chunk]
 				.filter(Boolean)
 				.join("\n\n");
 
@@ -178,25 +109,8 @@ export class RAGIndexer {
 			}
 
 			records.push({
-				id: `${filePath}_chunk_${i}`,
-				filePath,
-				fileName,
-				chunkIndex: i,
-				content: chunk,
-				context,
+				...metadata,
 				vector,
-				metadata: {
-					title: docTitle,
-					date:
-						frontmatter.date instanceof Date
-							? frontmatter.date.toISOString()
-							: frontmatter.date || fileStat.birthtime.toISOString(),
-					tags: frontmatter.tags?.join(", ") ?? "",
-					summary: frontmatter.summary || "",
-					slug: frontmatter.slug || "",
-					category: frontmatter.category || "any",
-					completed: frontmatter.completed ?? false,
-				},
 			});
 		}
 
@@ -234,6 +148,8 @@ export class RAGIndexer {
 
 	async indexAll(vaultPath: string): Promise<void> {
 		this._isIndexing = true;
+		this.chukingWorkerPool.init();
+
 		try {
 			const walker = new DirectoryWalker();
 			const filePaths = await walker.walk(vaultPath, this.ioSemaphore);
@@ -277,6 +193,7 @@ export class RAGIndexer {
 			}
 		} finally {
 			this._isIndexing = false;
+			this.chukingWorkerPool.terminateAll();
 		}
 	}
 

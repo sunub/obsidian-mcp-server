@@ -32,15 +32,20 @@ export async function* callLLMStreaming(
 		body["tool_choice"] = "auto";
 	}
 
+	const timeoutSignal = AbortSignal.timeout(state.llmTimeoutMs);
+	const combinedSignal = signal
+		? AbortSignal.any([signal, timeoutSignal])
+		: timeoutSignal;
+
 	const response = await retryWithBackoff(
 		async () =>
 			fetch(url, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(body),
-				signal,
+				signal: combinedSignal,
 			}),
-		{ signal },
+		{ signal: combinedSignal },
 	);
 
 	if (!response.ok) {

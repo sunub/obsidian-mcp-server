@@ -35,6 +35,7 @@ export const configSchema = z.object({
 	llmApiUrl: z.string().url().default("http://127.0.0.1:8080"),
 	llmChatModel: z.string().default("llama3"),
 	llmRerankerApiUrl: z.string().url().default("http://127.0.0.1:8082"),
+	llmTimeoutMs: z.coerce.number().default(120000),
 });
 
 export type ObsidianMcpConfig = z.infer<typeof configSchema>;
@@ -46,6 +47,7 @@ const _rawConfig = {
 	llmChatModel: process.env["LLM_CHAT_MODEL"] || "llama3",
 	llmRerankerApiUrl:
 		process.env["LLM_RERANKER_API_URL"] || "http://127.0.0.1:8082",
+	llmTimeoutMs: process.env["LLM_TIMEOUT_MS"] || "120000",
 };
 
 const _parseResult = configSchema.safeParse(_rawConfig);
@@ -78,6 +80,11 @@ export function getOptions(): ObsidianMcpConfig | false {
 			"LLM Chat Model",
 			process.env["LLM_CHAT_MODEL"] ?? "llama3",
 		)
+		.option(
+			"--llm-timeout-ms <ms>",
+			"LLM Timeout in Milliseconds",
+			process.env["LLM_TIMEOUT_MS"] ?? "120000",
+		)
 		.allowUnknownOption()
 		.allowExcessArguments(true)
 		.parse(process.argv);
@@ -100,6 +107,7 @@ export function getOptions(): ObsidianMcpConfig | false {
 	state.loggingLevel = parseResult.data.loggingLevel;
 	state.llmApiUrl = parseResult.data.llmApiUrl;
 	state.llmChatModel = parseResult.data.llmChatModel;
+	state.llmTimeoutMs = parseResult.data.llmTimeoutMs;
 
 	return state;
 }

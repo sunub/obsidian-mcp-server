@@ -30,10 +30,6 @@ export interface HybridSearchResult {
 	finalScore: number;
 }
 
-const normalizeText = (text: string): string => {
-	return text.replace(/\s+/g, "").trim().toLowerCase();
-};
-
 export class VaultManager {
 	private vaultPath: string;
 	private isInitialized: boolean = false;
