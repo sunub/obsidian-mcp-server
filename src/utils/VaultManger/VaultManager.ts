@@ -276,10 +276,19 @@ export class VaultManager {
 
 			const reranked = await localReranker.rerank(query, documents);
 
+			const normalizeForComparison = (text: string) =>
+				text
+					.replace(/\r\n|\r|\n/g, " ")
+					.replace(/\s+/g, " ")
+					.trim();
+
 			const finalResults = reranked
 				.slice(0, limit)
 				.map((r) => {
-					const originalIndex = documents.indexOf(r.document);
+					const targetNorm = normalizeForComparison(r.document);
+					const originalIndex = documents.findIndex(
+						(doc) => normalizeForComparison(doc) === targetNorm,
+					);
 					return initialResults[originalIndex];
 				})
 				.filter((r) => r !== undefined);

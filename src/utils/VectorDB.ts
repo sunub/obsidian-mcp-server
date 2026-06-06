@@ -5,6 +5,7 @@ import { connect, Index } from "@lancedb/lancedb";
 import * as arrow from "apache-arrow";
 import { debugLogger } from "@/shared/index.js";
 import state from "../config.js";
+import { Semaphore } from "./semaphore.js";
 
 export const INDEX_VERSION = 6;
 
@@ -79,6 +80,7 @@ export class VectorDB {
 	private metaTableName = "obsidian_meta";
 	private fileMetaTableName = "obsidian_file_meta";
 	private db: Connection | null = null;
+	private writeSemaphore = new Semaphore(1);
 
 	constructor() {
 		const vaultDotObsidian = path.join(state.vaultPath, ".obsidian");
@@ -116,53 +118,58 @@ export class VectorDB {
 	}
 
 	async checkAndMigrateIfNeeded(): Promise<boolean> {
-		const db = await this.connect();
-		const tableNames = await db.tableNames();
+		await this.writeSemaphore.acquire();
+		try {
+			const db = await this.connect();
+			const tableNames = await db.tableNames();
 
-		if (!tableNames.includes(this.metaTableName)) {
-			const tablesToDrop = [this.tableName, this.fileMetaTableName];
-			for (const t of tablesToDrop) {
-				if (tableNames.includes(t)) {
-					debugLogger.error(
-						`[VectorDB] No meta table found but ${t} exists — dropping stale index.`,
-					);
-					await db.dropTable(t);
+			if (!tableNames.includes(this.metaTableName)) {
+				const tablesToDrop = [this.tableName, this.fileMetaTableName];
+				for (const t of tablesToDrop) {
+					if (tableNames.includes(t)) {
+						debugLogger.error(
+							`[VectorDB] No meta table found but ${t} exists — dropping stale index.`,
+						);
+						await db.dropTable(t);
+					}
 				}
+				await this.writeMetadata(db);
+				this.db = null;
+				return true;
 			}
-			await this.writeMetadata(db);
-			this.db = null;
-			return true;
-		}
 
-		const meta = await this.readMetadata(db);
-		const storedVersion = Number.parseInt(
-			(meta["index_version"] as string | undefined) ?? "0",
-			10,
-		);
-		const storedModel = (meta["embed_model"] as string | undefined) ?? "";
-
-		if (storedVersion !== INDEX_VERSION) {
-			debugLogger.error(
-				`[VectorDB] Index version mismatch (stored: v${storedVersion}/${storedModel}, current: v${INDEX_VERSION}) — rebuilding index.`,
+			const meta = await this.readMetadata(db);
+			const storedVersion = Number.parseInt(
+				(meta["index_version"] as string | undefined) ?? "0",
+				10,
 			);
-			const tablesToDrop = [
-				this.tableName,
-				this.metaTableName,
-				this.fileMetaTableName,
-			];
-			for (const t of tablesToDrop) {
-				if (tableNames.includes(t)) {
-					await db.dropTable(t);
+			const storedModel = (meta["embed_model"] as string | undefined) ?? "";
+
+			if (storedVersion !== INDEX_VERSION) {
+				debugLogger.error(
+					`[VectorDB] Index version mismatch (stored: v${storedVersion}/${storedModel}, current: v${INDEX_VERSION}) — rebuilding index.`,
+				);
+				const tablesToDrop = [
+					this.tableName,
+					this.metaTableName,
+					this.fileMetaTableName,
+				];
+				for (const t of tablesToDrop) {
+					if (tableNames.includes(t)) {
+						await db.dropTable(t);
+					}
 				}
+				await this.writeMetadata(db);
+				this.db = null;
+				return true;
 			}
-			await this.writeMetadata(db);
-			this.db = null;
-			return true;
+
+			debugLogger.info(`[VectorDB] Index is up-to-date (v${INDEX_VERSION}).`);
+
+			return false;
+		} finally {
+			this.writeSemaphore.release();
 		}
-
-		debugLogger.info(`[VectorDB] Index is up-to-date (v${INDEX_VERSION}).`);
-
-		return false;
 	}
 
 	private async readMetadata(
@@ -191,87 +198,109 @@ export class VectorDB {
 	}
 
 	async createVectorIndex() {
-		const table = await this.getTable();
-		if (!table) {
-			return;
-		}
+		await this.writeSemaphore.acquire();
+		try {
+			const table = await this.getTable();
+			if (!table) {
+				return;
+			}
 
-		const rowCount = await table.countRows();
-		if (rowCount < 256) {
-			console.error(
-				`[VectorDB] Skipping index creation: only ${rowCount} rows (need 256+)`,
+			const rowCount = await table.countRows();
+			if (rowCount < 256) {
+				console.error(
+					`[VectorDB] Skipping index creation: only ${rowCount} rows (need 256+)`,
+				);
+				return;
+			}
+
+			const numPartitions = Math.max(2, Math.floor(Math.sqrt(rowCount)));
+			await table.createIndex("vector", {
+				config: Index.ivfPq({
+					numPartitions,
+					numSubVectors: 96,
+					distanceType: "cosine",
+				}),
+			});
+
+			debugLogger.info(
+				`[VectorDB] Created vector index with ${numPartitions} partitions for ${rowCount} rows.`,
 			);
-			return;
+		} finally {
+			this.writeSemaphore.release();
 		}
-
-		const numPartitions = Math.max(2, Math.floor(Math.sqrt(rowCount)));
-		await table.createIndex("vector", {
-			config: Index.ivfPq({
-				numPartitions,
-				numSubVectors: 96,
-				distanceType: "cosine",
-			}),
-		});
-
-		debugLogger.info(
-			`[VectorDB] Created vector index with ${numPartitions} partitions for ${rowCount} rows.`,
-		);
 	}
 
 	async upsertChunks(records: VectorRecord[]) {
-		if (!this.db) {
-			this.db = await this.connect();
+		await this.writeSemaphore.acquire();
+		try {
+			if (!this.db) {
+				this.db = await this.connect();
+			}
+			const tableNames = await this.db.tableNames();
+
+			if (!tableNames.includes(this.tableName)) {
+				await this.db.createEmptyTable(this.tableName, VaultDocumentSchema);
+			}
+
+			const table = await this.db.openTable(this.tableName);
+			const filePaths = Array.from(new Set(records.map((r) => r.filePath)));
+
+			const inClause = filePaths
+				.map((fp) => `'${fp.replace(/'/g, "''")}'`)
+				.join(", ");
+			await table.delete(`filePath IN (${inClause})`);
+			await table.add(records);
+		} finally {
+			this.writeSemaphore.release();
 		}
-		const tableNames = await this.db.tableNames();
-
-		if (!tableNames.includes(this.tableName)) {
-			await this.db.createEmptyTable(this.tableName, VaultDocumentSchema);
-		}
-
-		const table = await this.db.openTable(this.tableName);
-		const filePaths = Array.from(new Set(records.map((r) => r.filePath)));
-
-		const inClause = filePaths
-			.map((fp) => `'${fp.replace(/'/g, "''")}'`)
-			.join(", ");
-		await table.delete(`filePath IN (${inClause})`);
-		await table.add(records);
 	}
 
 	async updateFileMeta(filePath: string, mtime: string) {
-		if (!this.db) {
-			this.db = await this.connect();
-		}
-		const tableNames = await this.db.tableNames();
+		await this.writeSemaphore.acquire();
+		try {
+			if (!this.db) {
+				this.db = await this.connect();
+			}
+			const tableNames = await this.db.tableNames();
 
-		if (!tableNames.includes(this.fileMetaTableName)) {
-			await this.db.createTable(this.fileMetaTableName, [{ filePath, mtime }]);
-			return;
-		}
+			if (!tableNames.includes(this.fileMetaTableName)) {
+				await this.db.createTable(this.fileMetaTableName, [
+					{ filePath, mtime },
+				]);
+				return;
+			}
 
-		const table = await this.db.openTable(this.fileMetaTableName);
-		await table.delete(`filePath = '${filePath.replace(/'/g, "''")}'`);
-		await table.add([{ filePath, mtime }]);
+			const table = await this.db.openTable(this.fileMetaTableName);
+			await table.delete(`filePath = '${filePath.replace(/'/g, "''")}'`);
+			await table.add([{ filePath, mtime }]);
+		} finally {
+			this.writeSemaphore.release();
+		}
 	}
 
 	async updateFileMetaBatch(entries: { filePath: string; mtime: string }[]) {
 		if (entries.length === 0) return;
-		if (!this.db) {
-			this.db = await this.connect();
-		}
-		const tableNames = await this.db.tableNames();
+		await this.writeSemaphore.acquire();
+		try {
+			if (!this.db) {
+				this.db = await this.connect();
+			}
+			const tableNames = await this.db.tableNames();
 
-		if (!tableNames.includes(this.fileMetaTableName)) {
-			await this.db.createTable(this.fileMetaTableName, entries);
-			return;
-		}
+			if (!tableNames.includes(this.fileMetaTableName)) {
+				await this.db.createTable(this.fileMetaTableName, entries);
+				return;
+			}
 
-		const table = await this.db.openTable(this.fileMetaTableName);
-		const inClause = entries
-			.map((e) => `'${e.filePath.replace(/'/g, "''")}'`)
-			.join(", ");
-		await table.delete(`filePath IN (${inClause})`);
-		await table.add(entries);
+			const table = await this.db.openTable(this.fileMetaTableName);
+			const inClause = entries
+				.map((e) => `'${e.filePath.replace(/'/g, "''")}'`)
+				.join(", ");
+			await table.delete(`filePath IN (${inClause})`);
+			await table.add(entries);
+		} finally {
+			this.writeSemaphore.release();
+		}
 	}
 
 	async getFileMtime(filePath: string): Promise<string | null> {
@@ -291,18 +320,23 @@ export class VectorDB {
 	}
 
 	async deleteByFilePath(filePath: string) {
-		const table = await this.getTable();
-		if (table) {
-			await table.delete(`filePath = '${filePath.replace(/'/g, "''")}'`);
-		}
-		if (!this.db) {
-			this.db = await this.connect();
-		}
-		if ((await this.db.tableNames()).includes(this.fileMetaTableName)) {
-			const fileMetaTable = await this.db.openTable(this.fileMetaTableName);
-			await fileMetaTable.delete(
-				`filePath = '${filePath.replace(/'/g, "''")}'`,
-			);
+		await this.writeSemaphore.acquire();
+		try {
+			const table = await this.getTable();
+			if (table) {
+				await table.delete(`filePath = '${filePath.replace(/'/g, "''")}'`);
+			}
+			if (!this.db) {
+				this.db = await this.connect();
+			}
+			if ((await this.db.tableNames()).includes(this.fileMetaTableName)) {
+				const fileMetaTable = await this.db.openTable(this.fileMetaTableName);
+				await fileMetaTable.delete(
+					`filePath = '${filePath.replace(/'/g, "''")}'`,
+				);
+			}
+		} finally {
+			this.writeSemaphore.release();
 		}
 	}
 
