@@ -30,6 +30,10 @@ export interface HybridSearchResult {
 	finalScore: number;
 }
 
+const normalizeText = (text: string): string => {
+	return text.replace(/\s+/g, "").trim().toLowerCase();
+};
+
 export class VaultManager {
 	private vaultPath: string;
 	private isInitialized: boolean = false;
@@ -38,6 +42,7 @@ export class VaultManager {
 	private walker: DirectoryWalker;
 	private indexer: Indexer;
 	private ioSemaphore: Semaphore;
+	private dbSemaphore: Semaphore;
 	private hasNotifiedMissingModels = false;
 
 	constructor(vaultPath: string, maxConcurrentIO: number = 10) {
@@ -45,6 +50,7 @@ export class VaultManager {
 		this.walker = new DirectoryWalker([".md", ".mdx"]);
 		this.indexer = new Indexer();
 		this.ioSemaphore = new Semaphore(maxConcurrentIO);
+		this.dbSemaphore = new Semaphore(1);
 	}
 
 	async initialize(): Promise<void> {
@@ -242,6 +248,7 @@ export class VaultManager {
 		if (!this.isLocalAIReady) {
 			return [];
 		}
+		await this.dbSemaphore.acquire();
 		try {
 			const isLocalReady = await localEmbedder.checkModelPresence();
 			if (!isLocalReady) {
@@ -296,6 +303,8 @@ export class VaultManager {
 			return finalResults;
 		} catch (_error) {
 			return [];
+		} finally {
+			this.dbSemaphore.release();
 		}
 	}
 
@@ -341,12 +350,14 @@ export class VaultManager {
 			);
 			ragIndexer.startIndexing(filesToProcess.length);
 			ragIndexer.setSpinner(filesToProcess.length);
+			await this.dbSemaphore.acquire();
 			try {
 				for (const filePath of filesToProcess) {
 					await ragIndexer.processFile(filePath);
 				}
 				await vectorDB.createVectorIndex();
 			} finally {
+				this.dbSemaphore.release();
 				ragIndexer.stopIndexing();
 			}
 		}
@@ -361,6 +372,7 @@ export class VaultManager {
 
 		const isLocalReady = await localEmbedder.checkModelPresence();
 		if (isLocalReady) {
+			await this.dbSemaphore.acquire();
 			try {
 				await ragIndexer.processFile(filePath);
 			} catch (error) {
@@ -368,6 +380,8 @@ export class VaultManager {
 					`[VaultManager] Failed to process RAG index for ${filePath}:`,
 					error,
 				);
+			} finally {
+				this.dbSemaphore.release();
 			}
 		} else {
 			console.error(
@@ -378,7 +392,12 @@ export class VaultManager {
 
 	public async removeDocument(filePath: string): Promise<void> {
 		this.indexer.removeFileEntries(filePath);
-		await ragIndexer.deleteFile(filePath);
+		await this.dbSemaphore.acquire();
+		try {
+			await ragIndexer.deleteFile(filePath);
+		} finally {
+			this.dbSemaphore.release();
+		}
 	}
 
 	public async getAllDocuments(): Promise<DocumentIndex[]> {
