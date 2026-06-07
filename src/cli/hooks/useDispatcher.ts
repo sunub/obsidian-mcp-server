@@ -66,16 +66,6 @@ const COMMAND_MAP: Record<string, CommandMapping> = {
 			filename: extractFilenameFromArgs(args),
 		}),
 	},
-	"/semantic": {
-		tool: "vault",
-		requiresArgs: true,
-		noArgsMessage: "사용법: /semantic <검색 쿼리>",
-		buildArgs: (args) => ({
-			action: "search_vault_by_semantic",
-			query: args,
-			limit: 5,
-		}),
-	},
 	"/stats": {
 		tool: "vault",
 		buildArgs: () => ({ action: "stats" }),
