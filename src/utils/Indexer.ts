@@ -80,30 +80,53 @@ export class Indexer {
 			return [];
 		}
 
-		// 첫 번째 토큰의 매칭 결과를 기준 집합으로 잡고,
-		// 나머지 토큰의 결과와 교집합(AND)을 구한다.
-		const firstMatch = this.invertedIndex.get(tokens[0]);
-		if (!firstMatch || firstMatch.size === 0) {
+		const totalDocs = this.documentMap.size;
+		if (totalDocs === 0) {
 			return [];
 		}
 
-		let resultPaths = new Set(firstMatch);
+		// Track matching scores and match counts for each document
+		const docScores = new Map<string, { score: number; matchCount: number }>();
 
-		for (let i = 1; i < tokens.length; i++) {
-			const tokenMatch = this.invertedIndex.get(tokens[i]);
-			if (!tokenMatch || tokenMatch.size === 0) {
-				return [];
+		for (const token of tokens) {
+			const matchingFiles = this.invertedIndex.get(token);
+			if (!matchingFiles || matchingFiles.size === 0) {
+				continue;
 			}
-			resultPaths = new Set(
-				[...resultPaths].filter((path) => tokenMatch.has(path)),
-			);
-			if (resultPaths.size === 0) {
-				return [];
+
+			// Inverse Document Frequency (IDF) calculation to penalize common words
+			const df = matchingFiles.size;
+			const idf = Math.log(totalDocs / df) + 1;
+
+			for (const filePath of matchingFiles) {
+				const current = docScores.get(filePath) || { score: 0, matchCount: 0 };
+				docScores.set(filePath, {
+					score: current.score + idf,
+					matchCount: current.matchCount + 1,
+				});
 			}
 		}
 
-		return Array.from(resultPaths)
-			.map((filePath) => this.documentMap.get(filePath))
+		if (docScores.size === 0) {
+			return [];
+		}
+
+		// Minimum Should Match (MSM) filter to prevent noise
+		// 1-2 tokens -> need 1 match
+		// 3-4 tokens -> need 2 matches
+		// 5+ tokens -> need at least 50% matches
+		const minShouldMatch = (tokensLength: number): number => {
+			if (tokensLength <= 2) return 1;
+			if (tokensLength <= 4) return 2;
+			return Math.floor(tokensLength * 0.5);
+		};
+
+		const requiredMatches = minShouldMatch(tokens.length);
+
+		return Array.from(docScores.entries())
+			.filter(([_, info]) => info.matchCount >= requiredMatches)
+			.sort((a, b) => b[1].score - a[1].score)
+			.map(([filePath]) => this.documentMap.get(filePath))
 			.filter(
 				(documentIndex) => documentIndex !== undefined,
 			) as DocumentIndex[];
