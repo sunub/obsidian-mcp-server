@@ -565,9 +565,16 @@ export class VaultManager {
 			basename(filename, extname(filename)),
 		];
 
+		const normalizeForMatch = (str: string) =>
+			str.toLowerCase().replace(/[\s_-]/g, "");
+
 		for (const term of searchTerms) {
+			const normalizedTerm = normalizeForMatch(term);
 			const searchResults = this.indexer.search(term);
-			const foundDoc = searchResults.find((doc) => doc.filePath.includes(term));
+			const foundDoc = searchResults.find((doc) => {
+				const fileBase = basename(doc.filePath, extname(doc.filePath));
+				return normalizeForMatch(fileBase) === normalizedTerm;
+			});
 			if (foundDoc) {
 				return foundDoc.filePath;
 			}

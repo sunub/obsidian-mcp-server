@@ -3,7 +3,6 @@ import type { HistoryItem, PendingItem, StreamingState } from "@cli/types.js";
 import { HelpCommands } from "@cli/ui/HelpCommands.js";
 import { HistoryItemDisplay } from "@cli/ui/HistoryItemDisplay.js";
 import { Box, Static, Text } from "ink";
-import type React from "react";
 
 interface MainContentProps {
 	history: HistoryItem[];
@@ -58,11 +57,11 @@ function ThinkingBlock({
 	);
 }
 
-export const MainContent: React.FC<MainContentProps> = ({
+export const MainContent = ({
 	history,
 	pendingItem,
 	width,
-}) => {
+}: MainContentProps) => {
 	return (
 		<>
 			<Static items={history}>
