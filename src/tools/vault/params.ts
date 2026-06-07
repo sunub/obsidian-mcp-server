@@ -33,11 +33,10 @@ export const obsidianContentActions = z
 		"stats",
 		"collect_context",
 		"load_memory",
-		"search_vault_by_semantic",
 		"index_vault_to_vectordb",
 	])
 	.describe(
-		"The action to perform: search documents, read specific file, list all content, get stats, collect contextual memory packets, load stored memory, semantic search, or trigger indexing",
+		"The action to perform: search documents, read specific file, list all content, get stats, collect contextual memory packets, load stored memory, or trigger indexing",
 	);
 export const obsidianContentKeyword = z
 	.string()
@@ -45,7 +44,7 @@ export const obsidianContentKeyword = z
 export const obsidianContentQuery = z
 	.string()
 	.describe(
-		"Natural language query for semantic search or filtering content paragraphs (required for search_vault_by_semantic, optional for read)",
+		"Natural language query for filtering content paragraphs using the local reranker (optional for read action)",
 	);
 export const obsidianContentFilename = z
 	.string()
