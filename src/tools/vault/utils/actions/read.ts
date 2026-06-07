@@ -1,5 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { createToolError } from "@/utils/createToolError.js";
+import { localReranker } from "@/utils/LocalReranker.js";
 import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
 import {
@@ -56,15 +57,47 @@ export async function readSpecificFile(
 	}
 
 	const sourceContentChars = doc.content.length;
-	const readContentMaxChars =
-		params.excerptLength ??
-		(mode === "none"
-			? Number.POSITIVE_INFINITY
-			: READ_DEFAULT_CONTENT_MAX_CHARS[mode]);
-	const shouldTruncateContent = sourceContentChars > readContentMaxChars;
-	const compressedContent = shouldTruncateContent
-		? `${doc.content.substring(0, readContentMaxChars)}...`
-		: doc.content;
+	let compressedContent = doc.content;
+	let shouldTruncateContent = false;
+
+	if (params.query?.trim()) {
+		const paragraphs = doc.content
+			.split(/\n\s*\n/)
+			.map((p) => p.trim())
+			.filter((p) => p.length > 0);
+
+		if (paragraphs.length > 0) {
+			try {
+				const reranked = await localReranker.rerank(params.query, paragraphs);
+				const topParagraphs = reranked.slice(0, 3).map((r) => r.document);
+				const selectedParagraphs = paragraphs.filter((p) =>
+					topParagraphs.includes(p),
+				);
+				compressedContent = selectedParagraphs.join("\n\n");
+				shouldTruncateContent = paragraphs.length > selectedParagraphs.length;
+			} catch {
+				const readContentMaxChars =
+					params.excerptLength ??
+					(mode === "none"
+						? Number.POSITIVE_INFINITY
+						: READ_DEFAULT_CONTENT_MAX_CHARS[mode]);
+				shouldTruncateContent = sourceContentChars > readContentMaxChars;
+				compressedContent = shouldTruncateContent
+					? `${doc.content.substring(0, readContentMaxChars)}...`
+					: doc.content;
+			}
+		}
+	} else {
+		const readContentMaxChars =
+			params.excerptLength ??
+			(mode === "none"
+				? Number.POSITIVE_INFINITY
+				: READ_DEFAULT_CONTENT_MAX_CHARS[mode]);
+		shouldTruncateContent = sourceContentChars > readContentMaxChars;
+		compressedContent = shouldTruncateContent
+			? `${doc.content.substring(0, readContentMaxChars)}...`
+			: doc.content;
+	}
 
 	const backlinkLimit =
 		mode === "none" ? undefined : READ_DEFAULT_BACKLINK_LIMIT[mode];
@@ -96,7 +129,7 @@ export async function readSpecificFile(
 		max_output_chars: maxOutputChars,
 		truncated: shouldTruncateContent || truncatedBacklinks || outputCapClamped,
 		expand_hint:
-			"If you need complete raw text, call vault action='read' with compressionMode='none'.",
+			"If you need complete raw text, call vault action='read' with compressionMode='none'. However, if the document is long and causes context limit errors, add a 'query' parameter to filter for the most relevant paragraphs.",
 	});
 
 	return {

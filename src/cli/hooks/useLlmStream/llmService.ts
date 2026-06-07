@@ -5,6 +5,7 @@ import type {
 	ToolCall,
 } from "@cli/hooks/useLlmStream/types.js";
 import { cleanMessagesForNoTools } from "@cli/hooks/useLlmStream/utils.js";
+import { retryWithBackoff } from "@/cli/utils/retry.js";
 import state from "@/config.js";
 import { debugLogger } from "@/shared/index.js";
 
@@ -31,12 +32,21 @@ export async function* callLLMStreaming(
 		body["tool_choice"] = "auto";
 	}
 
-	const response = await fetch(url, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(body),
-		signal,
-	});
+	const timeoutSignal = AbortSignal.timeout(state.llmTimeoutMs);
+	const combinedSignal = signal
+		? AbortSignal.any([signal, timeoutSignal])
+		: timeoutSignal;
+
+	const response = await retryWithBackoff(
+		async () =>
+			fetch(url, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+				signal: combinedSignal,
+			}),
+		{ signal: combinedSignal },
+	);
 
 	if (!response.ok) {
 		if (
@@ -71,7 +81,9 @@ export async function* callLLMStreaming(
 	}
 
 	const reader = response.body?.getReader();
-	if (!reader) throw new Error("Response body is null");
+	if (!reader) {
+		throw new Error("Response body is null");
+	}
 
 	const decoder = new TextDecoder();
 	let buffer = "";
@@ -82,7 +94,9 @@ export async function* callLLMStreaming(
 
 	while (true) {
 		const { done, value } = await reader.read();
-		if (done) break;
+		if (done) {
+			break;
+		}
 
 		buffer += decoder.decode(value, { stream: true });
 		const lines = buffer.split("\n");

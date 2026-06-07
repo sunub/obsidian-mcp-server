@@ -45,7 +45,7 @@ export const obsidianContentKeyword = z
 export const obsidianContentQuery = z
 	.string()
 	.describe(
-		"Natural language query for semantic search (required for search_vault_by_semantic action)",
+		"Natural language query for semantic search or filtering content paragraphs (required for search_vault_by_semantic, optional for read)",
 	);
 export const obsidianContentFilename = z
 	.string()

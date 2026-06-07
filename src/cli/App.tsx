@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { InputContext } from "@cli/context/InputContext.js";
 import { UIStateContext } from "@cli/context/UIStateContext.js";
 import { useDispatcher } from "@cli/hooks/useDispatcher.js";
@@ -13,6 +14,7 @@ import { useTransientMessage } from "@cli/hooks/useTransientMessage.js";
 import { Command } from "@cli/key/keyMatchers.js";
 import { useTextBuffer } from "@cli/key/textBuffer/index.js";
 import { InputOffloadService } from "@cli/services/InputOffloadService.js";
+import type { McpToolInfo } from "@cli/services/McpClientService.js";
 import {
 	calculatePromptWidths,
 	InputPrompt,
@@ -35,6 +37,23 @@ import { useSlashCommand } from "./hooks/useSlashCommand.js";
 import { ThinkingIndicator } from "./ui/ThinkingIndicator.js";
 import { disableMouseEvents } from "./utils/terminal.js";
 
+const readOffloadedFileTool: McpToolInfo = {
+	name: "read_offloaded_file",
+	description:
+		"Reads the full content of an offloaded temporary file. Use this tool when you need to inspect or analyze the full text of a large pasted content or document that was offloaded to a file path.",
+	inputSchema: {
+		type: "object",
+		properties: {
+			path: {
+				type: "string",
+				description:
+					"The absolute path of the temporary file to read (e.g. /Users/.../temp/paste_xxx.md)",
+			},
+		},
+		required: ["path"],
+	},
+};
+
 export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 	const [shellModeActive] = useState(false);
 	const [copyModeEnabled, setCopyModeEnabled] = useState(false);
@@ -42,6 +61,7 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 
 	const lastCtrlCPress = useRef<number>(0);
 	const isSubmittingRef = useRef<boolean>(false);
+	const currentHistoryIdRef = useRef<number | null>(null);
 	const keyMatchers = useKeyMatchers();
 
 	const { columns: terminalWidth, rows: terminalHeight } = useTerminalSize();
@@ -77,11 +97,6 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 	const { handleDispatch } = useDispatcher(mcpTools);
 	const [isCommandProcessing, setIsCommandProcessing] = useState(false);
 
-	const { fetchContext, isFetching: isRagFetching } = useRagContext(
-		callTool,
-		mcpConnected,
-	);
-
 	const buffer = useTextBuffer({
 		initialText: "",
 		viewportWidth: inputWidth,
@@ -110,6 +125,75 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 	);
 
 	const historyManager = useHistoryManager();
+
+	const wrappedCallTool = useCallback(
+		async (name: string, args: Record<string, unknown>) => {
+			if (name === "read_offloaded_file") {
+				const filePath = args["path"];
+				if (typeof filePath !== "string" || !filePath) {
+					return {
+						isError: true,
+						content: [
+							{
+								type: "text",
+								text: "Error: 'path' argument is required and must be a string.",
+							},
+						],
+					};
+				}
+				try {
+					const activeHistoryIds = historyManager.history.map((h) => h.id);
+					const currentHistoryId = currentHistoryIdRef.current ?? undefined;
+					if (
+						!InputOffloadService.isValidOffloadedPath(
+							filePath,
+							activeHistoryIds,
+							currentHistoryId,
+						)
+					) {
+						return {
+							isError: true,
+							content: [
+								{
+									type: "text",
+									text: "Error: Access denied. The offloaded content has expired or its matching placeholder block has been tampered with.",
+								},
+							],
+						};
+					}
+					const content = readFileSync(filePath, "utf-8");
+					return {
+						isError: false,
+						content: [{ type: "text", text: content }],
+					};
+				} catch (error) {
+					const errorMessage =
+						error instanceof Error ? error.message : String(error);
+					return {
+						isError: true,
+						content: [
+							{
+								type: "text",
+								text: `Error reading file: ${errorMessage}`,
+							},
+						],
+					};
+				}
+			}
+			return callTool(name, args);
+		},
+		[callTool, historyManager],
+	);
+
+	const { fetchContext, isFetching: isRagFetching } = useRagContext(
+		wrappedCallTool,
+		mcpConnected,
+	);
+
+	const combinedTools = useMemo(() => {
+		return [...mcpTools, readOffloadedFileTool];
+	}, [mcpTools]);
+
 	const {
 		pendingItem,
 		streamingState,
@@ -120,8 +204,8 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 		clearStreamingHistory,
 	} = useLlmStream({
 		addItem: historyManager.addItem,
-		callTool,
-		availableTools: mcpTools,
+		callTool: wrappedCallTool,
+		availableTools: combinedTools,
 	});
 
 	const { transientMessage, showTransientMessage } = useTransientMessage();
@@ -161,7 +245,7 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 	const { executeCommand } = useSlashCommand({
 		historyManager,
 		clearStreamingHistory,
-		callTool,
+		callTool: wrappedCallTool,
 		handleDispatch,
 		genMcpToolsText,
 		addInfoMessage,
@@ -287,6 +371,7 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 					submissionContext?.pastedContent ?? buffer.pastedContent;
 
 				const tempHistoryId = Date.now();
+				currentHistoryIdRef.current = tempHistoryId;
 				const optimizedPrompt = await InputOffloadService.processPastedContent(
 					value,
 					submittedPastedContent,
@@ -320,6 +405,7 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 						}
 
 						const uniqueTriggered = Array.from(new Set(triggeredTools));
+						uniqueTriggered.push(readOffloadedFileTool);
 						const isVaultTriggered = uniqueTriggered.some(
 							(t) => t.name === "vault",
 						);
@@ -357,6 +443,7 @@ export const App = ({ mcp }: { mcp: UseMcpManagerReturn }) => {
 					}
 
 					const uniqueTriggered = Array.from(new Set(triggeredTools));
+					uniqueTriggered.push(readOffloadedFileTool);
 					const isVaultTriggered = uniqueTriggered.some(
 						(t) => t.name === "vault",
 					);

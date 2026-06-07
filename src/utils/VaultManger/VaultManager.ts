@@ -11,6 +11,7 @@ import {
 	resolve,
 } from "node:path";
 import matter from "gray-matter";
+import { debugLogger } from "../../shared/index.js";
 import { DirectoryWalker } from "../DirectoryWalker.js";
 import { localEmbedder } from "../Embedder.js";
 import { Indexer } from "../Indexer.js";
@@ -28,10 +29,6 @@ export interface HybridSearchResult {
 	matchedChunks: ChunkMetadata[];
 	finalScore: number;
 }
-
-const normalizeText = (text: string): string => {
-	return text.replace(/\s+/g, "").trim().toLowerCase();
-};
 
 export class VaultManager {
 	private vaultPath: string;
@@ -185,32 +182,46 @@ export class VaultManager {
 			finalScore: f.score,
 		}));
 
-		try {
-			const rerankDocs = fusedResults.map((item) => {
-				// 청크가 있으면 청크 내용, 없으면 요약이나 파일명 사용
-				return (
-					item.matchedChunks[0]?.content ||
-					item.document.frontmatter.summary ||
-					item.document.filePath
-				);
-			});
+		// 1차 검색 결과 중 이미 의미적으로 극도로 유사한(코사인 거리 < 0.20) 청크가 있는지 검증
+		const hasHighlyRelevantMatch = fusedResults.some((item) =>
+			item.matchedChunks.some((chunk) => {
+				const dist = chunk["_distance"];
+				return typeof dist === "number" && dist < 0.2;
+			}),
+		);
 
-			const reranked = await localReranker.rerank(query, rerankDocs);
-			finalResults = reranked
-				.map((r) => {
-					const original = fusedResults.find((f) => {
-						const content =
-							f.matchedChunks[0]?.content ||
-							f.document.frontmatter.summary ||
-							f.document.filePath;
-						return normalizeText(content) === normalizeText(r.document);
-					});
-					if (!original) return null;
-					return { ...original, finalScore: r.score };
-				})
-				.filter((r): r is HybridSearchResult => r !== null);
-		} catch (error) {
-			console.error("[VaultManager] Reranking failed:", error);
+		if (hasHighlyRelevantMatch) {
+			debugLogger.debug(
+				`[RAG] Highly relevant semantic match found. Skipping rerank in hybridSearch.`,
+			);
+		} else {
+			try {
+				const rerankDocs = fusedResults.map((item) => {
+					// 청크가 있으면 청크 내용, 없으면 요약이나 파일명 사용
+					return (
+						item.matchedChunks[0]?.content ||
+						item.document.frontmatter.summary ||
+						item.document.filePath
+					);
+				});
+
+				const reranked = await localReranker.rerank(query, rerankDocs);
+				finalResults = reranked
+					.map((r) => {
+						const original = fusedResults.find((f) => {
+							const content =
+								f.matchedChunks[0]?.content ||
+								f.document.frontmatter.summary ||
+								f.document.filePath;
+							return content === r.document;
+						});
+						if (!original) return null;
+						return { ...original, finalScore: r.score };
+					})
+					.filter((r): r is HybridSearchResult => r !== null);
+			} catch (error) {
+				console.error("[VaultManager] Reranking failed:", error);
+			}
 		}
 
 		// AI가 준비된 상태에서도 인덱싱이 진행 중이면 메시지 추가
@@ -246,20 +257,41 @@ export class VaultManager {
 			const initialResults = await vectorDB.search(queryVector, recallLimit);
 			if (initialResults.length === 0) return [];
 
+			const documents = initialResults.map((r) => r.content);
+
+			// 1차 검색 결과 중 코사인 거리가 극도로 가까운(유사도 0.80 이상) 강력한 매칭인 경우 리랭킹 건너뜀
+			const SKIP_RERANK_DISTANCE_THRESHOLD = 0.2;
+			const firstDistance = initialResults[0]["_distance"];
+			if (
+				typeof firstDistance === "number" &&
+				firstDistance < SKIP_RERANK_DISTANCE_THRESHOLD
+			) {
+				debugLogger.debug(
+					`[RAG] First semantic match distance is ${firstDistance.toFixed(4)}. Skipping rerank in safeSemanticSearch.`,
+				);
+				return initialResults.slice(0, limit);
+			}
+
 			const isRerankerReady = await localReranker.checkModelPresence();
 			if (!isRerankerReady) {
 				await localReranker.init();
 			}
 
-			const documents = initialResults.map((r) => r.content);
 			const reranked = await localReranker.rerank(query, documents);
 
-			const normalizedDocs = documents.map(normalizeText);
+			const normalizeForComparison = (text: string) =>
+				text
+					.replace(/\r\n|\r|\n/g, " ")
+					.replace(/\s+/g, " ")
+					.trim();
+
 			const finalResults = reranked
 				.slice(0, limit)
 				.map((r) => {
-					const normalizedTarget = normalizeText(r.document);
-					const originalIndex = normalizedDocs.indexOf(normalizedTarget);
+					const targetNorm = normalizeForComparison(r.document);
+					const originalIndex = documents.findIndex(
+						(doc) => normalizeForComparison(doc) === targetNorm,
+					);
 					return initialResults[originalIndex];
 				})
 				.filter((r) => r !== undefined);

@@ -83,7 +83,6 @@ export const useRagContext = (
 			debugLogger.debug(`[RAG] Collecting context for topic: "${query}"`);
 
 			try {
-				// collect_context 액션을 사용하여 고밀도 데이터 요청
 				const result = await callTool("vault", {
 					action: "collect_context",
 					topic: query,

@@ -143,9 +143,7 @@ export const useLlmStream = ({
 					conversationRef.current,
 				);
 
-				// 토큰 절약을 위해 히스토리 절사 적용 (최대 6000자)
 				const messages = truncateHistory(rawMessages, 6000);
-
 				conversationRef.current.push(userMessage);
 
 				const toolsToUse = overrideTools ?? availableTools;
