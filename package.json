@@ -1,6 +1,6 @@
 {
 	"name": "@sunub/obsidian-mcp-server",
-	"version": "0.3.25",
+	"version": "0.3.26",
 	"description": "A server for the Obsidian Model Context Protocol.",
 	"keywords": [
 		"obsidian",
