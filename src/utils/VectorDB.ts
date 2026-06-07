@@ -75,16 +75,20 @@ const VaultDocumentSchema = new arrow.Schema([
 ]);
 
 export class VectorDB {
-	private dbPath: string;
 	private tableName = "obsidian_chunks";
 	private metaTableName = "obsidian_meta";
 	private fileMetaTableName = "obsidian_file_meta";
 	private db: Connection | null = null;
 	private writeSemaphore = new Semaphore(1);
 
-	constructor() {
+	private get dbPath(): string {
+		if (!state.vaultPath) {
+			throw new Error(
+				"[VectorDB] state.vaultPath is not set. Database cannot be initialized.",
+			);
+		}
 		const vaultDotObsidian = path.join(state.vaultPath, ".obsidian");
-		this.dbPath = path.join(vaultDotObsidian, "vector_cache");
+		return path.join(vaultDotObsidian, "vector_cache");
 	}
 
 	private async ensureDir() {
