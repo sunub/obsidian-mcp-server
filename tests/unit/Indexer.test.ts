@@ -117,11 +117,13 @@ describe("Indexer", () => {
 		await indexer.build([p1, p2, p3], sem);
 
 		const results = indexer.search("serverless optimization");
-		expect(results).toHaveLength(1);
+		// 3 docs found because of OR match (tokens length <= 2 requires at least 1 match)
+		expect(results).toHaveLength(3);
+		// both.md should be ranked first because it contains both keywords (higher score)
 		expect(results[0].filePath).toBe(p1);
 	});
 
-	test("다중 키워드 AND 검색: 매칭 문서가 없으면 빈 배열을 반환한다", async () => {
+	test("다중 키워드 OR 검색: 최소 매칭 요건(MSM)에 부합하지 않거나 아예 없으면 빈 배열을 반환한다", async () => {
 		const p1 = await writeDoc(
 			"note.md",
 			{ title: "Some Note" },
@@ -131,7 +133,8 @@ describe("Indexer", () => {
 		indexer = new Indexer();
 		await indexer.build([p1], sem);
 
-		const results = indexer.search("alpha nonexistent");
+		// 3 tokens requires at least 2 matches, but note.md only matches 'alpha', so it is filtered out
+		const results = indexer.search("alpha nonexistent1 nonexistent2");
 		expect(results).toEqual([]);
 	});
 

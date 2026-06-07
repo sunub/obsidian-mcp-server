@@ -32,7 +32,7 @@ export function genreateOrganizationTasks(
 				document: doc.filePath,
 				status: "skipped",
 				message: "No image links found.",
-				movedFiles: [],
+				movedFiles: 0,
 			};
 		}
 
