@@ -1,6 +1,6 @@
+import { createAbortError, withTimeout } from "./abort.js";
 import { BackgroundTaskRegistry } from "./BackgroundTaskRegistry.js";
 import { localModelManager } from "./LocalModelManager.js";
-import { createAbortError, withTimeout } from "./abort.js";
 
 type CleanupTask = () => Promise<void> | void;
 type ToolCallModelManager = {
@@ -43,7 +43,7 @@ export class ServerLifecycle {
 		return this.backgroundTasks.run(name, task);
 	}
 
-	async runToolCall<T>(name: string, task: () => Promise<T>): Promise<T> {
+	async runToolCall<T>(_name: string, task: () => Promise<T>): Promise<T> {
 		this.modelManager.beginToolCall();
 		try {
 			return await task();

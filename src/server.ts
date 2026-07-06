@@ -1,5 +1,5 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import pkg from "../package.json" with { type: "json" };
 import tools from "./tools/index.js";
 import type { ServerLifecycle } from "./utils/ServerLifecycle.js";
@@ -62,9 +62,7 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 	mcpServer.registerTool = ((name, config, callback) => {
 		const rawCallback = callback as RawToolCallback;
 		const wrappedCallback: RawToolCallback = (...args) =>
-			lifecycle.runToolCall(name, () =>
-				Promise.resolve(rawCallback(...args)),
-			);
+			lifecycle.runToolCall(name, () => Promise.resolve(rawCallback(...args)));
 
 		return registerTool(name, config, wrappedCallback);
 	}) as typeof mcpServer.registerTool;

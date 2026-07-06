@@ -5,8 +5,8 @@ import { getOptions, setLocalLLMEnvSetting } from "./config.js";
 import createMcpServer from "./server.js";
 import { ensureAppDataDirs } from "./utils/constants.js";
 import { localEmbedder } from "./utils/Embedder.js";
-import { localReranker } from "./utils/LocalReranker.js";
 import { localModelManager } from "./utils/LocalModelManager.js";
+import { localReranker } from "./utils/LocalReranker.js";
 import { ServerLifecycle } from "./utils/ServerLifecycle.js";
 import { vaultWatcher } from "./utils/VaultWatcher.js";
 

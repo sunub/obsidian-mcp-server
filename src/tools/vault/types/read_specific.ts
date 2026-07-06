@@ -31,11 +31,11 @@ export const readSpecificFileDocumentData = z
 		frontmatter: FrontMatterSchema.describe(
 			"The frontmatter metadata of the file",
 		),
-		contentLength: z.number(),
-		imageLinks: z.array(z.string()),
-		documentLinks: z.array(z.string()),
+		contentLength: z.number().optional(),
+		imageLinks: z.array(z.string()).optional(),
+		documentLinks: z.array(z.string()).optional(),
 		content: z.string().describe("The full text content of the file"),
-		stats: statsSchema,
+		stats: statsSchema.optional(),
 		backlinks: z.array(backlinkSchema).optional(),
 	})
 	.describe(

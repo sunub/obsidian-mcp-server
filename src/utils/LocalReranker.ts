@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type {
 	PreTrainedModel,
 	PreTrainedTokenizer,
@@ -7,8 +9,6 @@ import {
 	AutoTokenizer,
 	env,
 } from "@huggingface/transformers";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import z from "zod";
 import { MODELS_DIR } from "./constants.js";
 

@@ -1,6 +1,6 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { localEmbedder } from "../../src/utils/Embedder";
 import { localModelManager } from "../../src/utils/LocalModelManager";
@@ -36,7 +36,9 @@ describe("VaultManager semantic fallback", () => {
 		const result = await manager.hybridSearch("durable lifecycle", 5);
 
 		expect(result.results).toHaveLength(1);
-		expect(result.results[0]?.document.filePath.endsWith("alpha.md")).toBe(true);
+		expect(result.results[0]?.document.filePath.endsWith("alpha.md")).toBe(
+			true,
+		);
 		expect(result.diagnostic_message).toContain("semantic 모델");
 		expect(embedSpy).not.toHaveBeenCalled();
 	});

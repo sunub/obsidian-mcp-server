@@ -1,8 +1,8 @@
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { getGlobalVaultManager } from "./getVaultManager.js";
-import type { VaultManager } from "./VaultManger/VaultManager.js";
 import type { ServerLifecycle } from "./ServerLifecycle.js";
+import type { VaultManager } from "./VaultManger/VaultManager.js";
 
 export class VaultWatcher {
 	private watcher: FSWatcher | null = null;

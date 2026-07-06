@@ -68,14 +68,21 @@ export async function readSpecificFile(
 			compressedContent = `[Summary]\n${docSummary}`;
 		} else {
 			const lines = doc.content.split("\n");
-			const headers = lines.filter((l) => l.trim().startsWith("#")).slice(0, 8).join("\n");
+			const headers = lines
+				.filter((l) => l.trim().startsWith("#"))
+				.slice(0, 8)
+				.join("\n");
 			const firstParagraph = lines.find(
-				(l) => l.trim().length > 0 && !l.trim().startsWith("#") && !l.trim().startsWith("---")
+				(l) =>
+					l.trim().length > 0 &&
+					!l.trim().startsWith("#") &&
+					!l.trim().startsWith("---"),
 			);
 			compressedContent = `[Table of Contents]\n${headers || "(No headers)"}\n\n[Excerpt]\n${firstParagraph || ""}`;
 		}
 		shouldTruncateContent = true;
 	} else if (params.query?.trim()) {
+		const query = params.query.trim();
 		const paragraphs = doc.content
 			.split(/\n\s*\n/)
 			.map((p) => p.trim())
@@ -85,13 +92,14 @@ export async function readSpecificFile(
 			try {
 				await localModelManager.withReranker(3000, async (rerankerReady) => {
 					if (rerankerReady) {
-						const reranked = await localReranker.rerank(params.query!, paragraphs);
+						const reranked = await localReranker.rerank(query, paragraphs);
 						const topParagraphs = reranked.slice(0, 3).map((r) => r.document);
 						const selectedParagraphs = paragraphs.filter((p) =>
 							topParagraphs.includes(p),
 						);
 						compressedContent = selectedParagraphs.join("\n\n");
-						shouldTruncateContent = paragraphs.length > selectedParagraphs.length;
+						shouldTruncateContent =
+							paragraphs.length > selectedParagraphs.length;
 					} else {
 						throw new Error("Local reranker is warming");
 					}
@@ -101,7 +109,9 @@ export async function readSpecificFile(
 					params.excerptLength ??
 					(mode === "none"
 						? Number.POSITIVE_INFINITY
-						: READ_DEFAULT_CONTENT_MAX_CHARS[mode as Exclude<CompressionMode, "none">]);
+						: READ_DEFAULT_CONTENT_MAX_CHARS[
+								mode as Exclude<CompressionMode, "none">
+							]);
 				shouldTruncateContent = sourceContentChars > readContentMaxChars;
 				compressedContent = shouldTruncateContent
 					? `${doc.content.substring(0, readContentMaxChars)}...`
@@ -113,7 +123,9 @@ export async function readSpecificFile(
 			params.excerptLength ??
 			(mode === "none"
 				? Number.POSITIVE_INFINITY
-				: READ_DEFAULT_CONTENT_MAX_CHARS[mode as Exclude<CompressionMode, "none">]);
+				: READ_DEFAULT_CONTENT_MAX_CHARS[
+						mode as Exclude<CompressionMode, "none">
+					]);
 		shouldTruncateContent = sourceContentChars > readContentMaxChars;
 		compressedContent = shouldTruncateContent
 			? `${doc.content.substring(0, readContentMaxChars)}...`
@@ -121,7 +133,9 @@ export async function readSpecificFile(
 	}
 
 	const backlinkLimit =
-		mode === "none" ? undefined : READ_DEFAULT_BACKLINK_LIMIT[mode as Exclude<CompressionMode, "none">];
+		mode === "none"
+			? undefined
+			: READ_DEFAULT_BACKLINK_LIMIT[mode as Exclude<CompressionMode, "none">];
 	const limitedBacklinks = backlinkLimit
 		? (doc.backlinks ?? []).slice(0, backlinkLimit)
 		: doc.backlinks;
@@ -131,7 +145,11 @@ export async function readSpecificFile(
 		(doc.backlinks?.length ?? 0) > (limitedBacklinks?.length ?? 0);
 	const maxOutputChars =
 		params.maxOutputChars ??
-		(mode === "none" ? null : ACTION_DEFAULT_MAX_OUTPUT_CHARS.read[mode as Exclude<CompressionMode, "none">]);
+		(mode === "none"
+			? null
+			: ACTION_DEFAULT_MAX_OUTPUT_CHARS.read[
+					mode as Exclude<CompressionMode, "none">
+				]);
 
 	const basePayload: {
 		filePath: string;

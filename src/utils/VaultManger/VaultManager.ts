@@ -12,16 +12,16 @@ import {
 } from "node:path";
 import matter from "gray-matter";
 import { debugLogger } from "../../shared/index.js";
+import { throwIfAborted } from "../abort.js";
 import { DirectoryWalker } from "../DirectoryWalker.js";
 import { localEmbedder } from "../Embedder.js";
-import { localModelManager } from "../LocalModelManager.js";
 import { Indexer } from "../Indexer.js";
+import { localModelManager } from "../LocalModelManager.js";
 import { localReranker } from "../LocalReranker.js";
 import type { DocumentIndex } from "../processor/types.js";
 import { ragIndexer } from "../RAGIndexer.js";
 import { Semaphore } from "../semaphore.js";
 import { type ChunkMetadata, vectorDB } from "../VectorDB.js";
-import { throwIfAborted } from "../abort.js";
 import type { EnrichedDocument } from "./types.js";
 import { VaultPathError } from "./VaultPathError.js";
 
@@ -261,59 +261,70 @@ export class VaultManager {
 		}
 		await this.dbSemaphore.acquire();
 		try {
-			return await localModelManager.withEmbedder(3000, async (isLocalReady) => {
-				if (!isLocalReady) {
-					return [];
-				}
+			return await localModelManager.withEmbedder(
+				3000,
+				async (isLocalReady) => {
+					if (!isLocalReady) {
+						return [];
+					}
 
-				const queryVector = await localEmbedder.embed(`search_query: ${query}`);
-
-				const recallLimit = Math.max(limit * 3, 15);
-				const initialResults = await vectorDB.search(queryVector, recallLimit);
-				if (initialResults.length === 0) return [];
-
-				const documents = initialResults.map((r) => r.content);
-
-				// 1차 검색 결과 중 코사인 거리가 극도로 가까운(유사도 0.80 이상) 강력한 매칭인 경우 리랭킹 건너뜀
-				const SKIP_RERANK_DISTANCE_THRESHOLD = 0.2;
-				const firstDistance = initialResults[0]["_distance"];
-				if (
-					typeof firstDistance === "number" &&
-					firstDistance < SKIP_RERANK_DISTANCE_THRESHOLD
-				) {
-					debugLogger.debug(
-						`[RAG] First semantic match distance is ${firstDistance.toFixed(4)}. Skipping rerank in safeSemanticSearch.`,
+					const queryVector = await localEmbedder.embed(
+						`search_query: ${query}`,
 					);
-					return initialResults.slice(0, limit);
-				}
 
-				return await localModelManager.withReranker(3000, async (isRerankerReady) => {
-					if (!isRerankerReady) {
+					const recallLimit = Math.max(limit * 3, 15);
+					const initialResults = await vectorDB.search(
+						queryVector,
+						recallLimit,
+					);
+					if (initialResults.length === 0) return [];
+
+					const documents = initialResults.map((r) => r.content);
+
+					// 1차 검색 결과 중 코사인 거리가 극도로 가까운(유사도 0.80 이상) 강력한 매칭인 경우 리랭킹 건너뜀
+					const SKIP_RERANK_DISTANCE_THRESHOLD = 0.2;
+					const firstDistance = initialResults[0]["_distance"];
+					if (
+						typeof firstDistance === "number" &&
+						firstDistance < SKIP_RERANK_DISTANCE_THRESHOLD
+					) {
+						debugLogger.debug(
+							`[RAG] First semantic match distance is ${firstDistance.toFixed(4)}. Skipping rerank in safeSemanticSearch.`,
+						);
 						return initialResults.slice(0, limit);
 					}
 
-					const reranked = await localReranker.rerank(query, documents);
+					return await localModelManager.withReranker(
+						3000,
+						async (isRerankerReady) => {
+							if (!isRerankerReady) {
+								return initialResults.slice(0, limit);
+							}
 
-					const normalizeForComparison = (text: string) =>
-						text
-							.replace(/\r\n|\r|\n/g, " ")
-							.replace(/\s+/g, " ")
-							.trim();
+							const reranked = await localReranker.rerank(query, documents);
 
-					const finalResults = reranked
-						.slice(0, limit)
-						.map((r) => {
-							const targetNorm = normalizeForComparison(r.document);
-							const originalIndex = documents.findIndex(
-								(doc) => normalizeForComparison(doc) === targetNorm,
-							);
-							return initialResults[originalIndex];
-						})
-						.filter((r) => r !== undefined);
+							const normalizeForComparison = (text: string) =>
+								text
+									.replace(/\r\n|\r|\n/g, " ")
+									.replace(/\s+/g, " ")
+									.trim();
 
-					return finalResults;
-				});
-			});
+							const finalResults = reranked
+								.slice(0, limit)
+								.map((r) => {
+									const targetNorm = normalizeForComparison(r.document);
+									const originalIndex = documents.findIndex(
+										(doc) => normalizeForComparison(doc) === targetNorm,
+									);
+									return initialResults[originalIndex];
+								})
+								.filter((r) => r !== undefined);
+
+							return finalResults;
+						},
+					);
+				},
+			);
 		} catch (_error) {
 			return [];
 		} finally {

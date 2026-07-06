@@ -24,8 +24,11 @@ const runTask = vi.hoisted(() =>
 	]),
 );
 const withEmbedder = vi.hoisted(() =>
-	vi.fn(async (_softDeadlineMs: number, callback: (ready: boolean) => Promise<unknown>) =>
-		callback(false),
+	vi.fn(
+		async (
+			_softDeadlineMs: number,
+			callback: (ready: boolean) => Promise<unknown>,
+		) => callback(false),
 	),
 );
 const embedderInit = vi.hoisted(() => vi.fn(async () => undefined));

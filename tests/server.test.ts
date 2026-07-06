@@ -164,7 +164,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			const frontmatter = FrontMatterSchema.parse(data.frontmatter);
 
 			expect(frontmatter.title).toBe(filename.replace(".md", ""));
-			expect(data.contentLength).toBeGreaterThan(0);
+			expect(data.content.length).toBeGreaterThan(0);
 		});
 
 		test("vault: list_all - 모든 문서 목록을 반환한다", async () => {

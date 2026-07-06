@@ -1,10 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import ora, { type Ora } from "ora";
+import { throwIfAborted } from "./abort.js";
 import { DirectoryWalker } from "./DirectoryWalker.js";
 import { localEmbedder } from "./Embedder.js";
 import { localModelManager } from "./LocalModelManager.js";
-import { throwIfAborted } from "./abort.js";
 import { Semaphore } from "./semaphore.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
 import { WorkerPool } from "./worker/WorkerPool.js";
@@ -199,9 +199,13 @@ export class RAGIndexer {
 					batchFiles.map(async (filePath) => {
 						await fileSemaphore.acquire();
 						try {
-							const result = await this.processFileInMemory(filePath, undefined, {
-								signal,
-							});
+							const result = await this.processFileInMemory(
+								filePath,
+								undefined,
+								{
+									signal,
+								},
+							);
 							if (result && result.records.length > 0) {
 								currentBatch.push(...result.records);
 								currentMeta.push({ filePath, mtime: result.mtime });

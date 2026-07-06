@@ -5,10 +5,10 @@ export const responseTypeSchema = z
 	.describe("The type of content being returned");
 
 export const compressionModeSchema = z
-	.enum(["aggressive", "balanced", "none"])
-	.default("balanced")
+	.enum(["summary", "aggressive", "balanced", "none"])
+	.default("summary")
 	.describe(
-		"Compression strategy for tool output. aggressive: smallest output, balanced: default, none: keep as much original content as possible.",
+		"Compression strategy for tool output. summary: lightest TOC & document summary only (default), aggressive: smallest output, balanced: moderate size, none: keep as much original content as possible.",
 	);
 
 const maxOutputCharsSchema = z

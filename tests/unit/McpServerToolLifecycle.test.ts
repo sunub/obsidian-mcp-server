@@ -10,9 +10,7 @@ type RegisterToolReceiver = {
 	) => unknown;
 };
 
-const registeredHandlers = vi.hoisted(
-	() => new Map<string, RawToolCallback>(),
-);
+const registeredHandlers = vi.hoisted(() => new Map<string, RawToolCallback>());
 const registerToolSpy = vi.hoisted(() =>
 	vi.fn(
 		(

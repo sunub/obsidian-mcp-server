@@ -1,6 +1,6 @@
+import { isAbortError, withTimeout } from "./abort.js";
 import { localEmbedder } from "./Embedder.js";
 import { localReranker } from "./LocalReranker.js";
-import { isAbortError, withTimeout } from "./abort.js";
 
 type LocalModelResource = {
 	checkModelPresence: () => Promise<boolean>;
@@ -106,10 +106,9 @@ export class LocalModelManager {
 		if (this.isShutdown) {
 			return;
 		}
-		const pendingWarmups = [
-			this.embedderWarmup,
-			this.rerankerWarmup,
-		].filter((warmup): warmup is Promise<boolean> => warmup !== null);
+		const pendingWarmups = [this.embedderWarmup, this.rerankerWarmup].filter(
+			(warmup): warmup is Promise<boolean> => warmup !== null,
+		);
 		const embedderHasPendingWarmup = this.embedderWarmup !== null;
 		const rerankerHasPendingWarmup = this.rerankerWarmup !== null;
 		this.scheduleLateWarmupCleanup(pendingWarmups);

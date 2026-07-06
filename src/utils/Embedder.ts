@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import {
 	AutoTokenizer,
 	env,
@@ -5,8 +7,6 @@ import {
 	type PreTrainedTokenizer,
 	pipeline,
 } from "@huggingface/transformers";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { MODELS_DIR } from "./constants.js";
 
 export class EmbedderService {
