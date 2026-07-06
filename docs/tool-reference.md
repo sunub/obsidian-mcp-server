@@ -32,7 +32,7 @@
 
 ### `search`
 
-인덱스 기반 검색(AND 토큰)을 수행합니다.
+키워드 검색과 의미 기반 검색을 결합한 하이브리드 후보 탐색을 수행합니다. 로컬 임베딩/리랭킹 모델이 준비되지 않은 경우 키워드 검색으로 폴백합니다.
 
 - 필수: `keyword`
 - 선택: `includeContent`(기본 `true`), `includeFrontmatter`(기본 `false`, 현재 응답에서 실질 반영은 없음), `limit`, `excerptLength`
