@@ -1,7 +1,10 @@
 import { performance } from "node:perf_hooks";
 import { Box, Text } from "ink";
+import * as React from "react";
 import type { HistoryItem, PendingItem } from "../src/cli/types.js";
 import { HistoryItemDisplay } from "../src/cli/ui/HistoryItemDisplay.js";
+
+void React;
 
 interface BenchmarkStats {
 	name: string;
