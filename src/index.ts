@@ -6,6 +6,8 @@ import createMcpServer from "./server.js";
 import { ensureAppDataDirs } from "./utils/constants.js";
 import { localEmbedder } from "./utils/Embedder.js";
 import { localReranker } from "./utils/LocalReranker.js";
+import { localModelManager } from "./utils/LocalModelManager.js";
+import { ServerLifecycle } from "./utils/ServerLifecycle.js";
 import { vaultWatcher } from "./utils/VaultWatcher.js";
 
 async function main() {
@@ -56,29 +58,48 @@ async function main() {
 		);
 	}
 
-	try {
-		await vaultWatcher.start(options.vaultPath);
-	} catch (error) {
-		console.error(chalk.red("[VaultWatcher] Failed to start indexing:"), error);
-		process.exit(1);
-	}
-
-	const server = createMcpServer();
+	const lifecycle = new ServerLifecycle();
+	const server = createMcpServer(lifecycle);
 	const transport = new StdioServerTransport();
 
-	const cleanup = async () => {
-		console.error(chalk.yellow("\n🛑 Shutting down MCP server..."));
-		await vaultWatcher.stop();
-		process.exit(0);
+	lifecycle.registerCleanup("local-model-manager", () =>
+		localModelManager.shutdown(),
+	);
+	lifecycle.registerCleanup("vault-watcher", () => vaultWatcher.stop());
+	lifecycle.registerCleanup("mcp-server", () => server.close());
+
+	let exiting = false;
+	const shutdownAndExit = async (reason: string, exitCode = 0) => {
+		if (exiting) {
+			return;
+		}
+		exiting = true;
+		console.error(chalk.yellow(`\n🛑 Shutting down MCP server (${reason})...`));
+		await lifecycle.shutdown(reason);
+		process.exit(exitCode);
 	};
 
-	process.on("SIGINT", cleanup);
-	process.on("SIGTERM", cleanup);
+	process.once("SIGINT", () => void shutdownAndExit("SIGINT"));
+	process.once("SIGTERM", () => void shutdownAndExit("SIGTERM"));
+	process.once("SIGHUP", () => void shutdownAndExit("SIGHUP"));
+	process.stdin.once("end", () => void shutdownAndExit("stdin-end"));
+	process.stdin.once("close", () => void shutdownAndExit("stdin-close"));
+	process.stdin.once("error", () => void shutdownAndExit("stdin-error", 1));
+	transport.onclose = () => void shutdownAndExit("transport-close");
+
+	try {
+		await vaultWatcher.start(options.vaultPath, lifecycle);
+	} catch (error) {
+		console.error(chalk.red("[VaultWatcher] Failed to start indexing:"), error);
+		await lifecycle.shutdown("startup-failure");
+		process.exit(1);
+	}
 
 	try {
 		await server.connect(transport);
 	} catch (error) {
 		console.error(chalk.red("Failed to start MCP server:"), error);
+		await lifecycle.shutdown("connect-failure");
 		process.exit(1);
 	}
 }

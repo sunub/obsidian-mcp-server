@@ -5,10 +5,12 @@ import {
 	type PreTrainedTokenizer,
 	pipeline,
 } from "@huggingface/transformers";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { MODELS_DIR } from "./constants.js";
 
-class EmbedderService {
-	private modelName = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
+export class EmbedderService {
+	public readonly modelName = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
 	private extractor: FeatureExtractionPipeline | null = null;
 	private tokenizer: PreTrainedTokenizer | null = null;
 	private initPromise: Promise<void> | null = null;
@@ -20,12 +22,11 @@ class EmbedderService {
 	}
 
 	public async checkModelPresence(): Promise<boolean> {
-		try {
-			await this.init();
-			return true;
-		} catch (_e) {
-			return false;
-		}
+		return this.hasLocalModelFiles();
+	}
+
+	public hasLocalModelFiles(): boolean {
+		return existsSync(join(MODELS_DIR, this.modelName));
 	}
 
 	public async init(): Promise<void> {
@@ -37,6 +38,19 @@ class EmbedderService {
 		})();
 
 		return this.initPromise;
+	}
+
+	public async dispose(): Promise<void> {
+		if (this.extractor) {
+			try {
+				await this.extractor.dispose();
+			} catch (e) {
+				console.error("Failed to dispose extractor:", e);
+			}
+		}
+		this.extractor = null;
+		this.tokenizer = null;
+		this.initPromise = null;
 	}
 
 	public getTokenCount(text: string): number {

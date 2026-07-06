@@ -11,6 +11,8 @@ import type {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+type WorkerLike = Pick<Worker, "on" | "off" | "postMessage" | "terminate">;
+
 interface QueueItem {
 	data: ChunkingWorkerInput;
 	resolve: (value: ChunkMetadata[]) => void;
@@ -18,22 +20,25 @@ interface QueueItem {
 }
 
 export class WorkerPool {
-	private workers: Worker[] = [];
-	private freeWorkers: Worker[] = [];
+	private workers: WorkerLike[] = [];
+	private freeWorkers: WorkerLike[] = [];
 	private queue: QueueItem[] = [];
+	private activeTasks = new Map<WorkerLike, QueueItem>();
 	private poolSize: number;
 	private workerPath: string;
+	private createWorker: () => WorkerLike;
 
-	constructor(poolSize?: number) {
+	constructor(poolSize?: number, createWorker?: () => WorkerLike) {
 		this.poolSize = poolSize || Math.max(2, cpus().length - 1);
 		this.workerPath = path.resolve(__dirname, "./chunkingWorker.js");
+		this.createWorker = createWorker ?? (() => new Worker(this.workerPath));
 	}
 
 	public init() {
 		if (this.workers.length > 0) return;
 
 		for (let i = 0; i < this.poolSize; i++) {
-			const worker = new Worker(this.workerPath);
+			const worker = this.createWorker();
 			this.workers.push(worker);
 			this.freeWorkers.push(worker);
 		}
@@ -65,9 +70,11 @@ export class WorkerPool {
 		}
 
 		const { data, resolve, reject } = nextItem;
+		this.activeTasks.set(worker, nextItem);
 
 		const messageHandler = (res: ChunkingWorkerOutput) => {
 			cleanup();
+			this.activeTasks.delete(worker);
 			this.freeWorkers.push(worker);
 			this.executeNext();
 
@@ -80,11 +87,12 @@ export class WorkerPool {
 
 		const errorHandler = (err: Error) => {
 			cleanup();
-			worker.terminate();
+			this.activeTasks.delete(worker);
+			void worker.terminate();
 			const idx = this.workers.indexOf(worker);
 			if (idx !== -1) this.workers.splice(idx, 1);
 
-			const newWorker = new Worker(this.workerPath);
+			const newWorker = this.createWorker();
 			this.workers.push(newWorker);
 			this.freeWorkers.push(newWorker);
 
@@ -103,13 +111,23 @@ export class WorkerPool {
 		worker.postMessage(data);
 	}
 
-	public terminateAll() {
+	public async terminateAll(): Promise<void> {
+		const error = new Error("Worker pool terminated");
+		for (const item of this.queue) {
+			item.reject(error);
+		}
+		for (const item of this.activeTasks.values()) {
+			item.reject(error);
+		}
+		this.queue = [];
+		this.activeTasks.clear();
+
 		for (const worker of this.workers) {
-			worker.terminate();
+			await worker.terminate();
 		}
 		this.workers = [];
 		this.freeWorkers = [];
-		this.queue = [];
+		this.activeTasks.clear();
 	}
 }
 

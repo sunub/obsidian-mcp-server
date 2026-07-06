@@ -14,12 +14,14 @@ import matter from "gray-matter";
 import { debugLogger } from "../../shared/index.js";
 import { DirectoryWalker } from "../DirectoryWalker.js";
 import { localEmbedder } from "../Embedder.js";
+import { localModelManager } from "../LocalModelManager.js";
 import { Indexer } from "../Indexer.js";
 import { localReranker } from "../LocalReranker.js";
 import type { DocumentIndex } from "../processor/types.js";
 import { ragIndexer } from "../RAGIndexer.js";
 import { Semaphore } from "../semaphore.js";
 import { type ChunkMetadata, vectorDB } from "../VectorDB.js";
+import { throwIfAborted } from "../abort.js";
 import type { EnrichedDocument } from "./types.js";
 import { VaultPathError } from "./VaultPathError.js";
 
@@ -125,6 +127,10 @@ export class VaultManager {
 			this.indexer.search(query),
 			this.safeSemanticSearch(query, limit * 3),
 		]);
+		const semanticFallbackMessage =
+			semanticResults.length === 0
+				? "💡 [검색 품질 안내] 로컬 semantic 모델이 아직 준비 중이거나 사용할 수 없어 이번 검색은 키워드 중심으로 반환했습니다. 잠시 후 다시 검색하면 하이브리드 검색이 적용될 수 있습니다."
+				: undefined;
 
 		// 3. RRF (Reciprocal Rank Fusion) 스코어 계산
 		const rrfScores = new Map<
@@ -190,7 +196,7 @@ export class VaultManager {
 			}),
 		);
 
-		if (hasHighlyRelevantMatch) {
+		if (hasHighlyRelevantMatch || semanticResults.length === 0) {
 			debugLogger.debug(
 				`[RAG] Highly relevant semantic match found. Skipping rerank in hybridSearch.`,
 			);
@@ -205,20 +211,24 @@ export class VaultManager {
 					);
 				});
 
-				const reranked = await localReranker.rerank(query, rerankDocs);
-				finalResults = reranked
-					.map((r) => {
-						const original = fusedResults.find((f) => {
-							const content =
-								f.matchedChunks[0]?.content ||
-								f.document.frontmatter.summary ||
-								f.document.filePath;
-							return content === r.document;
-						});
-						if (!original) return null;
-						return { ...original, finalScore: r.score };
-					})
-					.filter((r): r is HybridSearchResult => r !== null);
+				await localModelManager.withReranker(3000, async (rerankerReady) => {
+					if (rerankerReady) {
+						const reranked = await localReranker.rerank(query, rerankDocs);
+						finalResults = reranked
+							.map((r) => {
+								const original = fusedResults.find((f) => {
+									const content =
+										f.matchedChunks[0]?.content ||
+										f.document.frontmatter.summary ||
+										f.document.filePath;
+									return content === r.document;
+								});
+								if (!original) return null;
+								return { ...original, finalScore: r.score };
+							})
+							.filter((r): r is HybridSearchResult => r !== null);
+					}
+				});
 			} catch (error) {
 				console.error("[VaultManager] Reranking failed:", error);
 			}
@@ -229,6 +239,11 @@ export class VaultManager {
 		const ragStatus = this.getRagIndexingStatus();
 		if (ragStatus.isIndexing) {
 			diagnostic_message = `⏳ [인덱싱 진행 중] 백그라운드에서 의미 기반 검색 인덱싱이 진행 중입니다 (${ragStatus.progress}% - ${ragStatus.processed}/${ragStatus.total}). 최근 변경된 파일은 검색 결과에 즉시 반영되지 않을 수 있습니다.`;
+		}
+		if (semanticFallbackMessage) {
+			diagnostic_message = diagnostic_message
+				? `${diagnostic_message}\n\n${semanticFallbackMessage}`
+				: semanticFallbackMessage;
 		}
 
 		return {
@@ -246,57 +261,59 @@ export class VaultManager {
 		}
 		await this.dbSemaphore.acquire();
 		try {
-			const isLocalReady = await localEmbedder.checkModelPresence();
-			if (!isLocalReady) {
-				await localEmbedder.init();
-			}
+			return await localModelManager.withEmbedder(3000, async (isLocalReady) => {
+				if (!isLocalReady) {
+					return [];
+				}
 
-			const queryVector = await localEmbedder.embed(`search_query: ${query}`);
+				const queryVector = await localEmbedder.embed(`search_query: ${query}`);
 
-			const recallLimit = Math.max(limit * 3, 15);
-			const initialResults = await vectorDB.search(queryVector, recallLimit);
-			if (initialResults.length === 0) return [];
+				const recallLimit = Math.max(limit * 3, 15);
+				const initialResults = await vectorDB.search(queryVector, recallLimit);
+				if (initialResults.length === 0) return [];
 
-			const documents = initialResults.map((r) => r.content);
+				const documents = initialResults.map((r) => r.content);
 
-			// 1차 검색 결과 중 코사인 거리가 극도로 가까운(유사도 0.80 이상) 강력한 매칭인 경우 리랭킹 건너뜀
-			const SKIP_RERANK_DISTANCE_THRESHOLD = 0.2;
-			const firstDistance = initialResults[0]["_distance"];
-			if (
-				typeof firstDistance === "number" &&
-				firstDistance < SKIP_RERANK_DISTANCE_THRESHOLD
-			) {
-				debugLogger.debug(
-					`[RAG] First semantic match distance is ${firstDistance.toFixed(4)}. Skipping rerank in safeSemanticSearch.`,
-				);
-				return initialResults.slice(0, limit);
-			}
-
-			const isRerankerReady = await localReranker.checkModelPresence();
-			if (!isRerankerReady) {
-				await localReranker.init();
-			}
-
-			const reranked = await localReranker.rerank(query, documents);
-
-			const normalizeForComparison = (text: string) =>
-				text
-					.replace(/\r\n|\r|\n/g, " ")
-					.replace(/\s+/g, " ")
-					.trim();
-
-			const finalResults = reranked
-				.slice(0, limit)
-				.map((r) => {
-					const targetNorm = normalizeForComparison(r.document);
-					const originalIndex = documents.findIndex(
-						(doc) => normalizeForComparison(doc) === targetNorm,
+				// 1차 검색 결과 중 코사인 거리가 극도로 가까운(유사도 0.80 이상) 강력한 매칭인 경우 리랭킹 건너뜀
+				const SKIP_RERANK_DISTANCE_THRESHOLD = 0.2;
+				const firstDistance = initialResults[0]["_distance"];
+				if (
+					typeof firstDistance === "number" &&
+					firstDistance < SKIP_RERANK_DISTANCE_THRESHOLD
+				) {
+					debugLogger.debug(
+						`[RAG] First semantic match distance is ${firstDistance.toFixed(4)}. Skipping rerank in safeSemanticSearch.`,
 					);
-					return initialResults[originalIndex];
-				})
-				.filter((r) => r !== undefined);
+					return initialResults.slice(0, limit);
+				}
 
-			return finalResults;
+				return await localModelManager.withReranker(3000, async (isRerankerReady) => {
+					if (!isRerankerReady) {
+						return initialResults.slice(0, limit);
+					}
+
+					const reranked = await localReranker.rerank(query, documents);
+
+					const normalizeForComparison = (text: string) =>
+						text
+							.replace(/\r\n|\r|\n/g, " ")
+							.replace(/\s+/g, " ")
+							.trim();
+
+					const finalResults = reranked
+						.slice(0, limit)
+						.map((r) => {
+							const targetNorm = normalizeForComparison(r.document);
+							const originalIndex = documents.findIndex(
+								(doc) => normalizeForComparison(doc) === targetNorm,
+							);
+							return initialResults[originalIndex];
+						})
+						.filter((r) => r !== undefined);
+
+					return finalResults;
+				});
+			});
 		} catch (_error) {
 			return [];
 		} finally {
@@ -304,27 +321,30 @@ export class VaultManager {
 		}
 	}
 
-	public async syncMissingRagIndices(): Promise<void> {
+	public async syncMissingRagIndices(signal?: AbortSignal): Promise<void> {
+		throwIfAborted(signal);
 		// 로컬 모델이 있는 경우 우선적으로 사용
 		if (this.isLocalAIReady) {
-			await this.executeSync();
+			await this.executeSync(signal);
 			return;
 		}
 		const isLocalReady = await localEmbedder.checkModelPresence();
 		if (isLocalReady) {
-			await this.executeSync();
+			await this.executeSync(signal);
 		} else {
 			// 아무것도 없으면 조용히 종료 (로그는 이미 index.ts에서 나옴)
 			return;
 		}
 	}
 
-	private async executeSync(): Promise<void> {
+	private async executeSync(signal?: AbortSignal): Promise<void> {
+		throwIfAborted(signal);
 		const allDocs = await this.getAllDocuments();
 		const forceReindex = await vectorDB.checkAndMigrateIfNeeded();
 		const filesToProcess: string[] = [];
 
 		for (const doc of allDocs) {
+			throwIfAborted(signal);
 			if (forceReindex) {
 				filesToProcess.push(doc.filePath);
 			} else {
@@ -349,7 +369,8 @@ export class VaultManager {
 			await this.dbSemaphore.acquire();
 			try {
 				for (const filePath of filesToProcess) {
-					await ragIndexer.processFile(filePath);
+					throwIfAborted(signal);
+					await ragIndexer.processFile(filePath, undefined, { signal });
 				}
 				await vectorDB.createVectorIndex();
 			} finally {
@@ -362,12 +383,11 @@ export class VaultManager {
 	public async upsertDocument(filePath: string): Promise<void> {
 		await this.indexer.upsertFile(filePath, this.ioSemaphore);
 
-		if (!this.isLocalAIReady) {
+		if (!this.isLocalAIReady || !localModelManager.isEmbedderReady) {
 			return;
 		}
 
-		const isLocalReady = await localEmbedder.checkModelPresence();
-		if (isLocalReady) {
+		if (localModelManager.isEmbedderReady) {
 			await this.dbSemaphore.acquire();
 			try {
 				await ragIndexer.processFile(filePath);
@@ -384,6 +404,10 @@ export class VaultManager {
 				`[VaultManager] Embedding server is down. Skipping RAG index for: ${filePath}`,
 			);
 		}
+	}
+
+	public async shutdown(): Promise<void> {
+		await ragIndexer.shutdown();
 	}
 
 	public async removeDocument(filePath: string): Promise<void> {

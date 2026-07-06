@@ -21,6 +21,7 @@ import {
 import { localEmbedder } from "../src/utils/Embedder";
 import { localReranker } from "../src/utils/LocalReranker";
 import { FrontMatterSchema } from "../src/utils/processor/types";
+import { ServerLifecycle } from "../src/utils/ServerLifecycle";
 import demo_data from "./assets/demo_data";
 
 const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault");
@@ -118,7 +119,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			InMemoryTransport.createLinkedPair();
 
 		state.vaultPath = TEST_VAULT_PATH;
-		embeddedServer = createMcpServer();
+		embeddedServer = createMcpServer(new ServerLifecycle());
 		await embeddedServer.connect(serverTransport);
 		await mcpClient.connect(clientTransport);
 

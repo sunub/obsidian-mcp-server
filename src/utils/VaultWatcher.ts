@@ -2,12 +2,13 @@ import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import { getGlobalVaultManager } from "./getVaultManager.js";
 import type { VaultManager } from "./VaultManger/VaultManager.js";
+import type { ServerLifecycle } from "./ServerLifecycle.js";
 
 export class VaultWatcher {
 	private watcher: FSWatcher | null = null;
 	private vaultManager: VaultManager | null = null;
 
-	async start(vaultPath: string) {
+	async start(vaultPath: string, lifecycle?: ServerLifecycle) {
 		if (this.watcher) {
 			await this.watcher.close();
 		}
@@ -16,11 +17,7 @@ export class VaultWatcher {
 			this.vaultManager = getGlobalVaultManager();
 		}
 
-		await this.vaultManager.initialize();
-		// RAG 인덱싱은 백그라운드에서 실행 (await 하지 않음)
-		this.vaultManager.syncMissingRagIndices().catch((error) => {
-			console.error("[VaultManager] Background RAG sync error:", error);
-		});
+		void lifecycle;
 
 		console.error(`Starting Vault Watcher for real-time sync: ${vaultPath}`);
 		this.watcher = chokidar.watch(vaultPath, {
@@ -59,6 +56,7 @@ export class VaultWatcher {
 			await this.watcher.close();
 			this.watcher = null;
 		}
+		await this.vaultManager?.shutdown();
 	}
 
 	private isMarkdown(filePath: string): boolean {
