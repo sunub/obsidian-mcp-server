@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type {
 	PreTrainedModel,
 	PreTrainedTokenizer,
@@ -17,8 +19,8 @@ const rerankedResultsSchema = z.array(
 	}),
 );
 
-class Reranker {
-	private modelName = "Xenova/bge-reranker-base";
+export class Reranker {
+	public readonly modelName = "Xenova/bge-reranker-base";
 	private tokenizer: PreTrainedTokenizer | null = null;
 	private model: PreTrainedModel | null = null;
 	private initPromise: Promise<void> | null = null;
@@ -30,12 +32,11 @@ class Reranker {
 	}
 
 	public async checkModelPresence(): Promise<boolean> {
-		try {
-			await this.init();
-			return true;
-		} catch (_e) {
-			return false;
-		}
+		return this.hasLocalModelFiles();
+	}
+
+	public hasLocalModelFiles(): boolean {
+		return existsSync(join(MODELS_DIR, this.modelName));
 	}
 
 	get isReady(): boolean {
@@ -58,6 +59,19 @@ class Reranker {
 			this.initPromise = this.loadModel();
 		}
 		return this.initPromise;
+	}
+
+	public async dispose(): Promise<void> {
+		if (this.model) {
+			try {
+				await this.model.dispose();
+			} catch (e) {
+				console.error("Failed to dispose reranker model:", e);
+			}
+		}
+		this.tokenizer = null;
+		this.model = null;
+		this.initPromise = null;
 	}
 
 	public async rerank(

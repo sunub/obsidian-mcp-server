@@ -1,8 +1,25 @@
+import type { RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import pkg from "../package.json" with { type: "json" };
 import tools from "./tools/index.js";
+import type { ServerLifecycle } from "./utils/ServerLifecycle.js";
 
-export default function createMcpServer(): McpServer {
+type ToolConfig = {
+	title?: string;
+	description?: string;
+	inputSchema?: unknown;
+	outputSchema?: unknown;
+	annotations?: unknown;
+	_meta?: Record<string, unknown>;
+};
+type RawToolCallback = (...args: unknown[]) => unknown;
+type RawRegisterTool = (
+	name: string,
+	config: ToolConfig,
+	callback: RawToolCallback,
+) => RegisteredTool;
+
+export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 	const mcpServer = new McpServer(
 		{
 			version: pkg.version,
@@ -37,6 +54,18 @@ export default function createMcpServer(): McpServer {
 	      `,
 		},
 	);
+
+	const registerTool = mcpServer.registerTool.bind(
+		mcpServer,
+	) as unknown as RawRegisterTool;
+
+	mcpServer.registerTool = ((name, config, callback) => {
+		const rawCallback = callback as RawToolCallback;
+		const wrappedCallback: RawToolCallback = (...args) =>
+			lifecycle.runToolCall(name, () => Promise.resolve(rawCallback(...args)));
+
+		return registerTool(name, config, wrappedCallback);
+	}) as typeof mcpServer.registerTool;
 
 	for (const tool of Object.values(tools)) {
 		tool.register(mcpServer);

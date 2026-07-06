@@ -1,6 +1,6 @@
 {
 	"name": "@sunub/obsidian-mcp-server",
-	"version": "0.3.28",
+	"version": "0.3.29",
 	"description": "A server for the Obsidian Model Context Protocol.",
 	"keywords": [
 		"obsidian",
@@ -34,6 +34,8 @@
 		"format": "npx biome format --write",
 		"lint": "npx biome lint --write",
 		"check": "npx biome check --write",
+		"benchmark:cli-streaming": "tsx tests/run_cli_streaming_benchmark.tsx",
+		"verify:cli-streaming": "tsx tests/run_cli_streaming_integrity.ts",
 		"cli": "npx tsx src/cli/index.tsx"
 	},
 	"dependencies": {

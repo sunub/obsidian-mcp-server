@@ -2,69 +2,74 @@
 
 [![npm version](https://img.shields.io/npm/v/@sunub/obsidian-mcp-server.svg)](https://www.npmjs.com/package/@sunub/obsidian-mcp-server)
 
-`obsidian-mcp-server`는 Obsidian Vault의 Markdown 문서를 AI 에이전트가 조회하고, 검색하고, 요약할 수 있게 해주는 MCP 서버입니다.
+`obsidian-mcp-server`는 Obsidian Vault의 Markdown 문서를 AI 에이전트가 조회하고, 관련 근거를 선별하고, 컨텍스트로 압축해 활용할 수 있게 해주는 로컬 우선 MCP 서버입니다.
 
-이 프로젝트는 단순히 문서를 읽어오는 것을 넘어, **transformers.js를 활용한 로컬 하이브리드 검색** 기능을 제공하며, 터미널에서 즉시 Vault와 대화할 수 있는 **대화형 CLI AI Agent UI**를 포함하고 있습니다.
+이 프로젝트에서 RAG는 특정 벡터 DB나 검색 엔진 선택을 뜻하지 않습니다. RAG는 Vault에서 후보 문서를 찾고, Agent 작업에 맞는 근거를 고르고, 컨텍스트 윈도우에 맞게 압축해 제공하는 **Agent Context Pipeline**입니다.
 
-## 주요 특징
+## 핵심 방향
 
-- 🔍 **하이브리드 검색:** 키워드 검색과 시맨틱(벡터) 검색을 결합하고 RRF(Reciprocal Rank Fusion)와 Reranking을 통해 최적의 결과 제공.
-- 🚀 **Zero-Dependency 로컬 AI:** `@huggingface/transformers`를 사용하여 임베딩 및 리랭킹 모델을 Node.js 프로세스 내에서 직접 실행 (외부 API 서버 불필요).
-- 💬 **내장 CLI 에이전트:** MCP 도구들을 활용하여 Vault 내용에 대해 질문하고 답변을 받을 수 있는 터미널 기반 UI 제공. [상세 보기](#대화형-cli-ai-agent-ui)
-- 📦 **토큰 최적화:** AI 에이전트의 토큰 사용량을 제어하기 위한 다양한 압축 모드와 출력 제한 기능 제공.
+- **로컬 우선 동작**: 외부 서비스나 별도로 운영해야 하는 검색 엔진 없이 사용자 머신에서 Vault 검색과 컨텍스트 준비를 수행합니다.
+- **컨텍스트 선별**: 키워드 검색과 시맨틱 검색을 결합해 Agent에게 제공할 근거 후보를 찾습니다.
+- **명시적 RAG 통합**: 모든 프롬프트에 백그라운드 검색을 붙이지 않고, Vault 관련 명령이나 도구 참조가 있을 때 문맥 수집 경로를 엽니다.
+- **토큰 절약**: 원문 전체를 밀어넣기보다 excerpt, evidence snippet, `memory_packet` 형태로 압축합니다.
+- **로컬 모델 기반 검색**: `@huggingface/transformers`, LanceDB, local reranker를 사용해 semantic retrieval을 로컬에서 수행합니다.
 
-## 무엇을 할 수 있나 (MCP Tools)
+Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 대안입니다. 다만 이 프로젝트의 기본 목표는 외부 서비스나 별도 검색 엔진에 의존하지 않는 로컬 단독 작업이므로, embedded retrieval stack을 기본값으로 선택합니다.
 
-- **통합 검색 (`vault`, `action="search"`)**: 키워드와 의미 기반 검색을 동시에 수행하여 관련성 높은 문서 탐색.
-- **문서 열람 (`vault`, `action="read"`)**: 특정 노트의 본문 및 메타데이터 조회.
-- **전체 목록 및 상태 (`vault`, `action="list_all"|"stats"`)**: Vault의 전반적인 상태와 파일 목록 확인.
-- **컨텍스트 수집 (`vault`, `action="collect_context"`)**: 특정 주제와 연관된 고밀도 지식 패킷 생성.
-- **지식 로드 (`vault`, `action="load_memory"`)**: 저장된 메모리 스냅샷 호출.
-- **Frontmatter 관리 (`generate_property`|`write_property`)**: AI 기반 메타데이터 생성 및 반영.
-- **첨부파일 정리 (`organize_attachments`)**: 문서 내 이미지를 전용 폴더로 자동 이동 및 링크 업데이트.
+## 제공 기능
 
----
+### MCP Tools
 
-## 설치 및 설정
+- `vault`
+  - `search`: 키워드와 의미 기반 검색을 결합한 하이브리드 후보 탐색
+  - `read`: 특정 노트 본문과 메타데이터 조회
+  - `list_all`: Vault 문서 목록 조회
+  - `stats`: Vault 및 인덱스 상태 조회
+  - `collect_context`: 주제와 연관된 문서를 선별해 `memory_packet` 생성
+  - `load_memory`: 저장된 컨텍스트 메모리 스냅샷 로드
+- `generate_property`: 문서 내용을 바탕으로 frontmatter 후보 생성
+- `write_property`: frontmatter 쓰기
+- `create_document_with_properties`: 문서 분석 후 속성 생성/쓰기 2단계 워크플로우
+- `organize_attachments`: 문서 내 첨부파일 정리 및 링크 갱신
 
-### 1. 사전 요구사항
+### Retrieval Pipeline
 
-- **Node.js**: v22.0.0 이상
-- **Obsidian Vault**: 절대 경로를 알고 있어야 합니다.
+현재 기본 retrieval backend는 다음 순서로 동작합니다.
 
-### 2. 로컬 AI 모델 설치 (필수)
+1. **Keyword Search**: 내부 `Indexer`로 정확한 단어 매칭 후보를 찾습니다.
+2. **Vector Search**: LanceDB와 로컬 embedding model로 의미적으로 유사한 청크를 찾습니다.
+3. **RRF Fusion**: 키워드 결과와 벡터 결과의 순위를 결합합니다.
+4. **Local Reranking**: 상위 후보를 reranker로 다시 평가합니다.
+5. **Compression**: 필요한 excerpt, source ref, memory packet만 Agent context로 제공합니다.
 
-시맨틱 검색 및 리랭킹 기능을 활성화하려면 아래 명령어를 통해 필요한 로컬 모델을 다운로드해야 합니다.
+로컬 embedding/reranking 모델이 설치되지 않은 경우 서버는 키워드 검색으로 폴백합니다.
+
+## 설치
+
+### 요구사항
+
+- Node.js 22 이상
+- 접근 가능한 Obsidian Vault 절대 경로
+
+### MCP 서버 설치 및 모델 준비
 
 ```bash
-# 로컬 임베딩 및 리랭킹 모델 설치
 npx @sunub/obsidian-mcp-server setup
 ```
 
-또는 이미 패키지를 설치했다면:
+이 명령은 로컬 semantic search와 reranking에 필요한 모델을 캐시에 설치합니다.
+
+이미 패키지를 설치한 환경에서는 다음처럼 실행할 수도 있습니다.
 
 ```bash
 obsidian-mcp-server setup
 ```
 
-이 명령어는 `Xenova/paraphrase-multilingual-MiniLM-L12-v2`(임베딩)와 `Xenova/bge-reranker-base`(리랭킹) 모델을 다운로드하여 로컬 캐시에 저장합니다.
+모델 설치가 없으면 기본 키워드 검색은 동작하지만, semantic search와 reranking 품질은 사용할 수 없습니다.
 
-### 3. 환경 변수 설정
+## MCP 클라이언트 설정
 
-| 환경변수 | 기본값 | 역할 | 필수 여부 |
-|---|---|---|---|
-| `VAULT_DIR_PATH` | — | Obsidian Vault 절대 경로 | **필수** |
-| `LLM_API_URL` | `http://127.0.0.1:8080` | CLI UI용 채팅 모델 API 엔드포인트 | CLI 사용 시 필수 |
-| `LLM_CHAT_MODEL` | `llama3` | 채팅에 사용할 모델명 | CLI 사용 시 필수 |
-| `LOGGING_LEVEL` | `info` | 로그 수준 (`debug` / `info` / `warn` / `error`) | 선택 |
-
----
-
-## MCP 클라이언트 설정 예시
-
-각 클라이언트 설정에서 `env.VAULT_DIR_PATH`를 본인의 Vault 경로로 수정하여 사용하세요.
-
-### Claude Desktop / Cursor / Copilot
+Claude Desktop, Cursor, Copilot 등 MCP 클라이언트에는 다음처럼 등록합니다.
 
 ```json
 {
@@ -80,50 +85,187 @@ obsidian-mcp-server setup
 }
 ```
 
----
+`VAULT_DIR_PATH`는 반드시 본인의 Vault 절대 경로로 바꿔야 합니다.
 
-## 하이브리드 검색 동작 방식
+## 환경 변수
 
-기존의 키워드 검색만으로는 찾기 힘든 의미적 연관성을 잡기 위해 다음과 같은 파이프라인을 거칩니다:
+| 환경변수 | 기본값 | 용도 | 필수 |
+| --- | --- | --- | --- |
+| `VAULT_DIR_PATH` | 없음 | Obsidian Vault 절대 경로 | 예 |
+| `LOGGING_LEVEL` | `info` | `debug`, `info`, `warn`, `error` | 아니오 |
+| `LLM_API_URL` | `http://127.0.0.1:8080` | CLI UI가 사용할 OpenAI 호환 로컬 LLM endpoint | CLI 사용 시 |
+| `LLM_CHAT_MODEL` | `llama3` | CLI UI 답변 생성 모델명 | CLI 사용 시 |
 
-1.  **Keyword Search**: 내부 `Indexer`를 통해 정확한 단어 매칭 결과 추출.
-2.  **Vector Search**: LanceDB와 `transformers.js` 임베딩을 사용하여 의미적으로 유사한 청크 탐색.
-3.  **RRF Fusion**: 두 검색 결과의 순위를 Reciprocal Rank Fusion 알고리즘으로 병합.
-4.  **Local Reranking**: 병합된 상위 결과들을 `BGE Reranker` 모델로 다시 평가하여 최종 순위 결정.
+MCP 서버의 Vault 검색/읽기 도구에는 `VAULT_DIR_PATH`가 핵심 설정입니다. `LLM_API_URL`과 `LLM_CHAT_MODEL`은 저장소에 포함된 개발용 CLI UI에서 대화형 스트리밍 답변을 받을 때 필요합니다.
 
-모델이 설치되지 않은 경우 자동으로 키워드 전용 모드로 동작하며, 터미널에 `npx @sunub/obsidian-mcp-server setup` 실행 권장 메시지를 표시합니다.
+## 개발용 CLI AI Agent UI
 
----
+<img width="2020" height="744" alt="banner" src="https://github.com/user-attachments/assets/16337be2-f728-4761-b8d8-b1ec7425e2e4" />
 
-## 대화형 CLI AI Agent UI
+이 저장소에는 터미널 기반 AI Agent UI가 포함되어 있습니다. 이 CLI는 npm 패키지의 공개 `bin`이 아니라 저장소 개발 환경에서 실행하는 진입점입니다.
 
-이 프로젝트에는 Obsidian Vault에 최적화된 **터미널 기반 AI 채팅 인터페이스**가 내장되어 있습니다.
+이 CLI의 목적은 Obsidian Vault를 단순히 검색하는 수준을 넘어서, **MCP 도구 호출**, **조건부 RAG 기반 문맥 수집**, **OpenAI 호환 LLM endpoint 스트리밍 응답**을 하나의 대화형 작업 흐름으로 묶는 데 있습니다. 즉, 단순한 "채팅 UI"만 구현하는 곳이 아니라, Vault와 도구, 모델 사이를 연결하는 **오케스트레이션 레이어**입니다.
 
-### 특징
-- **RAG 통합**: 질문 시 자동으로 Vault에서 관련 컨텍스트를 수집하여 LLM에 전달합니다.
-- **실시간 스트리밍**: LLM의 답변과 "생각하는 과정(<think>)"을 실시간으로 렌더링합니다.
-- **슬래시 커맨드**: `/search`, `/read`, `/index` 등 MCP 도구를 CLI에서 직접 명령어로 호출 가능합니다.
-- **멀티 MCP 관리**: 연결된 모든 MCP 서버의 상태와 도구 목록을 모니터링합니다.
+### 왜 이 CLI가 필요한가
+
+프로젝트의 문서와 설계 방향을 기준으로 보면, 이 CLI는 다음 문제를 해결하거나 완화하기 위해 만들어졌습니다.
+
+- **외부 AI 서비스 의존성 감소**: 프로젝트가 로컬 Vault와 로컬 도구를 다루는 만큼, 가능한 한 로컬 실행 환경에서 독립적으로 동작하도록 지향합니다.
+- **문맥 손실 감소**: Vault 관련 도구가 트리거된 질문에서는 관련 문서를 수집하고 요약해 LLM에 함께 전달할 수 있습니다.
+- **토큰 낭비 감소**: `collect_context` 기반 압축 요약과 대량 입력 오프로딩을 통해 긴 문서나 대형 paste를 그대로 모델에 밀어넣지 않습니다.
+- **터미널 입력 안정성 개선**: Raw mode 기반 입력 환경에서 발생하는 paste storm, 다중 Enter 트리거, 버퍼 오염 같은 문제를 제어합니다.
+- **장시간 세션 안정성 확보**: 스트리밍 취소, 히스토리 pruning, scrollback 위임 같은 구조를 통해 메모리 사용량과 렌더링 부담을 줄입니다.
+
+### 이 CLI가 하는 일
+
+#### 1. 대화형 AI 인터페이스
+
+사용자는 터미널에서 자연어로 질문을 입력하고, CLI는 LLM 서버와 통신해 답변을 스트리밍합니다.
+
+- 응답을 실시간으로 출력합니다.
+- 모델의 thinking 영역이 있으면 중간 추론 상태도 별도로 렌더링합니다.
+- 완료된 대화는 히스토리에 반영하고, 진행 중 응답은 별도 `pending` 상태로 관리합니다.
+
+#### 2. MCP 도구 실행 인터페이스
+
+CLI는 MCP 서버에 연결된 도구를 터미널에서 직접 사용할 수 있게 합니다.
+
+- `/search`, `/read`, `/stats`, `/context`, `/tools` 같은 슬래시 커맨드를 제공합니다.
+- 사용자의 명시적 명령뿐 아니라, LLM이 tool call을 생성했을 때도 이를 실행할 수 있는 루프를 제공합니다.
+- 여러 MCP 서버에 연결하고, 각 서버의 도구 목록과 연결 상태를 함께 관리합니다.
+
+#### 3. 조건부 RAG 기반 문맥 주입
+
+이 CLI는 모든 일반 질문에 대해 자동으로 RAG를 수행하지는 않습니다. 현재 구현 기준으로는 입력 텍스트에서 `vault` 도구나 관련 서버/도구 이름이 트리거된 경우에만 Vault 문맥 수집을 시도하고, 이를 `<context>` 블록으로 정리해 프롬프트에 주입합니다.
+
+- `collect_context` 액션을 활용해 관련 문서를 배치 단위로 수집합니다.
+- `memory_packet`과 고연관 문서 excerpt를 조합해 LLM 입력을 구성합니다.
+- 따라서 이 CLI는 항상 RAG가 붙는 채팅창이라기보다, **필요 시 Vault-aware 동작을 수행하는 agent UI**에 가깝습니다.
+
+#### 4. 대용량 입력 최적화
+
+긴 코드, 로그, 문서가 붙여넣기되면 이를 그대로 모델에 보내는 대신 안전하게 축약/오프로딩합니다.
+
+- 큰 paste는 임시 파일로 분리해 저장합니다.
+- LLM에는 전체 본문 대신 파일 위치와 미리보기, 처리 지시문을 전달합니다.
+- 이 방식은 토큰 사용량을 줄이고, 필요할 때만 도구를 통해 원문을 읽게 만듭니다.
+
+#### 5. 스트리밍 중심 사용자 경험
+
+CLI UI는 응답이 끝난 뒤 한 번에 보여주는 구조가 아니라, 생성 중인 상태를 즉시 보여주는 흐름을 중심으로 설계되어 있습니다.
+
+- 입력 직후 버퍼를 비워 다음 작업을 준비합니다.
+- 첫 토큰 전에는 thinking/processing 상태를 보여줍니다.
+- 완료된 기록은 정적 영역으로 넘기고, 현재 응답만 동적으로 다시 렌더링합니다.
+
+### 주요 실행 흐름
+
+1. 사용자가 메시지 또는 슬래시 커맨드를 입력합니다.
+2. 질문 내용에서 Vault 관련 도구가 트리거되면 관련 문맥 수집을 시도합니다.
+3. LLM 스트리밍 요청을 시작합니다.
+4. 필요 시 MCP 도구를 호출합니다.
+5. 응답을 실시간으로 출력합니다.
+6. 완료된 결과를 히스토리에 반영하고 다음 입력을 기다립니다.
+
+### 아키텍처 관점에서의 역할
+
+| 영역 | 역할 | 대표 파일 |
+| --- | --- | --- |
+| 부팅 및 환경 확인 | LLM endpoint 확인, 초기 로더/에러 화면 제어 | `AppContainer.tsx`, `ui/LLMHealthChecker.tsx`, `ui/LLMStatusLoader.tsx` |
+| MCP 연결 관리 | 설정 파일 기반 MCP 서버 연결, 도구 목록 수집, 멀티 서버 상태 관리 | `hooks/useMcpManager.ts`, `services/McpClientService.ts`, `config/mcpServersConfig.ts` |
+| 입력 시스템 | Raw key 처리, paste 버퍼링, 멀티라인 편집, 히스토리 탐색 | `context/KeypressContext.tsx`, `ui/InputPrompt.tsx`, `key/` |
+| 명령 디스패치 | 슬래시 커맨드를 MCP 도구 호출로 변환 | `hooks/useDispatcher.ts` |
+| RAG 컨텍스트 수집 | Vault 관련 도구가 트리거된 질문에서만 문맥을 수집해 프롬프트에 주입 | `hooks/useRagContext.ts` |
+| LLM 스트리밍 루프 | 스트리밍 응답, tool call 실행, thinking 파싱 | `hooks/useLlmStream/useLlmStream.ts` |
+| 렌더링 및 세션 관리 | 히스토리 출력, pending 응답 표시, transient UI 메시지 관리 | `ui/MainContent.tsx`, `hooks/useHistoryManager.ts` |
+| 대량 입력 최적화 | 큰 붙여넣기 입력 오프로딩 및 임시 파일 정리 | `services/InputOffloadService.ts` |
+
+### 설계 원칙
+
+이 CLI는 다음 원칙을 중심으로 설계됩니다.
+
+- **입력과 렌더링의 분리**
+- **스트리밍 우선 UX**
+- **설정 파일 기반 MCP 연결**
+- **도구 호출과 대화 흐름의 통합**
+- **토큰/메모리 효율 최적화**
+- **중단 가능성과 복구 가능성 보장**
+
+### 제공하는 주요 명령
+
+현재 코드 기준으로 기본 제공되는 대표 슬래시 커맨드는 다음과 같습니다.
+
+- `/search <keyword>`: Vault 하이브리드 검색
+- `/read "filename"`: 특정 문서 열람
+- `/semantic <query>`: 시맨틱 검색
+- `/stats`: Vault 상태 확인
+- `/index`: 벡터 인덱스 갱신
+- `/context <topic>`: 토픽 기반 문맥 수집
+- `/organize <keyword>`: 첨부 정리 도구 실행
+- `/genprop <filename>`: frontmatter 생성 도구 호출
+- `/tools`: 연결된 MCP 도구 목록 확인
+- `/help`: 도움말 표시
+- `/clear`: 화면/대화 상태 초기화
+- `/quit`, `/exit`: CLI 종료
 
 ### 실행 방법
 
-1.  **채팅 모델 서버 구동**: `llama.cpp` 또는 `Ollama`와 같은 서버를 OpenAI 호환 모드로 띄웁니다.
-    - 예: `llama-server -m models/gemma-2-9b-it.Q4_K_M.gguf --port 8080`
-2.  **CLI 실행**:
-    ```bash
-    # 환경변수와 함께 실행
-    VAULT_DIR_PATH="/your/vault" LLM_API_URL="http://localhost:8080" npx @sunub/obsidian-mcp-server
-    ```
+현재 CLI 진입점은 **저장소 개발 환경용 실행 방식**입니다. 패키지의 `bin` 엔트리는 MCP 서버용이며, CLI UI는 루트에서 별도 스크립트로 실행됩니다.
 
-### 슬래시 커맨드 도움말
-- `/search <keyword>`: 하이브리드 검색 실행
-- `/read "filename"`: 특정 문서 읽기
-- `/stats`: Vault 상태 확인
-- `/index`: 벡터 DB 재색인 강제 실행
-- `/tools`: 사용 가능한 모든 MCP 도구 목록 확인
-- `/help`: 도움말 보기
+저장소 루트에서 의존성을 설치하고 서버를 먼저 빌드합니다.
 
----
+```bash
+npm install
+npm run build
+```
+
+이 저장소 루트에는 기본 `mcp-servers.json`이 포함되어 있으며, `node ./build/index.js`로 서버를 실행합니다.
+
+그 다음 OpenAI 호환 로컬 LLM 서버를 실행합니다. 예를 들어 `llama.cpp`의 `llama-server`를 `8080` 포트에 띄울 수 있습니다.
+
+```bash
+llama-server -m /path/to/model.gguf --port 8080
+```
+
+CLI는 다음처럼 환경 변수를 주입하여 실행합니다:
+
+```bash
+VAULT_DIR_PATH="/Users/username/Documents/MyVault" \
+LLM_API_URL="http://127.0.0.1:8080" \
+LLM_CHAT_MODEL="llama3" \
+npm run cli
+```
+
+#### MCP 설정 파일
+
+CLI는 실행 시 현재 작업 디렉터리에서 다음 파일을 순서대로 찾습니다.
+
+1. `mcp-servers.json`
+2. `.mcp-servers.json`
+
+설정 파일이 없으면 환경 변수 기반 fallback을 시도하지만, 가장 안전한 실행 방식은 **저장소 루트에서**, `build/index.js`가 준비된 상태로 실행하는 것입니다.
+
+#### 실행 시 주의할 점
+
+- 이 CLI 실행 방법은 **개발용 CLI UI 진입점** 기준입니다. 배포된 `npx @sunub/obsidian-mcp-server`는 MCP 서버를 띄울 뿐 CLI UI를 실행하지 않습니다.
+- CLI가 MCP 서버에 연결되려면 현재 디렉터리의 `mcp-servers.json` 또는 `.mcp-servers.json`이 유효해야 합니다.
+- `VAULT_DIR_PATH`가 없거나 잘못되면 Vault 관련 도구가 동작하지 않습니다.
+- semantic search와 reranking을 쓰려면 서버 `setup`으로 로컬 모델을 설치해야 합니다.
+
+## 주의 사항
+
+- `VAULT_DIR_PATH`가 없거나 잘못되면 Vault 관련 도구가 동작하지 않습니다.
+- semantic search와 reranking을 쓰려면 `setup`으로 로컬 모델을 설치해야 합니다.
+- CLI UI를 쓰려면 별도의 OpenAI 호환 로컬 LLM 서버가 실행 중이어야 합니다.
+- CLI의 명시적 RAG는 `vault` 관련 명령, 서버명, 도구명이 입력에서 트리거될 때만 사전 문맥 수집을 시도합니다.
+- `collect_context`는 긴 주제 정리와 메모리 패킷 생성에 적합하고, 단건 조회는 `search`나 `read`가 더 단순합니다.
+- 쓰기 계열 도구는 Vault 바깥 경로에 쓰지 않도록 차단합니다.
+
+## 참고 문서
+
+- [Tool Reference](docs/tool-reference.md)
+- [Tool Usage Guide](docs/tools-usage-guide.md)
+- [collect_context Guide](docs/collect-context-guide.md)
 
 ## 라이선스
 

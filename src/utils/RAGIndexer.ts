@@ -1,8 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import ora, { type Ora } from "ora";
+import { throwIfAborted } from "./abort.js";
 import { DirectoryWalker } from "./DirectoryWalker.js";
 import { localEmbedder } from "./Embedder.js";
+import { localModelManager } from "./LocalModelManager.js";
 import { Semaphore } from "./semaphore.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
 import { WorkerPool } from "./worker/WorkerPool.js";
@@ -68,58 +70,81 @@ export class RAGIndexer {
 	private async buildFileRecords(
 		filePath: string,
 		content?: string,
-	): Promise<{ records: VectorRecord[]; mtime: string }> {
+		signal?: AbortSignal,
+	): Promise<{ records: VectorRecord[]; mtime: string } | null> {
+		throwIfAborted(signal);
 		const fileStat = await fs.stat(filePath);
 		const fileContent = content ?? (await fs.readFile(filePath, "utf-8"));
+		throwIfAborted(signal);
 		const chunkMetadatas = await this.chukingWorkerPool.runTask({
 			filePath,
 			fileContent,
 			birthTime: fileStat.birthtime.toISOString(),
 		});
 
-		await localEmbedder.init();
-		const records: VectorRecord[] = [];
-
-		for (const metadata of chunkMetadatas) {
-			const combined = [
-				metadata.context ? metadata.context : "",
-				metadata.content,
-			]
-				.filter(Boolean)
-				.join("\n\n");
-
-			const MAX_EMBED_TOKENS = 500;
-			const combinedTokenCount = localEmbedder.getTokenCount(combined);
-			const safeText =
-				combinedTokenCount > MAX_EMBED_TOKENS
-					? combined.slice(
-							0,
-							Math.floor(
-								combined.length * (MAX_EMBED_TOKENS / combinedTokenCount),
-							),
-						)
-					: combined;
-
-			await this.embeddingSemaphore.acquire();
-			let vector: number[];
-			try {
-				vector = await localEmbedder.embed(`search_document: ${safeText}`);
-			} finally {
-				this.embeddingSemaphore.release();
+		return await localModelManager.withEmbedder(3000, async (isReady) => {
+			throwIfAborted(signal);
+			if (!isReady) {
+				return null;
 			}
 
-			records.push({
-				...metadata,
-				vector,
-			});
-		}
+			const records: VectorRecord[] = [];
 
-		return { records, mtime: fileStat.mtime.toISOString() };
+			for (const metadata of chunkMetadatas) {
+				throwIfAborted(signal);
+				const combined = [
+					metadata.context ? metadata.context : "",
+					metadata.content,
+				]
+					.filter(Boolean)
+					.join("\n\n");
+
+				const MAX_EMBED_TOKENS = 500;
+				const combinedTokenCount = localEmbedder.getTokenCount(combined);
+				const safeText =
+					combinedTokenCount > MAX_EMBED_TOKENS
+						? combined.slice(
+								0,
+								Math.floor(
+									combined.length * (MAX_EMBED_TOKENS / combinedTokenCount),
+								),
+							)
+						: combined;
+
+				await this.embeddingSemaphore.acquire();
+				let vector: number[];
+				try {
+					throwIfAborted(signal);
+					vector = await localEmbedder.embed(`search_document: ${safeText}`);
+				} finally {
+					this.embeddingSemaphore.release();
+				}
+
+				records.push({
+					...metadata,
+					vector,
+				});
+			}
+
+			return { records, mtime: fileStat.mtime.toISOString() };
+		});
 	}
 
-	async processFile(filePath: string, content?: string): Promise<void> {
+	async processFile(
+		filePath: string,
+		content?: string,
+		options: { signal?: AbortSignal } = {},
+	): Promise<void> {
 		try {
-			const { records, mtime } = await this.buildFileRecords(filePath, content);
+			const result = await this.buildFileRecords(
+				filePath,
+				content,
+				options.signal,
+			);
+			if (!result) {
+				return;
+			}
+			const { records, mtime } = result;
 			if (records.length > 0) {
 				await vectorDB.upsertChunks(records);
 			}
@@ -135,9 +160,10 @@ export class RAGIndexer {
 	async processFileInMemory(
 		filePath: string,
 		content?: string,
+		options: { signal?: AbortSignal } = {},
 	): Promise<{ records: VectorRecord[]; mtime: string } | null> {
 		try {
-			return await this.buildFileRecords(filePath, content);
+			return await this.buildFileRecords(filePath, content, options.signal);
 		} catch (error) {
 			console.error(`\nError processing file for RAG: ${filePath}`, error);
 			return null;
@@ -146,11 +172,12 @@ export class RAGIndexer {
 		}
 	}
 
-	async indexAll(vaultPath: string): Promise<void> {
+	async indexAll(vaultPath: string, signal?: AbortSignal): Promise<void> {
 		this._isIndexing = true;
 		this.chukingWorkerPool.init();
 
 		try {
+			throwIfAborted(signal);
 			const walker = new DirectoryWalker();
 			const filePaths = await walker.walk(vaultPath, this.ioSemaphore);
 			const markdownFiles = filePaths.filter(
@@ -165,13 +192,20 @@ export class RAGIndexer {
 			const fileSemaphore = new Semaphore(8);
 
 			for (let i = 0; i < markdownFiles.length; i += BATCH_SIZE) {
+				throwIfAborted(signal);
 				const batchFiles = markdownFiles.slice(i, i + BATCH_SIZE);
 
 				await Promise.all(
 					batchFiles.map(async (filePath) => {
 						await fileSemaphore.acquire();
 						try {
-							const result = await this.processFileInMemory(filePath);
+							const result = await this.processFileInMemory(
+								filePath,
+								undefined,
+								{
+									signal,
+								},
+							);
 							if (result && result.records.length > 0) {
 								currentBatch.push(...result.records);
 								currentMeta.push({ filePath, mtime: result.mtime });
@@ -193,8 +227,17 @@ export class RAGIndexer {
 			}
 		} finally {
 			this._isIndexing = false;
-			this.chukingWorkerPool.terminateAll();
+			await this.chukingWorkerPool.terminateAll();
 		}
+	}
+
+	async shutdown(): Promise<void> {
+		this._isIndexing = false;
+		if (this.spinner) {
+			this.spinner.stop();
+			this.spinner = null;
+		}
+		await this.chukingWorkerPool.terminateAll();
 	}
 
 	async deleteFile(filePath: string): Promise<void> {

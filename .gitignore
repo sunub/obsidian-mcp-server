@@ -16,3 +16,5 @@ mcp-servers.json
 
 logs/*
 tsconfig.tsbuildinfo
+.omx/
+models/

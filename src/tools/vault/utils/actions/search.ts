@@ -4,6 +4,7 @@ import type { ObsidianContentQueryParams } from "../../params.js";
 import { formatDocument, getDocumentContent } from "../document.js";
 import {
 	ACTION_DEFAULT_MAX_OUTPUT_CHARS,
+	type CompressionMode,
 	finalizePayloadWithCompression,
 	jsonCharLength,
 	resolveCompressionMode,
@@ -78,14 +79,16 @@ export async function searchDocuments(
 
 	const effectiveExcerptLength =
 		params.excerptLength ??
-		(mode === "none" ? undefined : SEARCH_DEFAULT_EXCERPT[mode]);
+		(mode === "none"
+			? undefined
+			: SEARCH_DEFAULT_EXCERPT[mode as Exclude<CompressionMode, "none">]);
 
 	const documentsData = await Promise.all(
 		searchResults.map(async (res) => {
 			const doc = res.document;
 			let formatted: ReturnType<typeof formatDocument>;
 
-			if (params.includeContent) {
+			if (params.includeContent && mode !== "summary") {
 				const fullDoc = await getDocumentContent(
 					vaultManager,
 					doc.filePath,
@@ -115,7 +118,11 @@ export async function searchDocuments(
 	);
 	const maxOutputChars =
 		params.maxOutputChars ??
-		(mode === "none" ? null : ACTION_DEFAULT_MAX_OUTPUT_CHARS.search[mode]);
+		(mode === "none"
+			? null
+			: ACTION_DEFAULT_MAX_OUTPUT_CHARS.search[
+					mode as Exclude<CompressionMode, "none">
+				]);
 
 	const basePayload = {
 		query: params.keyword,

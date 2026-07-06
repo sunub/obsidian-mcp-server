@@ -1,6 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test, vi } from "vitest";
 import { readSpecificFile } from "../../src/tools/vault/utils.js";
+import { localModelManager } from "../../src/utils/LocalModelManager.js";
 import type { DocumentIndex } from "../../src/utils/processor/types.js";
 import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
 import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
@@ -75,11 +76,15 @@ describe("Vault read action with query filtering", () => {
 		].join("\n\n");
 
 		const vaultManager = createMockVaultManager(documentContent);
+		vi.spyOn(localModelManager, "withReranker").mockImplementation(
+			async (_softDeadlineMs, callback) => callback(true),
+		);
 
 		const result = await readSpecificFile(vaultManager, {
 			action: "read",
 			filename: "/vault/beta.md",
 			query: "apple",
+			compressionMode: "balanced",
 		});
 
 		expect(result.isError).toBe(false);
