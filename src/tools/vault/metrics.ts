@@ -1,6 +1,7 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CompressionMode } from "./utils/shared.js";
 
 type VaultAction =
 	| "search"
@@ -12,7 +13,7 @@ type VaultAction =
 	| "index_vault_to_vectordb";
 
 type CompressionSummary = {
-	mode: "aggressive" | "balanced" | "none";
+	mode: CompressionMode;
 	estimated_tokens: number;
 	truncated: boolean;
 	output_chars: number;
@@ -77,8 +78,13 @@ function parseCompression(compression: unknown): CompressionSummary | null {
 	const sourceChars = compression["source_chars"];
 	const maxOutputChars = compression["max_output_chars"];
 
+	// 기본 모드인 "summary"를 포함해야 합니다.
+	// 누락 시 기본 경로의 응답이 전부 계측에서 빠집니다.
 	if (
-		(mode !== "aggressive" && mode !== "balanced" && mode !== "none") ||
+		(mode !== "summary" &&
+			mode !== "aggressive" &&
+			mode !== "balanced" &&
+			mode !== "none") ||
 		typeof estimatedTokens !== "number" ||
 		typeof truncated !== "boolean" ||
 		typeof outputChars !== "number" ||
@@ -89,7 +95,7 @@ function parseCompression(compression: unknown): CompressionSummary | null {
 	}
 
 	return {
-		mode: mode as "aggressive" | "balanced" | "none",
+		mode: mode as CompressionMode,
 		estimated_tokens: Math.max(0, Math.floor(estimatedTokens as number)),
 		truncated: truncated as boolean,
 		output_chars: Math.max(0, Math.floor(outputChars as number)),

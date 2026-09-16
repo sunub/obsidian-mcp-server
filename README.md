@@ -95,8 +95,29 @@ Claude Desktop, Cursor, Copilot 등 MCP 클라이언트에는 다음처럼 등�
 | `LOGGING_LEVEL` | `info` | `debug`, `info`, `warn`, `error` | 아니오 |
 | `LLM_API_URL` | `http://127.0.0.1:8080` | CLI UI가 사용할 OpenAI 호환 로컬 LLM endpoint | CLI 사용 시 |
 | `LLM_CHAT_MODEL` | `llama3` | CLI UI 답변 생성 모델명 | CLI 사용 시 |
+| `VAULT_METRICS_LOG_PATH` | 없음 | 설정 시 vault 도구 응답 계측을 JSONL로 기록 | 아니오 |
 
 MCP 서버의 Vault 검색/읽기 도구에는 `VAULT_DIR_PATH`가 핵심 설정입니다. `LLM_API_URL`과 `LLM_CHAT_MODEL`은 저장소에 포함된 개발용 CLI UI에서 대화형 스트리밍 답변을 받을 때 필요합니다.
+
+계측 로그는 `npm run metrics:report -- <경로>`로 집계할 수 있습니다. 측정 결과 예시는 [Benchmarks](docs/BENCHMARKS.md)를 참고하세요.
+
+## Docker로 실행
+
+stdio 기반 MCP 서버이므로 포트를 열지 않고 stdin/stdout으로 통신합니다.
+
+```bash
+docker build -t obsidian-mcp-server .
+
+docker run -i --rm \
+  -v /path/to/vault:/vault:ro \
+  -v obsidian-mcp-models:/home/mcp/.obsidian-mcp-server \
+  -e VAULT_DIR_PATH=/vault \
+  obsidian-mcp-server
+```
+
+- 임베딩·리랭커 모델은 이미지에 굽지 않고 `/home/mcp/.obsidian-mcp-server` 볼륨에 보관합니다. 컨테이너를 재생성해도 모델을 다시 받지 않습니다.
+- 모델이 없으면 서버는 키워드 검색으로 폴백하며, 응답에 안내 메시지를 함께 반환합니다.
+- 이미지는 비루트 사용자(`mcp`, uid 10001)로 실행됩니다.
 
 ## 개발용 CLI AI Agent UI
 
@@ -266,6 +287,7 @@ CLI는 실행 시 현재 작업 디렉터리에서 다음 파일을 순서대로
 - [Tool Reference](docs/tool-reference.md)
 - [Tool Usage Guide](docs/tools-usage-guide.md)
 - [collect_context Guide](docs/collect-context-guide.md)
+- [Benchmarks](docs/BENCHMARKS.md)
 
 ## 라이선스
 
