@@ -36,6 +36,7 @@
 		"check": "npx biome check --write",
 		"benchmark:cli-streaming": "tsx tests/run_cli_streaming_benchmark.tsx",
 		"verify:cli-streaming": "tsx tests/run_cli_streaming_integrity.ts",
+		"eval:retrieval": "tsx scripts/eval_retrieval.ts",
 		"cli": "npx tsx src/cli/index.tsx"
 	},
 	"dependencies": {

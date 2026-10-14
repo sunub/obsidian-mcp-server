@@ -18,3 +18,6 @@ logs/*
 tsconfig.tsbuildinfo
 .omx/
 models/
+
+# 검색 품질 평가 산출물 (scripts/eval_retrieval.ts)
+.eval-cache/
