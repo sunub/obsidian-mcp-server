@@ -229,6 +229,8 @@ interface StageRun {
 	ranked: string[];
 	ms: number;
 	rerankCalls?: { site: "semantic" | "hybrid"; docs: number; ms: number }[];
+	// 벡터 검색 1위 청크의 코사인 거리 (재판정 생략 기준 0.2와 비교용)
+	topDistance?: number;
 }
 
 interface Row {
@@ -396,6 +398,7 @@ async function main(): Promise<void> {
 			const q = row.query.question;
 			const t = performance.now();
 			let ranked: string[] = [];
+			let topDistance: number | undefined;
 			rerankLog = [];
 			if (stage === "keyword") {
 				ranked = indexer
@@ -406,6 +409,7 @@ async function main(): Promise<void> {
 				// hybridSearch(q, 10) → safeSemanticSearch(q, 30) → 청크 90개 검색과 같은 조건
 				const vec = await localEmbedder.embed(`search_query: ${q}`);
 				const hits = await vectorDB.search(vec, TOP_K * 9);
+				topDistance = hits[0]?._distance;
 				ranked = uniqueTopK(
 					hits.map((h: { filePath: string }) => docIdOf(h.filePath)),
 				);
@@ -423,6 +427,7 @@ async function main(): Promise<void> {
 				ranked,
 				ms: performance.now() - t,
 				...(stage === "hybrid_prod" ? { rerankCalls: rerankLog } : {}),
+				...(topDistance !== undefined ? { topDistance } : {}),
 			};
 		}
 		localReranker.rerank = realRerank;
@@ -551,6 +556,16 @@ async function main(): Promise<void> {
 			"",
 			`- RRF 이후 재판정 생략: ${hybridSkipped.length}/${rows.length} (${pct(hybridSkipped.length / rows.length)}), 생략한 질의의 Hit@1 ${hit1Of(hybridSkipped)} / 재판정한 질의의 Hit@1 ${hit1Of(hybridReranked)}`,
 			`- 벡터 검색 내부 재판정 생략: ${semanticSkipped.length}/${rows.length} (${pct(semanticSkipped.length / rows.length)})`,
+			...(() => {
+				const distances = rows
+					.map((r) => r.stages.semantic?.topDistance)
+					.filter((v): v is number => typeof v === "number");
+				if (distances.length === 0) return [];
+				const below = distances.filter((d) => d < 0.2).length;
+				return [
+					`- 벡터 검색 1위 거리 분포: 최소 ${Math.min(...distances).toFixed(3)}, 중앙값 ${percentile(distances, 50).toFixed(3)}, 0.2 미만 ${below}/${distances.length}`,
+				];
+			})(),
 			`- 실제 서버 경로 처리 시간 중 리랭커 비중: ${pct(sumRerankMs / Math.max(1, sumTotalMs))} (질의당 평균 ${(sumRerankMs / rows.length).toFixed(1)}ms)`,
 			"",
 		);
@@ -573,6 +588,7 @@ async function main(): Promise<void> {
 					),
 					ms: Object.fromEntries(stages.map((s) => [s, r.stages[s]?.ms])),
 					rerankCalls: r.stages.hybrid_prod?.rerankCalls,
+					semanticTopDistance: r.stages.semantic?.topDistance,
 				})),
 			},
 			null,
