@@ -18,6 +18,7 @@
  *   --sample N  : question_type별 표본 수 (0이면 전체)
  *   --corpus N  : 문서 수 상한 (0이면 dev 전체 문단). 정답 문단은 항상 포함된다.
  *   --smoke     : 모델 대신 장난감 구현으로 코드 경로만 점검한다. 이 모드의 수치는 결과로 쓰면 안 된다.
+ *   --reuse-index : 같은 인자로 이미 만든 Vault와 벡터 인덱스가 있으면 다시 만들지 않는다.
  */
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -44,6 +45,7 @@ interface Args {
 	seed: number;
 	corpus: number;
 	smoke: boolean;
+	reuseIndex: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -54,12 +56,15 @@ function parseArgs(argv: string[]): Args {
 		seed: 42,
 		corpus: 0,
 		smoke: false,
+		reuseIndex: false,
 	};
 	for (let i = 0; i < argv.length; i++) {
 		const key = argv[i];
 		const value = argv[i + 1];
 		if (key === "--smoke") {
 			args.smoke = true;
+		} else if (key === "--reuse-index") {
+			args.reuseIndex = true;
 		} else if (key === "--data" && value) {
 			args.data = value;
 			i++;
@@ -323,7 +328,11 @@ async function main(): Promise<void> {
 	const vaultDir = join(outDir, "vault");
 	const dataset = await loadDataset(resolve(root, args.data));
 	const { docs, queries } = buildEvalSet(dataset, args);
-	await writeVault(vaultDir, docs);
+	// 같은 인자로 만든 Vault는 문서 구성이 같으므로, --reuse-index면 기존 Vault와 벡터 인덱스를 재사용한다.
+	const reuseIndex = args.reuseIndex && existsSync(vaultDir);
+	if (!reuseIndex) {
+		await writeVault(vaultDir, docs);
+	}
 
 	// config.ts가 import 시점에 환경 변수를 읽으므로 서버 모듈은 반드시 이 뒤에 불러온다.
 	process.env["VAULT_DIR_PATH"] = vaultDir;
@@ -338,6 +347,7 @@ async function main(): Promise<void> {
 		buildUrl("utils/LocalModelManager.js")
 	);
 	const { vectorDB } = await import(buildUrl("utils/VectorDB.js"));
+	const { ragIndexer } = await import(buildUrl("utils/RAGIndexer.js"));
 
 	if (args.smoke) {
 		installSmokeModels(localEmbedder, localReranker);
@@ -366,12 +376,22 @@ async function main(): Promise<void> {
 		// 모델을 미리 올려 두어 3초 soft deadline 때문에 측정 중 폴백이 일어나지 않게 한다.
 		await localEmbedder.init();
 		await localReranker.init();
-		const t0 = performance.now();
-		console.log("벡터 인덱스 생성 중 (실제 RAGIndexer 경로)...");
-		await vm.syncMissingRagIndices();
-		console.log(
-			`벡터 인덱스 생성 완료: ${((performance.now() - t0) / 1000).toFixed(1)}s`,
-		);
+		if (reuseIndex) {
+			console.log("기존 벡터 인덱스를 재사용합니다 (--reuse-index).");
+		} else {
+			// 서버의 index_vault_to_vectordb 도구 경로(indexAll, 50개 배치 기록)로 만든다.
+			// 청킹·임베딩 코드는 백그라운드 동기화(syncMissingRagIndices)와 같아 벡터는 동일하지만,
+			// 파일마다 delete+add를 반복하는 동기화 경로는 수천 개 규모에서 2시간을 넘겨 쓰지 않는다.
+			// 끝으로 동기화 경로와 같은 IVF-PQ 인덱스를 만든다.
+			const t0 = performance.now();
+			console.log("벡터 인덱스 생성 중 (RAGIndexer.indexAll 경로)...");
+			await vectorDB.checkAndMigrateIfNeeded();
+			await ragIndexer.indexAll(vaultDir);
+			await vectorDB.createVectorIndex();
+			console.log(
+				`벡터 인덱스 생성 완료: ${((performance.now() - t0) / 1000).toFixed(1)}s`,
+			);
+		}
 	}
 
 	const realRerank = localReranker.rerank.bind(localReranker);
