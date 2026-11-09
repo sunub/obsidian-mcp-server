@@ -18,7 +18,7 @@ function firstText(result: CallToolResult): string {
 	return first.text;
 }
 
-function createMockVaultManager(variant = "v1") {
+function createMockVaultManager(variant = "v1", diagnosticMessage?: string) {
 	const docs: DocumentIndex[] = [
 		{
 			filePath: "/vault/nextjs-project.md",
@@ -74,11 +74,21 @@ function createMockVaultManager(variant = "v1") {
 	const manager = {
 		initialize: vi.fn(async () => {}),
 		getAllDocuments: vi.fn(async () => docs),
-		searchDocuments: vi.fn(async (keyword: string) =>
-			docs.filter((doc) =>
-				doc.frontmatter.title?.toLowerCase().includes(keyword.toLowerCase()),
-			),
-		),
+		// 실제 경로처럼 관련도 순서로 반환한다. 경로 사전순과 다르게 project가 먼저 온다.
+		hybridSearch: vi.fn(async (query: string, limit = 5) => ({
+			results: docs
+				.filter((doc) =>
+					doc.frontmatter.title?.toLowerCase().includes(query.toLowerCase()),
+				)
+				.slice(0, limit)
+				.map((document) => ({
+					score: 1,
+					finalScore: 1,
+					document,
+					matchedChunks: [],
+				})),
+			diagnostic_message: diagnosticMessage,
+		})),
 		getDocumentInfo: vi.fn(
 			async (
 				filename: string,
@@ -107,6 +117,71 @@ function createMockVaultManager(variant = "v1") {
 }
 
 describe("Vault collect_context orchestration", () => {
+	test("keeps hybrid search ranking for topic scope", async () => {
+		const { vaultManager } = createMockVaultManager("ranking-v1");
+
+		const result = await collectContext(vaultManager, {
+			action: "collect_context",
+			topic: "next.js",
+			scope: "topic",
+			maxDocs: 2,
+			maxCharsPerDoc: 300,
+			compressionMode: "none",
+		});
+		const payload = collectContextResponseDataSchema.parse(
+			JSON.parse(firstText(result)),
+		);
+
+		expect(payload.documents.map((doc) => doc.fullPath)).toEqual([
+			"/vault/nextjs-project.md",
+			"/vault/nextjs-performance.md",
+		]);
+		expect(payload.matched_total).toBe(2);
+	});
+
+	test("puts ranked documents first for all scope with a topic", async () => {
+		const { vaultManager } = createMockVaultManager("all-scope-v1");
+
+		const result = await collectContext(vaultManager, {
+			action: "collect_context",
+			topic: "project",
+			scope: "all",
+			maxDocs: 2,
+			maxCharsPerDoc: 300,
+			compressionMode: "none",
+		});
+		const payload = collectContextResponseDataSchema.parse(
+			JSON.parse(firstText(result)),
+		);
+
+		expect(payload.documents.map((doc) => doc.fullPath)).toEqual([
+			"/vault/nextjs-project.md",
+			"/vault/nextjs-performance.md",
+		]);
+		expect(payload.matched_total).toBe(2);
+	});
+
+	test("reports search diagnostics without breaking the JSON payload", async () => {
+		const { vaultManager } = createMockVaultManager(
+			"diagnostic-v1",
+			"keyword fallback",
+		);
+
+		const result = await collectContext(vaultManager, {
+			action: "collect_context",
+			topic: "next.js",
+			scope: "topic",
+			maxDocs: 1,
+			maxCharsPerDoc: 300,
+		});
+
+		expect(() => JSON.parse(firstText(result))).not.toThrow();
+		expect(result.content?.[1]).toEqual({
+			type: "text",
+			text: "<system_directive>\nkeyword fallback\n</system_directive>",
+		});
+	});
+
 	test("returns continuation token for batched collect_context", async () => {
 		const { vaultManager } = createMockVaultManager();
 

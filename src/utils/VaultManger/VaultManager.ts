@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync, lstatSync } from "node:fs";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import {
 	basename,
 	dirname,
@@ -11,7 +11,6 @@ import {
 	resolve,
 } from "node:path";
 import matter from "gray-matter";
-import { debugLogger } from "../../shared/index.js";
 import { throwIfAborted } from "../abort.js";
 import { DirectoryWalker } from "../DirectoryWalker.js";
 import { localEmbedder } from "../Embedder.js";
@@ -24,6 +23,14 @@ import { Semaphore } from "../semaphore.js";
 import { type ChunkMetadata, vectorDB } from "../VectorDB.js";
 import type { EnrichedDocument } from "./types.js";
 import { VaultPathError } from "./VaultPathError.js";
+
+function isPathInside(basePath: string, candidatePath: string): boolean {
+	const relativePath = relative(basePath, candidatePath);
+	return (
+		relativePath === "" ||
+		(!relativePath.startsWith("..") && !isAbsolute(relativePath))
+	);
+}
 
 export interface HybridSearchResult {
 	score: number;
@@ -182,57 +189,12 @@ export class VaultManager {
 			.sort((a, b) => b.score - a.score)
 			.slice(0, limit * 2);
 
-		// 5. Reranker 최적화
-		let finalResults: HybridSearchResult[] = fusedResults.map((f) => ({
+		// 5. 리랭커를 쓰지 않는다. bge-reranker-base를 결합 결과에 적용하면 질의 42개 평가셋에서
+		// MRR@10이 0.672에서 0.579로 떨어지고 검색당 약 5초가 더 걸렸다(docs/search-quality-evaluation.md).
+		const finalResults: HybridSearchResult[] = fusedResults.map((f) => ({
 			...f,
 			finalScore: f.score,
 		}));
-
-		// 1차 검색 결과 중 이미 의미적으로 극도로 유사한(코사인 거리 < 0.20) 청크가 있는지 검증
-		const hasHighlyRelevantMatch = fusedResults.some((item) =>
-			item.matchedChunks.some((chunk) => {
-				const dist = chunk["_distance"];
-				return typeof dist === "number" && dist < 0.2;
-			}),
-		);
-
-		if (hasHighlyRelevantMatch || semanticResults.length === 0) {
-			debugLogger.debug(
-				`[RAG] Highly relevant semantic match found. Skipping rerank in hybridSearch.`,
-			);
-		} else {
-			try {
-				const rerankDocs = fusedResults.map((item) => {
-					// 청크가 있으면 청크 내용, 없으면 요약이나 파일명 사용
-					return (
-						item.matchedChunks[0]?.content ||
-						item.document.frontmatter.summary ||
-						item.document.filePath
-					);
-				});
-
-				await localModelManager.withReranker(3000, async (rerankerReady) => {
-					if (rerankerReady) {
-						const reranked = await localReranker.rerank(query, rerankDocs);
-						finalResults = reranked
-							.map((r) => {
-								const original = fusedResults.find((f) => {
-									const content =
-										f.matchedChunks[0]?.content ||
-										f.document.frontmatter.summary ||
-										f.document.filePath;
-									return content === r.document;
-								});
-								if (!original) return null;
-								return { ...original, finalScore: r.score };
-							})
-							.filter((r): r is HybridSearchResult => r !== null);
-					}
-				});
-			} catch (error) {
-				console.error("[VaultManager] Reranking failed:", error);
-			}
-		}
 
 		// AI가 준비된 상태에서도 인덱싱이 진행 중이면 메시지 추가
 		let diagnostic_message: string | undefined;
@@ -268,61 +230,19 @@ export class VaultManager {
 						return [];
 					}
 
-					const queryVector = await localEmbedder.embed(
-						`search_query: ${query}`,
-					);
+					// paraphrase-multilingual-MiniLM은 질의/문서 접두사(nomic 방식)를 학습하지 않았다.
+					// 접두사를 붙이면 벡터 검색 Recall@5가 0.456에서 0.127로 떨어진다(docs/search-quality-evaluation.md).
+					const queryVector = await localEmbedder.embed(query);
 
 					const recallLimit = Math.max(limit * 3, 15);
 					const initialResults = await vectorDB.search(
 						queryVector,
 						recallLimit,
 					);
-					if (initialResults.length === 0) return [];
 
-					const documents = initialResults.map((r) => r.content);
-
-					// 1차 검색 결과 중 코사인 거리가 극도로 가까운(유사도 0.80 이상) 강력한 매칭인 경우 리랭킹 건너뜀
-					const SKIP_RERANK_DISTANCE_THRESHOLD = 0.2;
-					const firstDistance = initialResults[0]["_distance"];
-					if (
-						typeof firstDistance === "number" &&
-						firstDistance < SKIP_RERANK_DISTANCE_THRESHOLD
-					) {
-						debugLogger.debug(
-							`[RAG] First semantic match distance is ${firstDistance.toFixed(4)}. Skipping rerank in safeSemanticSearch.`,
-						);
-						return initialResults.slice(0, limit);
-					}
-
-					return await localModelManager.withReranker(
-						3000,
-						async (isRerankerReady) => {
-							if (!isRerankerReady) {
-								return initialResults.slice(0, limit);
-							}
-
-							const reranked = await localReranker.rerank(query, documents);
-
-							const normalizeForComparison = (text: string) =>
-								text
-									.replace(/\r\n|\r|\n/g, " ")
-									.replace(/\s+/g, " ")
-									.trim();
-
-							const finalResults = reranked
-								.slice(0, limit)
-								.map((r) => {
-									const targetNorm = normalizeForComparison(r.document);
-									const originalIndex = documents.findIndex(
-										(doc) => normalizeForComparison(doc) === targetNorm,
-									);
-									return initialResults[originalIndex];
-								})
-								.filter((r) => r !== undefined);
-
-							return finalResults;
-						},
-					);
+					// 청크 단계 리랭킹도 하지 않는다(위와 같은 평가 결과). 후보를 넉넉히 가져온 뒤
+					// 벡터 순위 그대로 자른다.
+					return initialResults.slice(0, limit);
 				},
 			);
 		} catch (_error) {
@@ -513,7 +433,7 @@ export class VaultManager {
 		fullPath: string,
 		frontmatter: Record<string, unknown>,
 	): Promise<void> {
-		const resolvedPath = this.resolvePathForWrite(fullPath);
+		const resolvedPath = await this.resolvePathForWrite(fullPath);
 
 		await this.ioSemaphore.acquire();
 		try {
@@ -530,7 +450,7 @@ export class VaultManager {
 		fullPath: string,
 		content: string,
 	): Promise<void> {
-		const resolvedPath = this.resolvePathForWrite(fullPath);
+		const resolvedPath = await this.resolvePathForWrite(fullPath);
 
 		await this.ioSemaphore.acquire();
 		try {
@@ -617,7 +537,7 @@ export class VaultManager {
 		return "";
 	}
 
-	private resolvePathForWrite(inputPath: string): string {
+	private async resolvePathForWrite(inputPath: string): Promise<string> {
 		const resolvedPath = isAbsolute(inputPath)
 			? resolve(inputPath)
 			: resolve(this.vaultPath, inputPath);
@@ -626,15 +546,40 @@ export class VaultManager {
 			throw new VaultPathError(inputPath, resolvedPath, this.vaultPath);
 		}
 
+		// 문자열 검사는 심볼릭 링크를 따라가지 않는다. 이미 존재하는 가장 깊은 상위 경로의
+		// 실제 위치가 Vault 안인지 확인해, Vault 안의 링크를 거쳐 밖에 쓰는 경우를 막는다.
+		const [realVault, realTarget] = await Promise.all([
+			realpath(this.vaultPath),
+			// 대상이 없는 링크(dangling)는 realpath가 실패하므로 쓰기를 거부한다
+			realpath(this.deepestExistingPath(resolvedPath)).catch(() => null),
+		]);
+		if (realTarget === null || !isPathInside(realVault, realTarget)) {
+			throw new VaultPathError(inputPath, resolvedPath, this.vaultPath);
+		}
+
 		return resolvedPath;
 	}
 
+	private deepestExistingPath(targetPath: string): string {
+		const exists = (p: string) => {
+			try {
+				lstatSync(p); // 링크 자체의 존재를 본다
+				return true;
+			} catch {
+				return false;
+			}
+		};
+		let current = targetPath;
+		while (!exists(current)) {
+			const parent = dirname(current);
+			if (parent === current) break;
+			current = parent;
+		}
+		return current;
+	}
+
 	private isPathInsideVault(candidatePath: string): boolean {
-		const relativePath = relative(this.vaultPath, candidatePath);
-		return (
-			relativePath === "" ||
-			(!relativePath.startsWith("..") && !isAbsolute(relativePath))
-		);
+		return isPathInside(this.vaultPath, candidatePath);
 	}
 
 	private async readDocumentContent(filePath: string): Promise<string | null> {

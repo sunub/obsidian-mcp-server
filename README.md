@@ -39,8 +39,9 @@ Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 
 1. **Keyword Search**: 내부 `Indexer`로 정확한 단어 매칭 후보를 찾습니다.
 2. **Vector Search**: LanceDB와 로컬 embedding model로 의미적으로 유사한 청크를 찾습니다.
 3. **RRF Fusion**: 키워드 결과와 벡터 결과의 순위를 결합합니다.
-4. **Local Reranking**: 상위 후보를 reranker로 다시 평가합니다.
-5. **Compression**: 필요한 excerpt, source ref, memory packet만 Agent context로 제공합니다.
+4. **Compression**: 필요한 excerpt, source ref, memory packet만 Agent context로 제공합니다.
+
+검색 결과 목록에는 reranker를 적용하지 않습니다. 질의 42개 평가셋에서 reranker가 품질을 높이지 못하고 검색당 수 초를 더 썼기 때문입니다.
 
 로컬 embedding/reranking 모델이 설치되지 않은 경우 서버는 키워드 검색으로 폴백합니다.
 

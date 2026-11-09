@@ -96,9 +96,7 @@ async function runBenchmark() {
 			`\n--- 시나리오 2: 고밀도 의미 유사도 매칭 (쿼리: "${excerptQuery.substring(0, 30)}...") ---`,
 		);
 
-		const queryVector = await localEmbedder.embed(
-			`search_query: ${excerptQuery}`,
-		);
+		const queryVector = await localEmbedder.embed(excerptQuery);
 		const recallLimit = 15;
 
 		// 이전 방식 (무조건 리랭킹 호출 모사)
@@ -143,9 +141,7 @@ async function runBenchmark() {
 	async function benchmarkGeneralQuery() {
 		console.log(`\n--- 시나리오 3: 일반 검색 (쿼리: "${generalQuery}") ---`);
 
-		const queryVector = await localEmbedder.embed(
-			`search_query: ${generalQuery}`,
-		);
+		const queryVector = await localEmbedder.embed(generalQuery);
 		const recallLimit = 15;
 
 		// 이전 방식 (무조건 리랭킹 호출 모사)

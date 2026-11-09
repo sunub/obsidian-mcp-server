@@ -18,3 +18,9 @@ logs/*
 tsconfig.tsbuildinfo
 .omx/
 models/
+
+# 평가 데이터 (개인 Vault 내용이 들어가므로 커밋하지 않음)
+/eval/search/queries.jsonl
+/eval/search/results/
+/eval/indexing/results/
+/eval/context/

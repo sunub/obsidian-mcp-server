@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { debugLogger } from "@/shared/index.js";
 import { createToolError } from "@/utils/createToolError.js";
-import { localModelManager } from "@/utils/LocalModelManager.js";
-import { localReranker } from "@/utils/LocalReranker.js";
 import type { EnrichedDocument } from "../../../../utils/VaultManger/types.js";
 import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
@@ -35,6 +32,8 @@ import {
 } from "../shared.js";
 
 const COLLECT_CONTEXT_CACHE_MAX_ENTRIES = 200;
+// 이어 호출 사이에 순위가 유지되도록 후보 수를 고정한다.
+const COLLECT_CONTEXT_CANDIDATE_LIMIT = 100;
 const COLLECT_CONTEXT_MIN_EXCERPT_CHARS = 220;
 const COLLECT_CONTEXT_MIN_SUMMARY_CHARS = 120;
 const COLLECT_CONTEXT_MIN_EVIDENCE_CHARS = 80;
@@ -719,6 +718,23 @@ function decodeCollectContextContinuationToken(
 	}
 }
 
+// 호출자가 첫 번째 text 항목을 JSON으로 파싱하므로 진단 메시지는 별도 항목으로 둔다.
+function buildCollectContextToolResult(
+	payload: unknown,
+	diagnosticMessage?: string,
+): CallToolResult {
+	const content: CallToolResult["content"] = [
+		{ type: "text", text: JSON.stringify(payload, null, 2) },
+	];
+	if (diagnosticMessage) {
+		content.push({
+			type: "text",
+			text: `<system_directive>\n${diagnosticMessage}\n</system_directive>`,
+		});
+	}
+	return { isError: false, content };
+}
+
 export async function collectContext(
 	vaultManager: VaultManager,
 	params: ObsidianContentQueryParams,
@@ -754,88 +770,23 @@ export async function collectContext(
 		);
 	}
 
-	const [allDocuments, matchedCandidates] = await Promise.all([
-		vaultManager.getAllDocuments(),
+	const allDocuments = await vaultManager.getAllDocuments();
+	// search 액션과 같은 평가된 경로를 쓴다. 순위를 유지해야 하므로 다시 정렬하지 않는다.
+	const { results: rankedResults, diagnostic_message: diagnosticMessage } =
+		topic
+			? await vaultManager.hybridSearch(topic, COLLECT_CONTEXT_CANDIDATE_LIMIT)
+			: { results: [], diagnostic_message: undefined };
+	const rankedCandidates = rankedResults.map((result) => result.document);
+	const rankedPaths = new Set(rankedCandidates.map((doc) => doc.filePath));
+	const orderedCandidates =
 		scope === "all"
-			? vaultManager.getAllDocuments()
-			: vaultManager.searchDocuments(topic ?? ""),
-	]);
-
-	let orderedCandidates = [...matchedCandidates].sort((a, b) =>
-		a.filePath.localeCompare(b.filePath),
-	);
-
-	// Apply Reranking if topic is present and we have candidates
-	if (topic && orderedCandidates.length > 0) {
-		// 1. 후보군이 2개 이하인 경우 리랭킹이 불필요하므로 건너뜀
-		if (orderedCandidates.length <= 2) {
-			debugLogger.debug(
-				`[CollectContext] Candidates count is ${orderedCandidates.length}. Skipping rerank.`,
-			);
-		} else {
-			// 2. 완벽한 제목 매칭(Exact Title Match)이 있는 경우 리랭커 호출 스킵
-			const exactMatchIndex = orderedCandidates.slice(0, 15).findIndex((c) => {
-				const filename = c.filePath.split("/").pop() || c.filePath;
-				const title = c.frontmatter?.title || filename.replace(/\.mdx?$/i, "");
-				return title.toLowerCase() === topic.toLowerCase();
-			});
-
-			if (exactMatchIndex !== -1) {
-				const exactMatchDoc = orderedCandidates[exactMatchIndex];
-				debugLogger.debug(
-					`[CollectContext] Exact title match found: "${exactMatchDoc.filePath}". Skipping rerank.`,
-				);
-				const remaining = orderedCandidates.filter(
-					(c) => c.filePath !== exactMatchDoc.filePath,
-				);
-				orderedCandidates = [exactMatchDoc, ...remaining];
-			} else {
-				// Only rerank a reasonable number of top candidates to preserve performance
-				const rerankCandidatesLimit = 30;
-				const candidatesToRerank = orderedCandidates.slice(
-					0,
-					rerankCandidatesLimit,
-				);
-
-				try {
-					// Fetch contents for these candidates to perform reranking
-					const candidateContents = await Promise.all(
-						candidatesToRerank.map(async (c) => {
-							const doc = await vaultManager.getDocumentInfo(c.filePath, {
-								maxContentPreview: 1000, // Sufficient for reranking
-							});
-							return doc?.content || "";
-						}),
-					);
-
-					await localModelManager.withReranker(3000, async (rerankerReady) => {
-						if (rerankerReady) {
-							const rerankedResults = await localReranker.rerank(
-								topic,
-								candidateContents,
-							);
-
-							const reranked = rerankedResults
-								.slice(0, maxDocs)
-								.map((result) => {
-									const idx = candidateContents.indexOf(result.document);
-									return idx !== -1 ? candidatesToRerank[idx] : null;
-								})
-								.filter(
-									(c): c is (typeof candidatesToRerank)[number] => c !== null,
-								);
-							const remaining = orderedCandidates.filter(
-								(c) => !reranked.some((r) => r.filePath === c.filePath),
-							);
-							orderedCandidates = [...reranked, ...remaining];
-						}
-					});
-				} catch (error) {
-					debugLogger.error("[CollectContext] Reranking failed:", error);
-				}
-			}
-		}
-	}
+			? [
+					...rankedCandidates,
+					...allDocuments
+						.filter((doc) => !rankedPaths.has(doc.filePath))
+						.sort((a, b) => a.filePath.localeCompare(b.filePath)),
+				]
+			: rankedCandidates;
 
 	const emptyDocHash = buildCollectContextDocHash([]);
 	const emptyCacheKey = buildCollectContextCacheKey({
@@ -920,12 +871,7 @@ export async function collectContext(
 			}),
 		);
 
-		return {
-			isError: false,
-			content: [
-				{ type: "text", text: JSON.stringify(finalizedPayload, null, 2) },
-			],
-		};
+		return buildCollectContextToolResult(finalizedPayload, diagnosticMessage);
 	}
 
 	const maxOutputChars =
@@ -1126,10 +1072,5 @@ export async function collectContext(
 		}),
 	);
 
-	return {
-		isError: false,
-		content: [
-			{ type: "text", text: JSON.stringify(finalizedPayload, null, 2) },
-		],
-	};
+	return buildCollectContextToolResult(finalizedPayload, diagnosticMessage);
 }

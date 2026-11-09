@@ -7,7 +7,8 @@ import { debugLogger } from "@/shared/index.js";
 import state from "../config.js";
 import { Semaphore } from "./semaphore.js";
 
-export const INDEX_VERSION = 6;
+// v7: 임베딩 입력에서 search_document 접두사 제거 (기존 인덱스는 다시 만들어야 함)
+export const INDEX_VERSION = 7;
 
 const VECTOR_DIM = 384;
 

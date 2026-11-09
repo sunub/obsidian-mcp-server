@@ -115,7 +115,7 @@ export class RAGIndexer {
 				let vector: number[];
 				try {
 					throwIfAborted(signal);
-					vector = await localEmbedder.embed(`search_document: ${safeText}`);
+					vector = await localEmbedder.embed(safeText);
 				} finally {
 					this.embeddingSemaphore.release();
 				}

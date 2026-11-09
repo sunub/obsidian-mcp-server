@@ -1,8 +1,10 @@
 import {
-	MAX_AGENTIC_ITERATIONS,
-	MAX_TOOL_RESULT_CHARS,
-} from "@cli/hooks/useLlmStream/constants.js";
+	compressHistory,
+	fitToContext,
+} from "@cli/hooks/useLlmStream/compress.js";
+import { MAX_AGENTIC_ITERATIONS } from "@cli/hooks/useLlmStream/constants.js";
 import { callLLMStreaming } from "@cli/hooks/useLlmStream/llmService.js";
+import { executeToolCall } from "@cli/hooks/useLlmStream/toolExecution.js";
 import type {
 	ConversationMessage,
 	ToolCall,
@@ -13,7 +15,6 @@ import {
 	parseThinkingContent,
 	prepareInitialMessages,
 	stripAnsi,
-	truncateHistory,
 } from "@cli/hooks/useLlmStream/utils.js";
 import type { McpToolInfo } from "@cli/services/McpClientService.js";
 import type { CallToolFn, PendingItem, StreamingState } from "@cli/types.js";
@@ -137,13 +138,38 @@ export const useLlmStream = ({
 			const signal = abortControllerRef.current.signal;
 
 			try {
+				// 대화가 모델 컨텍스트 한도에 가까워지면 오래된 턴을 상태 스냅샷으로 요약해 둔다.
+				// 이전에는 최근 6,000자만 남기고 나머지를 버렸다.
+				const contextTokens = Number(state.llmContextTokens);
+				const compression = await compressHistory(conversationRef.current, {
+					contextTokens,
+					signal,
+					onCompressStart: () =>
+						setPendingItem({
+							type: "assistant",
+							content: "이전 대화를 요약하는 중입니다...",
+							isComplete: false,
+						}),
+				});
+				if (compression.compressed) {
+					conversationRef.current = compression.messages;
+					debugLogger.info(
+						`[Compress] ${compression.stats.tokensBefore} → ${compression.stats.tokensAfter} tokens (${compression.stats.llmCalls} calls)`,
+					);
+					setPendingItem({ type: "assistant", content: "", isComplete: false });
+				}
+
 				const { messages: rawMessages, userMessage } = prepareInitialMessages(
 					text,
 					ragContext,
 					conversationRef.current,
 				);
 
-				const messages = truncateHistory(rawMessages, 6000);
+				// 압축 뒤에도 넘치는 경우를 위한 안전장치. 응답과 도구 결과가 들어갈 자리를 남긴다
+				const messages = fitToContext(
+					rawMessages,
+					Math.floor(contextTokens * 0.7),
+				);
 				conversationRef.current.push(userMessage);
 
 				const toolsToUse = overrideTools ?? availableTools;
@@ -178,11 +204,14 @@ export const useLlmStream = ({
 							const display = progressLog ? `${progressLog}\n${main}` : main;
 							llmMessageBufferRef.current += event.chunk;
 
-							const splitPoint = findLastSafeSplitPoint(
+							const splisetStateInternaltPoint = findLastSafeSplitPoint(
 								llmMessageBufferRef.current,
 							);
 
-							if (splitPoint === llmMessageBufferRef.current.length) {
+							if (
+								splisetStateInternaltPoint ===
+								llmMessageBufferRef.current.length
+							) {
 								setPendingItem({
 									type: "assistant",
 									content: display,
@@ -193,9 +222,11 @@ export const useLlmStream = ({
 							} else {
 								const before = llmMessageBufferRef.current.substring(
 									0,
-									splitPoint,
+									splisetStateInternaltPoint,
 								);
-								const after = llmMessageBufferRef.current.substring(splitPoint);
+								const after = llmMessageBufferRef.current.substring(
+									splisetStateInternaltPoint,
+								);
 
 								addItem({
 									type: isFirstChunkRef.current
@@ -244,14 +275,9 @@ export const useLlmStream = ({
 								isComplete: false,
 							});
 
-							const args = JSON.parse(tc.function.arguments);
-							const result = await callTool(tc.function.name, args);
-							const resultText = result.content
-								.map((c) => c.text ?? "")
-								.join("")
-								.slice(0, MAX_TOOL_RESULT_CHARS);
+							const outcome = await executeToolCall(tc, callTool);
 
-							progressLog += `✓ 완료\n`;
+							progressLog += outcome.isError ? `✗ 실패\n` : `✓ 완료\n`;
 							setPendingItem({
 								type: "assistant",
 								content: progressLog,
@@ -261,7 +287,7 @@ export const useLlmStream = ({
 							messages.push({
 								role: "tool",
 								tool_call_id: tc.id,
-								content: resultText,
+								content: outcome.content,
 							});
 						}
 					} else {

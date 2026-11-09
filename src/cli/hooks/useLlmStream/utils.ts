@@ -173,6 +173,10 @@ export function formatToolArguments(argsJson: string): string {
 		return "";
 	}
 
+	if (typeof args !== "object" || args === null) {
+		return "";
+	}
+
 	return Object.entries(args)
 		.map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 30)}`)
 		.join(", ");
