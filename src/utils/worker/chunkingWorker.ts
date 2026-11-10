@@ -3,6 +3,7 @@ import { parentPort } from "node:worker_threads";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { encodingForModel } from "js-tiktoken";
 import { parse as parseMatter } from "../processor/MatterParser.js";
+import { stripEmbeddedData } from "../processor/stripEmbeddedData.js";
 import type { HeadingEntry } from "../RAGIndexer.js";
 import type { ChunkMetadata } from "../VectorDB.js";
 
@@ -59,11 +60,12 @@ parentPort?.on("message", async (data: ChunkingWorkerInput) => {
 	const fileName = path.basename(filePath);
 
 	try {
-		const { frontmatter, content: body } = parseMatter(
+		const { frontmatter, content } = parseMatter(
 			filePath,
 			birthTime,
 			fileContent,
 		);
+		const body = stripEmbeddedData(content);
 
 		const headings = extractHeadingsWithPositions(body);
 		const titleFromBody = headings.find((h) => h.depth === 1)?.heading ?? null;
