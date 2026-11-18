@@ -18,7 +18,7 @@ export class RAGIndexer {
 	private totalFiles = 0;
 	private processedFiles = 0;
 	private _isIndexing = false;
-	private chukingWorkerPool = new WorkerPool(4);
+	private chukingWorkerPool = new WorkerPool(1);
 
 	constructor() {
 		this.embeddingSemaphore = new Semaphore(3);

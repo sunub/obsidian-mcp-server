@@ -29,6 +29,8 @@ const { values: args } = parseArgs({
 		"allow-reset": { type: "boolean", default: false },
 		runs: { type: "string", default: "5" },
 		"strip-prefix": { type: "boolean", default: false },
+		// 청킹 기준 비교: "<cl100k|model>:<size>:<overlap>:<recursive|heading>" (scripts/eval/lib/chunking-variants.ts)
+		chunker: { type: "string" },
 		out: { type: "string", default: "eval/indexing/results" },
 	},
 });
@@ -140,6 +142,36 @@ async function makeSyntheticVault(
 	return paths;
 }
 
+/**
+ * RAGIndexer가 워커 풀에 맡기던 청킹을 실험용 청커로 바꾼다. 청킹은 같은 프로세스에서 돌므로
+ * 비교할 때는 기준 구성도 --chunker cl100k:500:50:recursive 로 같은 경로에서 측정한다.
+ */
+async function applyVariantChunker(spec: string) {
+	const { parseVariant, createVariantChunker } = await import(
+		"./lib/chunking-variants.js"
+	);
+	const { ragIndexer } = await import("../../build/utils/RAGIndexer.js");
+	const { parse } = await import("../../build/utils/processor/MatterParser.js");
+	const { stripEmbeddedData } = await import(
+		"../../build/utils/processor/stripEmbeddedData.js"
+	);
+	const { localEmbedder } = await import("../../build/utils/Embedder.js");
+	const { AutoTokenizer } = await import("@huggingface/transformers");
+	const tokenizer = await AutoTokenizer.from_pretrained(
+		localEmbedder.modelName,
+	);
+	const variant = parseVariant(spec);
+	const chunk = await createVariantChunker(variant, {
+		parseMatter: parse,
+		stripEmbeddedData,
+		countModelTokens: (text: string) => tokenizer.encode(text).length,
+	});
+	(
+		ragIndexer as unknown as { chukingWorkerPool: { runTask: typeof chunk } }
+	).chukingWorkerPool.runTask = chunk;
+	console.error(`[chunker] ${JSON.stringify(variant)}`);
+}
+
 async function benchmarkRag() {
 	const safe = args["allow-reset"] || /scratch|eval/i.test(vaultPath);
 	if (!safe) {
@@ -157,6 +189,10 @@ async function benchmarkRag() {
 	const { localModelManager } = await import(
 		"../../build/utils/LocalModelManager.js"
 	);
+
+	if (args.chunker) {
+		await applyVariantChunker(args.chunker);
+	}
 
 	const vm = new VaultManager(vaultPath);
 	await vm.initialize();
@@ -226,6 +262,7 @@ const environment = {
 	memoryGB: Math.round(totalmem() / 1024 ** 3),
 	vault: relative(process.cwd(), vaultPath),
 	stripPrefix: Boolean(args["strip-prefix"]),
+	chunker: args.chunker ?? "worker (src/utils/worker/chunkingWorker.ts)",
 };
 
 const result: Record<string, unknown> = { environment };
