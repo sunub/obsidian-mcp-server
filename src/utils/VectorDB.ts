@@ -13,6 +13,11 @@ export const INDEX_VERSION = 8;
 
 const VECTOR_DIM = 384;
 
+/** IVF-PQ 파티션 수. 인덱스 생성과 검색(nprobes)이 같은 공식을 쓴다. */
+function partitionCountFor(rowCount: number): number {
+	return Math.max(2, Math.floor(Math.sqrt(rowCount)));
+}
+
 export interface ChunkMetadata {
 	id: string;
 	filePath: string;
@@ -219,7 +224,7 @@ export class VectorDB {
 				return;
 			}
 
-			const numPartitions = Math.max(2, Math.floor(Math.sqrt(rowCount)));
+			const numPartitions = partitionCountFor(rowCount);
 			await table.createIndex("vector", {
 				config: Index.ivfPq({
 					numPartitions,
@@ -364,10 +369,14 @@ export class VectorDB {
 		const table = await this.getTable();
 		if (!table) return [];
 
+		// 모든 파티션을 본다. nprobes가 20이면 파티션의 28%만 봐서 정확 검색 대비 상위 30개 청크의 약 8%를
+		// 놓쳤고, 인덱스를 다시 만들 때마다 놓치는 청크가 달라져 하이브리드 MRR@10이 0.711~0.753으로
+		// 흔들렸다. (docs/search-quality-evaluation.md 4.10) 파티션 수를 넘는 값은 전체와 같게 처리된다.
+		const nprobes = partitionCountFor(await table.countRows());
 		const results = await table
 			.vectorSearch(queryVector)
 			.distanceType("cosine")
-			.nprobes(20)
+			.nprobes(nprobes)
 			.refineFactor(1)
 			.limit(limit)
 			.toArray();
