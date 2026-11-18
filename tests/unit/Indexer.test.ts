@@ -286,4 +286,71 @@ describe("Indexer", () => {
 		const results = indexer.search("옵시디언");
 		expect(results).toHaveLength(1);
 	});
+
+	test("질의 토큰 앞뒤의 문장부호는 무시한다", async () => {
+		const p1 = await writeDoc(
+			"lancedb.md",
+			{ title: "벡터 저장소" },
+			"LanceDB 인덱스를 다시 만든다.",
+		);
+		const p2 = await writeDoc("other.md", { title: "기타" }, "관계없는 문서.");
+
+		indexer = new Indexer();
+		await indexer.build([p1, p2], sem);
+
+		expect(indexer.search("LanceDB,").map((d) => d.filePath)).toEqual([p1]);
+		expect(indexer.search("(lancedb)?").map((d) => d.filePath)).toEqual([p1]);
+		// 두 토큰 모두 문장부호가 붙어도 최소 일치 조건을 채운다
+		expect(indexer.search('"lancedb" 다시.').map((d) => d.filePath)).toEqual([
+			p1,
+		]);
+	});
+
+	test("문장부호가 들어간 태그·파일명은 질의에 그대로 써도 찾는다", async () => {
+		const p1 = await writeDoc(
+			"my-note.md",
+			{ title: "Note", tags: ["c++"] },
+			"본문.",
+		);
+
+		indexer = new Indexer();
+		await indexer.build([p1], sem);
+
+		expect(indexer.search("c++")).toHaveLength(1);
+		expect(indexer.search("my-note")).toHaveLength(1);
+	});
+
+	test("중간에 문장부호가 있는 질의 토큰은 나뉜 조각이 모두 있는 문서를 찾는다", async () => {
+		const both = await writeDoc(
+			"routing.md",
+			{ title: "라우팅" },
+			"Next.js 15에서 동적 라우트를 쓴다.",
+		);
+		const onlyNext = await writeDoc(
+			"plan.md",
+			{ title: "계획" },
+			"next step을 정한다.",
+		);
+
+		indexer = new Indexer();
+		await indexer.build([both, onlyNext], sem);
+
+		expect(indexer.search("Next.js").map((d) => d.filePath)).toEqual([both]);
+		expect(indexer.search("next.js 라우트를").map((d) => d.filePath)).toEqual([
+			both,
+		]);
+	});
+
+	test("한 글자 조각(I/O → i, o)은 나뉜 조각 일치에 쓰지 않는다", async () => {
+		const noise = await writeDoc(
+			"noise.md",
+			{ title: "메모" },
+			"i 라는 변수와 o 라는 변수.",
+		);
+
+		indexer = new Indexer();
+		await indexer.build([noise], sem);
+
+		expect(indexer.search("I/O")).toEqual([]);
+	});
 });
