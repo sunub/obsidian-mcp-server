@@ -32,6 +32,41 @@ function isPathInside(basePath: string, candidatePath: string): boolean {
 	);
 }
 
+const KEYWORD_FUSION_MIN_RELATIVE_SCORE = 0.7;
+
+function toKeywordChunk(
+	document: DocumentIndex,
+	content: string,
+): ChunkMetadata {
+	const { frontmatter, filePath } = document;
+	return {
+		id: `${filePath}_keyword_chunk`,
+		filePath,
+		fileName: basename(filePath),
+		chunkIndex: -1,
+		content,
+		metadata: {
+			title: frontmatter.title,
+			date:
+				frontmatter.date instanceof Date
+					? frontmatter.date.toISOString()
+					: (frontmatter.date ?? ""),
+			tags: frontmatter.tags?.join(", ") ?? "",
+			summary: frontmatter.summary ?? "",
+			slug: frontmatter.slug ?? "",
+			category: frontmatter.category ?? "any",
+			completed: frontmatter.completed ?? false,
+		},
+	};
+}
+
+function keywordChunksOf(
+	document: DocumentIndex,
+	chunk: string | null,
+): ChunkMetadata[] {
+	return chunk ? [toKeywordChunk(document, chunk)] : [];
+}
+
 export interface HybridSearchResult {
 	score: number;
 	document: DocumentIndex;
@@ -101,7 +136,7 @@ export class VaultManager {
 		await this.initialize();
 
 		if (!this.isLocalAIReady) {
-			const keywordResults = this.indexer.search(query);
+			const keywordResults = this.indexer.searchWithChunks(query);
 			let diagnostic_message: string | undefined;
 
 			if (!this.hasNotifiedMissingModels) {
@@ -119,43 +154,46 @@ export class VaultManager {
 			}
 
 			return {
-				results: keywordResults.slice(0, limit).map((doc) => ({
+				results: keywordResults.slice(0, limit).map((hit) => ({
 					score: 1.0,
-					document: doc,
-					matchedChunks: [],
+					document: hit.document,
+					matchedChunks: keywordChunksOf(hit.document, hit.chunk),
 					finalScore: 1.0,
 				})),
 				diagnostic_message,
 			};
 		}
 
-		// 2. 병렬 검색 수행 (하이브리드)
-		const [keywordResults, semanticResults] = await Promise.all([
-			this.indexer.search(query),
-			this.safeSemanticSearch(query, limit * 3),
-		]);
+		const semanticResults = await this.safeSemanticSearch(query, limit * 3);
+		const keywordResults = this.indexer.searchWithChunks(
+			query,
+			semanticResults.length > 0 ? KEYWORD_FUSION_MIN_RELATIVE_SCORE : 0,
+		);
 		const semanticFallbackMessage =
 			semanticResults.length === 0
 				? "💡 [검색 품질 안내] 로컬 semantic 모델이 아직 준비 중이거나 사용할 수 없어 이번 검색은 키워드 중심으로 반환했습니다. 잠시 후 다시 검색하면 하이브리드 검색이 적용될 수 있습니다."
 				: undefined;
 
-		// 3. RRF (Reciprocal Rank Fusion) 스코어 계산
 		const rrfScores = new Map<
 			string,
-			{ score: number; document: DocumentIndex; matchedChunks: ChunkMetadata[] }
+			{
+				score: number;
+				document: DocumentIndex;
+				matchedChunks: ChunkMetadata[];
+				keywordChunks: ChunkMetadata[];
+			}
 		>();
 		const RRF_K = 60;
 
-		// 키워드 검색 결과 (문서 단위)
-		keywordResults.forEach((doc, index) => {
-			rrfScores.set(doc.filePath, {
+		keywordResults.forEach((hit, index) => {
+			rrfScores.set(hit.document.filePath, {
 				score: 1 / (RRF_K + index + 1),
-				document: doc,
+				document: hit.document,
 				matchedChunks: [],
+				keywordChunks: keywordChunksOf(hit.document, hit.chunk),
 			});
 		});
 
-		// 벡터 검색 결과 (청크 단위 -> 문서 단위로 병합)
 		const seenPaths = new Set<string>();
 		let vectorRank = 0;
 		for (const chunk of semanticResults) {
@@ -174,29 +212,28 @@ export class VaultManager {
 							score: vectorScore,
 							document: doc,
 							matchedChunks: [chunk],
+							keywordChunks: [],
 						});
 					}
 				}
 				vectorRank++;
 			} else {
-				// 이미 처리된 문서의 추가 청크들
 				rrfScores.get(chunk.filePath)?.matchedChunks.push(chunk);
 			}
 		}
 
-		// 4. 융합 결과 정렬
 		const fusedResults = Array.from(rrfScores.values())
 			.sort((a, b) => b.score - a.score)
 			.slice(0, limit * 2);
 
-		// 5. 리랭커를 쓰지 않는다. bge-reranker-base를 결합 결과에 적용하면 질의 42개 평가셋에서
-		// MRR@10이 0.672에서 0.579로 떨어지고 검색당 약 5초가 더 걸렸다(docs/search-quality-evaluation.md).
 		const finalResults: HybridSearchResult[] = fusedResults.map((f) => ({
-			...f,
+			score: f.score,
+			document: f.document,
+			matchedChunks:
+				f.matchedChunks.length > 0 ? f.matchedChunks : f.keywordChunks,
 			finalScore: f.score,
 		}));
 
-		// AI가 준비된 상태에서도 인덱싱이 진행 중이면 메시지 추가
 		let diagnostic_message: string | undefined;
 		const ragStatus = this.getRagIndexingStatus();
 		if (ragStatus.isIndexing) {
