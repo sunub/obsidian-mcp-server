@@ -42,6 +42,9 @@ const { values: args } = parseArgs({
 		only: { type: "string" },
 		"cold-trials": { type: "string", default: "5" },
 		"strip-prefix": { type: "boolean", default: false },
+		"embed-model": { type: "string" },
+		"embed-models-dir": { type: "string" },
+		"embed-prefix": { type: "string" },
 		out: { type: "string", default: "eval/search/results" },
 	},
 });
@@ -77,6 +80,18 @@ if (args["strip-prefix"]) {
 	const rawEmbed = embedder.embed.bind(embedder);
 	embedder.embed = (text: string) =>
 		rawEmbed(text.replace(/^search_(query|document): /, ""));
+}
+
+if (args["embed-model"] || args["embed-models-dir"] || args["embed-prefix"]) {
+	const { localEmbedder: overridden } = await import(
+		"../../build/utils/Embedder.js"
+	);
+	const { applyEmbedderOverride } = await import("./lib/embedder-override.js");
+	applyEmbedderOverride(overridden, {
+		modelName: args["embed-model"],
+		modelsDir: args["embed-models-dir"],
+		prefix: args["embed-prefix"],
+	});
 }
 
 const { localReranker } = await import("../../build/utils/LocalReranker.js");
@@ -728,6 +743,10 @@ const result = {
 			(i: { name: string; indexType: string }) => `${i.name}:${i.indexType}`,
 		),
 		embedder: localEmbedder.modelName,
+		embedderOverride: {
+			model: args["embed-model"] ?? null,
+			prefix: args["embed-prefix"] ?? null,
+		},
 		stripPrefix: Boolean(args["strip-prefix"]),
 		reranker: localReranker.modelName,
 		limit: LIMIT,

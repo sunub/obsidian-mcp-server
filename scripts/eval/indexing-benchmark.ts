@@ -29,6 +29,10 @@ const { values: args } = parseArgs({
 		"allow-reset": { type: "boolean", default: false },
 		runs: { type: "string", default: "5" },
 		"strip-prefix": { type: "boolean", default: false },
+		"strip-context": { type: "boolean", default: false },
+		"embed-model": { type: "string" },
+		"embed-models-dir": { type: "string" },
+		"embed-prefix": { type: "string" },
 		// 청킹 기준 비교: "<cl100k|model>:<size>:<overlap>:<recursive|heading>" (scripts/eval/lib/chunking-variants.ts)
 		chunker: { type: "string" },
 		out: { type: "string", default: "eval/indexing/results" },
@@ -58,6 +62,27 @@ if (args["strip-prefix"]) {
 	const rawEmbed = embedder.embed.bind(embedder);
 	embedder.embed = (text: string) =>
 		rawEmbed(text.replace(/^search_(query|document): /, ""));
+}
+
+if (args["strip-context"]) {
+	const { localEmbedder: embedder } = await import(
+		"../../build/utils/Embedder.js"
+	);
+	const rawEmbed = embedder.embed.bind(embedder);
+	embedder.embed = (text: string) =>
+		rawEmbed(text.replace(/^(?:(?:Section|Outline): .*\n)+\n/, ""));
+}
+
+if (args["embed-model"] || args["embed-models-dir"] || args["embed-prefix"]) {
+	const { localEmbedder: overridden } = await import(
+		"../../build/utils/Embedder.js"
+	);
+	const { applyEmbedderOverride } = await import("./lib/embedder-override.js");
+	applyEmbedderOverride(overridden, {
+		modelName: args["embed-model"],
+		modelsDir: args["embed-models-dir"],
+		prefix: args["embed-prefix"],
+	});
 }
 
 type Walked = { paths: string[]; walkMs: number };
