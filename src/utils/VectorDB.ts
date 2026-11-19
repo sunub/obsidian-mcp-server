@@ -7,7 +7,7 @@ import { debugLogger } from "@/shared/index.js";
 import state from "../config.js";
 import { Semaphore } from "./semaphore.js";
 
-export const INDEX_VERSION = 10;
+export const INDEX_VERSION = 11;
 
 const VECTOR_DIM = 384;
 

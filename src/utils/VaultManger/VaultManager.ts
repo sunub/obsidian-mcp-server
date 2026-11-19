@@ -267,8 +267,6 @@ export class VaultManager {
 						return [];
 					}
 
-					// paraphrase-multilingual-MiniLM은 질의/문서 접두사(nomic 방식)를 학습하지 않았다.
-					// 접두사를 붙이면 벡터 검색 Recall@5가 0.456에서 0.127로 떨어진다(docs/search-quality-evaluation.md).
 					const queryVector = await localEmbedder.embed(query);
 
 					const recallLimit = Math.max(limit * 3, 15);
