@@ -142,6 +142,7 @@ export async function buildTidyPlan(
 	options: TidyOptions,
 	planners: readonly PlannerName[] = PLANNER_NAMES,
 ): Promise<{ plan: ChangePlan; preview: TidyPreview }> {
+	assertPlainFolderName("attachmentsFolderName", options.attachmentsFolderName);
 	const snapshot = await scanVault(root);
 	const scope = resolveScope(options.scope, snapshot);
 	const readNote = (notePath: string) =>
