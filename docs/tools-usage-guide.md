@@ -8,7 +8,7 @@
 
 1. `vault`
 2. `write_property`
-3. `organize_attachments`
+3. `tidy_plan`, `plan_apply`, `plan_undo` (Vault 정리)
 
 ## 2. vault: 액션 기반 공용 인터페이스
 
@@ -147,27 +147,7 @@
 - `filePath`는 `VAULT_DIR_PATH` 내부여야 함
 - 현재 기본 `quiet` 값은 `true`이므로 상세 응답이 필요하면 `false` 설정
 
-## 4. organize_attachments
-
-목적: 마크다운 내 첨부 이미지/첨부 링크를 `images/<문서제목>/` 형태로 정리하고 링크 갱신.
-
-요청 예시:
-
-```json
-{
-  "keyword": "my-awesome-post",
-  "destination": "images",
-  "useTitleAsFolderName": true,
-  "quiet": false
-}
-```
-
-현재 구현 유의사항:
-- 파라미터 `destination`/`useTitleAsFolderName`는 코드상 기본 동작을 따르는 방식으로 고정 동작될 수 있음
-- 처리 대상은 `keyword`로 검색된 여러 문서
-- 반환에는 문서별 처리 상태(summary/details)가 들어감
-
-## 5. 도구 조합 추천 패턴
+## 4. 도구 조합 추천 패턴
 
 ### 패턴 A: 탐색-확인-요약
 1) `vault/search`
@@ -182,7 +162,7 @@
 1) `vault/read`로 문서를 읽고 속성을 작성
 2) `write_property`로 저장
 
-## 6. 사용자 입장에서 꼭 알아야 할 기본 체크
+## 5. 사용자 입장에서 꼭 알아야 할 기본 체크
 
 - `VAULT_DIR_PATH`가 먼저 유효해야 모든 도구가 동작
 - `vault`의 `action`은 필수이며 잘못된 값은 즉시 에러

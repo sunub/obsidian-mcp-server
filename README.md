@@ -27,7 +27,9 @@ Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 
   - `stats`: Vault 및 인덱스 상태 조회
   - `collect_context`: 주제와 연관된 문서를 선별해 `memory_packet` 생성
 - `write_property`: frontmatter 쓰기
-- `organize_attachments`: 문서 내 첨부파일 정리 및 링크 갱신
+- `tidy_plan`: 첨부 파일, 중복, 무제 노트, 빈 폴더를 정리하는 계획과 미리보기 생성(파일은 바꾸지 않음)
+- `plan_apply`: 사용자가 승인한 연산만 실행하고 링크가 같은 파일을 가리키도록 재작성
+- `plan_undo`: `plan_apply` 실행을 `runId`로 되돌림
 
 ### Retrieval Pipeline
 

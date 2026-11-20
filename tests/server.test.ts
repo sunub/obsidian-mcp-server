@@ -1,4 +1,4 @@
-import fs, { copyFile } from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -7,7 +7,6 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { type ZodSchema, z } from "zod";
 import state from "../src/config";
 import createMcpServer from "../src/server";
-import { OrganizeAttachmentsResultSchema } from "../src/tools/organize_attachments/params";
 import { collectContextResponseDataSchema } from "../src/tools/vault/types/collect_context";
 import {
 	type ListAllDocumentsData,
@@ -138,9 +137,16 @@ describe("Obsidian MCP Server E2E Tests", () => {
 	test("서버에 등록된 모든 도구 목록을 가져올 수 있다", async () => {
 		const toolsResult = await mcpClient.listTools();
 		const toolNames = toolsResult.tools.map((tool) => tool.name);
-		const expectedTools = ["vault", "write_property", "organize_attachments"];
+		const expectedTools = [
+			"vault",
+			"write_property",
+			"tidy_plan",
+			"plan_apply",
+			"plan_undo",
+		];
 
 		expect(toolNames).toEqual(expect.arrayContaining(expectedTools));
+		expect(toolNames).not.toContain("organize_attachments");
 	});
 
 	describe("Read-only Actions", () => {
@@ -214,48 +220,5 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			expect(data.found).toBeGreaterThan(0);
 			expect(data.documents[0].filename).toBe(`${query}.md`);
 		}, 15000);
-	});
-
-	describe("Mutation Actions", () => {
-		test("organize_attachments - 이미지 파일을 정리한다", async () => {
-			// 테스트용 이미지 준비
-			const sourceImg = path.join(
-				process.cwd(),
-				"tests",
-				"assets",
-				"demo_img.png",
-			);
-			const targetImg = path.join(TEST_VAULT_PATH, "demo_img.png");
-			await copyFile(sourceImg, targetImg);
-
-			const response = await mcpClient.callTool({
-				name: "organize_attachments",
-				arguments: {
-					keyword: "Test Note",
-					destination: "images",
-					useTitleAsFolderName: true,
-				},
-			});
-
-			const data = await parseAndValidateResponse(
-				response,
-				OrganizeAttachmentsResultSchema,
-			);
-			const detail = data.details.find((d) =>
-				d.document.includes("Test Note.md"),
-			);
-
-			expect(detail?.status).toBe("success");
-			expect(detail?.movedFiles).toBe(1);
-
-			// 물리적 파일 이동 확인
-			const movedPath = path.join(
-				TEST_VAULT_PATH,
-				"images",
-				"Test Note",
-				"demo_img.png",
-			);
-			await expect(fs.stat(movedPath)).resolves.toBeDefined();
-		});
 	});
 });
