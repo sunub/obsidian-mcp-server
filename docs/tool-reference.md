@@ -176,23 +176,6 @@ Vault 문서 목록을 반환합니다.
 
 ## Frontmatter 기반 도구
 
-### `generate_property`
-
-- 파일 프리뷰(최대 300자)와 추천 frontmatter 스키마를 반환합니다.
-- 입력: `filename`(필수), `overwrite`(선택)
-- 실제 쓰기 전 단계에서 사용합니다.
-- 출력 예시 스키마에는 `aliases`가 포함될 수 있습니다.
-- 보통 `write_property` 전 단계로 사용합니다.
-
-예시:
-
-```json
-{
-  "filename": "my-first-post.md",
-  "overwrite": false
-}
-```
-
 ### `write_property`
 
 - 파일 frontmatter를 즉시 갱신/추가합니다.
@@ -213,37 +196,6 @@ Vault 문서 목록을 반환합니다.
     "summary": "요약"
   },
   "quiet": false
-}
-```
-
-### `create_document_with_properties`
-
-2단계 워크플로우입니다.
-
-- 1단계: `sourcePath` 입력 시 `content_to_analyze`(2000자 미리보기), `ai_prompt`, `next_action_required` 반환
-- 2단계: `aiGeneratedProperties`를 넣어 동일 tool 재호출하면 저장 수행
-- 저장 대상: `outputPath`가 있으면 그 경로, 없으면 `sourcePath`
-
-예시:
-
-```json
-{
-  "sourcePath": "my-first-post.md",
-  "outputPath": "my-first-post.md",
-  "overwrite": false
-}
-```
-
-2단계:
-
-```json
-{
-  "sourcePath": "my-first-post.md",
-  "aiGeneratedProperties": {
-    "title": "제목",
-    "summary": "수정 요약"
-  },
-  "overwrite": true
 }
 ```
 
