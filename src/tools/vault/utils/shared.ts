@@ -39,7 +39,7 @@ export const READ_DEFAULT_BACKLINK_LIMIT: Record<
 };
 
 export const ACTION_DEFAULT_MAX_OUTPUT_CHARS: Record<
-	"search" | "read" | "collect_context" | "load_memory",
+	"search" | "read" | "collect_context",
 	Record<Exclude<CompressionMode, "none">, number>
 > = {
 	search: {
@@ -56,11 +56,6 @@ export const ACTION_DEFAULT_MAX_OUTPUT_CHARS: Record<
 		summary: 1200,
 		aggressive: 2800,
 		balanced: 5200,
-	},
-	load_memory: {
-		summary: 1000,
-		aggressive: 2000,
-		balanced: 3200,
 	},
 };
 

@@ -13,7 +13,6 @@
 - 여러 문서를 배치 단위로 수집해 요약 구조로 축약
 - 증거 조각과 핵심 문장을 뽑아 AI가 바로 사용할 수 있는 컨텍스트 구성
 - 출력 크기 제약을 넘어갈 때 `continuationToken`으로 이어서 수집
-- 필요 시 `memory/context_memory_snapshot.v1.md`에 canonical 저장
 
 `search`/`read`/`list_all`이 단발 조회라면, `collect_context`는 “문맥 축적” 액션입니다.
 
@@ -41,7 +40,6 @@
 - `scope`: `"topic"`(키워드 검색 후보) 또는 `"all"`(전체 후보)
 - `maxDocs`: 배치당 최대 문서 수(기본 20)
 - `maxCharsPerDoc`: 문서별 추출 최대 문자(기본 1800)
-- `memoryMode`: `"response_only"` | `"vault_note"` | `"both"`
 - `continuationToken`: 이어서 수집할 때 사용
 - `maxOutputChars`: 응답 JSON 크기 제한
 - `compressionMode`: `"aggressive" | "balanced" | "none"`
@@ -65,7 +63,7 @@
 }
 ```
 
-### 템플릿 B: 전체 문맥 + 저장
+### 템플릿 B: 전체 문맥
 
 ```json
 {
@@ -73,7 +71,6 @@
   "scope": "all",
   "maxDocs": 20,
   "maxCharsPerDoc": 1200,
-  "memoryMode": "both",
   "compressionMode": "balanced"
 }
 ```
@@ -100,18 +97,9 @@
 }
 ```
 
-### 템플릿 E: 저장 노트 재호출
-
-```json
-{
-  "action": "load_memory",
-  "memoryPath": "memory/context_memory_snapshot.v1.md"
-}
-```
-
 ---
 
-## 5) 실행 시나리오: “ES6 관련 문서를 수집해서 요약하고 기억해줘”
+## 5) 실행 시나리오: “ES6 관련 문서를 수집해서 요약해줘”
 
 사용 예시로, 클라이언트가 다음 작업을 구성하는 방식입니다.
 
@@ -123,7 +111,6 @@
   "topic": "ES6",
   "maxDocs": 12,
   "maxCharsPerDoc": 900,
-  "memoryMode": "both",
   "compressionMode": "balanced"
 }
 ```
@@ -138,15 +125,7 @@
 }
 ```
 
-4) 원하는 시점/마지막 배치 완료 후, `load_memory` 호출
-
-```json
-{
-  "action": "load_memory"
-}
-```
-
-5) 이후 대화에서 `load_memory` 결과의 `memory_packet`을 컨텍스트로 주입
+4) 마지막 배치까지 받은 뒤, 각 응답의 `memory_packet`을 컨텍스트로 주입
 
 ---
 
@@ -184,7 +163,7 @@
 6. 메모리 패킷 구축
 - `memory_packet` 생성:
   - 핵심 사실, 경험 불릿, 소스 레퍼런스, 오픈 질문, 신뢰도
-- 저장 모드가 `vault_note` 또는 `both`면 memory note 생성/갱신
+- 결과는 응답으로만 반환하며 Vault에 노트를 쓰지 않음
 
 7. 최종 반환
 - `compression` 메타와 함께 JSON 반환
@@ -200,7 +179,6 @@
 - `batch.has_more`: 다음 배치 존재 여부
 - `batch.continuation_token`: 이어서 호출할 토큰 (`has_more=true`일 때 유효)
 - `memory_packet`: 모델이 바로 참고할 핵심 요약
-- `memory_write`: 저장 상태 (`written`/`failed`/`not_requested`)
 - `cache.hit`: 동일한 문서셋/파라미터 반복 요청 시 캐시 재사용 여부
 - `compression.truncated`: 출력이 줄였는지 플래그
 - `compression.estimated_tokens`: 토큰 비용 추정치
@@ -221,7 +199,7 @@
 ## 9) 추천 프리셋 요약
 
 - 빠른 탐색: `scope: topic`, `maxDocs: 8`, `maxCharsPerDoc: 700`, `compressionMode: aggressive`
-- 균형형 정리: `scope: all`, `maxDocs: 20`, `maxCharsPerDoc: 1200`, `memoryMode: both`, `compressionMode: balanced`
+- 균형형 정리: `scope: all`, `maxDocs: 20`, `maxCharsPerDoc: 1200`, `compressionMode: balanced`
 - 장문 순회: `scope: all`, `maxDocs: 10`, `maxCharsPerDoc: 900`, `maxOutputChars: 2800`
 
 ---
@@ -230,7 +208,7 @@
 
 - 첫 호출은 보수적으로 작은 `maxDocs`로 시작하고 `has_more`로 진행 속도/정밀도 조절
 - `cache.hit`이 자주 true면 같은 조건 반복 조회가 최적화되는 환경
-- 장시간 문맥 정제는 `collect_context`로 한 번에 끝내지 말고, 배치 단위 + `load_memory` 재주입으로 단계적으로 진행
+- 장시간 문맥 정제는 `collect_context`로 한 번에 끝내지 말고, 배치 단위로 나눠 단계적으로 진행
 
 ---
 
@@ -238,5 +216,4 @@
 
 - `src/tools/vault/utils/actions/collect_context.ts` (구현)
 - `src/tools/vault/types/collect_context.ts` (스키마/타입)
-- `src/tools/vault/utils/actions/load_memory.ts` (저장본 복원)
 - `src/tools/vault/utils/shared.ts` (`compression`, 출력 제약, 해시 보조 함수)

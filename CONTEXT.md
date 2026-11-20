@@ -1,6 +1,6 @@
-# Obsidian MCP Server Context
+# Obsidian Agent Product Context
 
-This glossary defines the product language for Obsidian MCP Server as a context layer for AI agents.
+This glossary defines the product language for an Obsidian-native workspace where AI agents use Vault knowledge as working context.
 
 ## Language
 
@@ -20,9 +20,9 @@ _Avoid_: Search accuracy
 The interchangeable mechanism used to find candidate vault material before it is selected and compressed for an AI agent.
 _Avoid_: RAG replacement
 
-**Local-Only Operation**:
-The product constraint that vault retrieval and context preparation should run on the user's machine without relying on external services or separately operated search engines.
-_Avoid_: Cloud-backed search, managed vector database, standalone search server
+**Local-First Execution**:
+The product policy that model execution, Vault retrieval, and context preparation use local providers by default, while external providers and network tools require explicit user choice.
+_Avoid_: Local-only operation, cloud-first execution
 
 **Explicit Context Trigger**:
 A user-visible signal, such as a vault-related command or tool reference, that opens the Vault context collection path for an AI agent.
@@ -31,3 +31,11 @@ _Avoid_: Always-on RAG, implicit background search
 **Agent Context Pipeline**:
 The end-to-end flow that retrieves vault material, selects relevant evidence, compresses it, and provides it as working context to an AI agent.
 _Avoid_: Search engine, document lookup
+
+**Agent Harness**:
+The execution environment that governs model selection, tool access, context budgets, permissions, cancellation, retries, and observable run state for an AI agent.
+_Avoid_: Model, chatbot, agent framework
+
+**Vault Copilot**:
+The initial Obsidian-native experience that answers from the current note and selected Vault evidence, cites its sources, and inserts generated content only after user approval.
+_Avoid_: General-purpose chatbot, autonomous note editor

@@ -101,22 +101,7 @@ next.js 주제로 장기 컨텍스트를 만들어줘.
 
 ## 2) `vault` 이외 도구 호출
 
-`generate_property`, `write_property`, `create_document_with_properties`, `organize_attachments`는 `name`을 직접 지정해 호출합니다.
-
-### 예시 5: frontmatter 제안 생성
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "generate_property",
-    "arguments": {
-      "filePath": "my-first-post.md",
-      "overwrite": false
-    }
-  }
-}
-```
+`write_property`는 `name`을 직접 지정해 호출합니다.
 
 ### 예시 6: frontmatter 적용
 
@@ -133,39 +118,6 @@ next.js 주제로 장기 컨텍스트를 만들어줘.
         "summary": "간단 요약"
       },
       "quiet": false
-    }
-  }
-}
-```
-
-### 예시 7: AI 작성 frontmatter 한 번에 적용
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "create_document_with_properties",
-    "arguments": {
-      "sourcePath": "my-first-post.md",
-      "aiGeneratedProperties": {
-        "title": "제목",
-        "summary": "AI 생성 요약"
-      },
-      "quiet": false
-    }
-  }
-}
-```
-
-### 예시 8: 첨부 이미지 정리
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "organize_attachments",
-    "arguments": {
-      "keyword": "이미지"
     }
   }
 }

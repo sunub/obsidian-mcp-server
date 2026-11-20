@@ -1,0 +1,11 @@
+{
+	"mcpServers": {
+		"obsidian": {
+			"command": "npx",
+			"args": ["-y", "@sunub/obsidian-mcp-server@latest"],
+			"env": {
+				"VAULT_DIR_PATH": "${VAULT_DIR_PATH}"
+			}
+		}
+	}
+}

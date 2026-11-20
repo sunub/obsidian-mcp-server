@@ -14,7 +14,6 @@ import {
 import {
 	collectContext,
 	listAllDocuments,
-	loadMemory,
 	readSpecificFile,
 	searchDocuments,
 	statsAllDocuments,
@@ -53,7 +52,7 @@ export const register = (mcpServer: McpServer) => {
 		{
 			title: annotations.title || name,
 			description: description,
-			inputSchema: obsidianContentQueryParamsZod.shape,
+			inputSchema: obsidianContentQueryParamsZod,
 			annotations: annotations,
 		},
 		execute,
@@ -115,10 +114,6 @@ export const execute = async (
 				result = await collectContext(vaultManager, params);
 				break;
 
-			case "load_memory":
-				result = await loadMemory(vaultManager, params);
-				break;
-
 			case "index_vault_to_vectordb":
 				result = await triggerIndexing();
 				break;
@@ -126,7 +121,7 @@ export const execute = async (
 			default:
 				return createToolError(
 					`Unknown action: ${params.action}`,
-					"Valid actions are: search, read, list_all, stats, collect_context, load_memory, index_vault_to_vectordb",
+					"Valid actions are: search, read, list_all, stats, collect_context, index_vault_to_vectordb",
 				);
 		}
 
@@ -148,7 +143,7 @@ export default {
 	name,
 	description,
 	annotations,
-	inputSchema: obsidianContentQueryParamsZod.shape,
+	inputSchema: obsidianContentQueryParamsZod,
 	execute,
 	register,
 	shorthandDescription,

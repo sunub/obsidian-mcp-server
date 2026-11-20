@@ -10,7 +10,7 @@ import {
 import { MODELS_DIR } from "./constants.js";
 
 export class EmbedderService {
-	public readonly modelName = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
+	public readonly modelName = "Xenova/multilingual-e5-small";
 	private extractor: FeatureExtractionPipeline | null = null;
 	private tokenizer: PreTrainedTokenizer | null = null;
 	private initPromise: Promise<void> | null = null;

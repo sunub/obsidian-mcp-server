@@ -1,7 +1,9 @@
 import type { RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { VaultToolDeps } from "@shared/vault-ops/types.js";
 import pkg from "../package.json" with { type: "json" };
-import tools from "./tools/index.js";
+import state from "./config.js";
+import tools, { toolsWithDeps } from "./tools/index.js";
 import type { ServerLifecycle } from "./utils/ServerLifecycle.js";
 
 type ToolConfig = {
@@ -40,14 +42,13 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 	          * action="read": Read a specific document's content and metadata.
 	          * action="list_all": List all documents in the vault.
 	          * action="index_vault_to_vectordb": Manually trigger a full vault re-indexing for semantic search.
-	        - generate_property: Generate frontmatter property suggestions from document content.
 	        - write_property: Write frontmatter properties to a markdown file.
-	        - create_document_with_properties: Two-step workflow for AI-generated properties and write.
-	        - organize_attachments: Move linked attachments and update markdown links.
+	        - tidy_plan: Build a vault tidy plan (attachments, duplicates, untitled notes, empty folders) and return a preview. Changes no files.
+	        - plan_apply: Apply only the plan operations the user approved, keeping every link pointing at the same file.
+	        - plan_undo: Revert a plan_apply run by its runId.
 	        
 	        Environment requirements:
 	        - VAULT_DIR_PATH: Path to your Obsidian vault directory.
-	        - LLM_API_URL: (Optional) Remote chat server URL (default: http://127.0.0.1:8080).
 	        
 	        Local Search Optimization:
 	        - To enable high-performance local hybrid search, run 'npx @sunub/obsidian-mcp-server setup' once.
@@ -69,6 +70,11 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 
 	for (const tool of Object.values(tools)) {
 		tool.register(mcpServer);
+	}
+
+	const deps: VaultToolDeps = { vaultRoot: () => state.vaultPath };
+	for (const tool of toolsWithDeps) {
+		tool.register(mcpServer, deps);
 	}
 
 	return mcpServer;

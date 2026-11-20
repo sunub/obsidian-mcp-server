@@ -45,6 +45,7 @@ vi.mock("../../src/tools/index.js", () => ({
 			},
 		},
 	},
+	toolsWithDeps: [],
 }));
 
 describe("createMcpServer tool lifecycle", () => {

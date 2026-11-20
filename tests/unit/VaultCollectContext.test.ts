@@ -1,10 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test, vi } from "vitest";
+import { obsidianContentQueryParamsZod } from "../../src/tools/vault/params.js";
 import { collectContextResponseDataSchema } from "../../src/tools/vault/types/collect_context.js";
-import {
-	CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-	CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
-} from "../../src/tools/vault/utils/constants.js";
 import { collectContext } from "../../src/tools/vault/utils.js";
 import type { DocumentIndex } from "../../src/utils/processor/types.js";
 import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
@@ -18,7 +15,7 @@ function firstText(result: CallToolResult): string {
 	return first.text;
 }
 
-function createMockVaultManager(variant = "v1") {
+function createMockVaultManager(variant = "v1", diagnosticMessage?: string) {
 	const docs: DocumentIndex[] = [
 		{
 			filePath: "/vault/nextjs-project.md",
@@ -74,11 +71,21 @@ function createMockVaultManager(variant = "v1") {
 	const manager = {
 		initialize: vi.fn(async () => {}),
 		getAllDocuments: vi.fn(async () => docs),
-		searchDocuments: vi.fn(async (keyword: string) =>
-			docs.filter((doc) =>
-				doc.frontmatter.title?.toLowerCase().includes(keyword.toLowerCase()),
-			),
-		),
+		// 실제 경로처럼 관련도 순서로 반환한다. 경로 사전순과 다르게 project가 먼저 온다.
+		hybridSearch: vi.fn(async (query: string, limit = 5) => ({
+			results: docs
+				.filter((doc) =>
+					doc.frontmatter.title?.toLowerCase().includes(query.toLowerCase()),
+				)
+				.slice(0, limit)
+				.map((document) => ({
+					score: 1,
+					finalScore: 1,
+					document,
+					matchedChunks: [],
+				})),
+			diagnostic_message: diagnosticMessage,
+		})),
 		getDocumentInfo: vi.fn(
 			async (
 				filename: string,
@@ -107,6 +114,71 @@ function createMockVaultManager(variant = "v1") {
 }
 
 describe("Vault collect_context orchestration", () => {
+	test("keeps hybrid search ranking for topic scope", async () => {
+		const { vaultManager } = createMockVaultManager("ranking-v1");
+
+		const result = await collectContext(vaultManager, {
+			action: "collect_context",
+			topic: "next.js",
+			scope: "topic",
+			maxDocs: 2,
+			maxCharsPerDoc: 300,
+			compressionMode: "none",
+		});
+		const payload = collectContextResponseDataSchema.parse(
+			JSON.parse(firstText(result)),
+		);
+
+		expect(payload.documents.map((doc) => doc.fullPath)).toEqual([
+			"/vault/nextjs-project.md",
+			"/vault/nextjs-performance.md",
+		]);
+		expect(payload.matched_total).toBe(2);
+	});
+
+	test("puts ranked documents first for all scope with a topic", async () => {
+		const { vaultManager } = createMockVaultManager("all-scope-v1");
+
+		const result = await collectContext(vaultManager, {
+			action: "collect_context",
+			topic: "project",
+			scope: "all",
+			maxDocs: 2,
+			maxCharsPerDoc: 300,
+			compressionMode: "none",
+		});
+		const payload = collectContextResponseDataSchema.parse(
+			JSON.parse(firstText(result)),
+		);
+
+		expect(payload.documents.map((doc) => doc.fullPath)).toEqual([
+			"/vault/nextjs-project.md",
+			"/vault/nextjs-performance.md",
+		]);
+		expect(payload.matched_total).toBe(2);
+	});
+
+	test("reports search diagnostics without breaking the JSON payload", async () => {
+		const { vaultManager } = createMockVaultManager(
+			"diagnostic-v1",
+			"keyword fallback",
+		);
+
+		const result = await collectContext(vaultManager, {
+			action: "collect_context",
+			topic: "next.js",
+			scope: "topic",
+			maxDocs: 1,
+			maxCharsPerDoc: 300,
+		});
+
+		expect(() => JSON.parse(firstText(result))).not.toThrow();
+		expect(result.content?.[1]).toEqual({
+			type: "text",
+			text: "<system_directive>\nkeyword fallback\n</system_directive>",
+		});
+	});
+
 	test("returns continuation token for batched collect_context", async () => {
 		const { vaultManager } = createMockVaultManager();
 
@@ -174,7 +246,7 @@ describe("Vault collect_context orchestration", () => {
 		expect(result.isError).toBe(true);
 	});
 
-	test("writes memory note when memoryMode is both", async () => {
+	test("collect_context는 Vault에 파일을 쓰지 않는다", async () => {
 		const { vaultManager, writeRawDocument } = createMockVaultManager();
 		const result = await collectContext(vaultManager, {
 			action: "collect_context",
@@ -182,25 +254,31 @@ describe("Vault collect_context orchestration", () => {
 			scope: "topic",
 			maxDocs: 1,
 			maxCharsPerDoc: 300,
-			memoryMode: "both",
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = collectContextResponseDataSchema.parse(
-			JSON.parse(firstText(result)),
-		);
+		expect(writeRawDocument).not.toHaveBeenCalled();
+		const payload = JSON.parse(firstText(result));
+		expect(payload).not.toHaveProperty("memory_mode");
+		expect(payload).not.toHaveProperty("memory_write");
+	});
 
-		expect(writeRawDocument).toHaveBeenCalledTimes(1);
-		expect(writeRawDocument).toHaveBeenCalledWith(
-			CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-			expect.stringContaining("# Context Memory Snapshot v1"),
-		);
-		expect(writeRawDocument.mock.calls[0][1]).toContain(
-			`"schema_version": "${CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION}"`,
-		);
-		expect(payload.memory_write.status).toBe("written");
-		expect(payload.memory_write.generated_at).toBeDefined();
-		expect(payload.memory_write.source_hash).toMatch(/^[a-f0-9]{64}$/);
+	test("memoryMode 파라미터는 거부된다", () => {
+		const result = obsidianContentQueryParamsZod.safeParse({
+			action: "collect_context",
+			topic: "x",
+			memoryMode: "vault_note",
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	test("load_memory 액션은 거부된다", () => {
+		const result = obsidianContentQueryParamsZod.safeParse({
+			action: "load_memory",
+		});
+
+		expect(result.success).toBe(false);
 	});
 
 	test("uses cache for repeated collect_context requests", async () => {

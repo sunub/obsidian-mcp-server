@@ -8,7 +8,6 @@ type VaultAction =
 	| "list_all"
 	| "stats"
 	| "collect_context"
-	| "load_memory"
 	| "index_vault_to_vectordb";
 
 type CompressionSummary = {

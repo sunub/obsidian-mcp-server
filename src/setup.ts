@@ -37,9 +37,9 @@ export async function setup(options = { force: false }) {
 			desc: "Improves search relevance by re-ordering results.",
 		},
 		{
-			name: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+			name: "Xenova/multilingual-e5-small",
 			type: "feature-extraction",
-			label: "Multilingual MiniLM",
+			label: "Multilingual E5 Small",
 			desc: "Provides deep understanding of multilingual documents.",
 		},
 	];
