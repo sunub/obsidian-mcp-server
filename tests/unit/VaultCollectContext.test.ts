@@ -1,10 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test, vi } from "vitest";
+import { obsidianContentQueryParamsZod } from "../../src/tools/vault/params.js";
 import { collectContextResponseDataSchema } from "../../src/tools/vault/types/collect_context.js";
-import {
-	CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-	CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
-} from "../../src/tools/vault/utils/constants.js";
 import { collectContext } from "../../src/tools/vault/utils.js";
 import type { DocumentIndex } from "../../src/utils/processor/types.js";
 import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
@@ -249,7 +246,7 @@ describe("Vault collect_context orchestration", () => {
 		expect(result.isError).toBe(true);
 	});
 
-	test("writes memory note when memoryMode is both", async () => {
+	test("collect_context는 Vault에 파일을 쓰지 않는다", async () => {
 		const { vaultManager, writeRawDocument } = createMockVaultManager();
 		const result = await collectContext(vaultManager, {
 			action: "collect_context",
@@ -257,25 +254,31 @@ describe("Vault collect_context orchestration", () => {
 			scope: "topic",
 			maxDocs: 1,
 			maxCharsPerDoc: 300,
-			memoryMode: "both",
 		});
 
 		expect(result.isError).toBe(false);
-		const payload = collectContextResponseDataSchema.parse(
-			JSON.parse(firstText(result)),
-		);
+		expect(writeRawDocument).not.toHaveBeenCalled();
+		const payload = JSON.parse(firstText(result));
+		expect(payload).not.toHaveProperty("memory_mode");
+		expect(payload).not.toHaveProperty("memory_write");
+	});
 
-		expect(writeRawDocument).toHaveBeenCalledTimes(1);
-		expect(writeRawDocument).toHaveBeenCalledWith(
-			CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-			expect.stringContaining("# Context Memory Snapshot v1"),
-		);
-		expect(writeRawDocument.mock.calls[0][1]).toContain(
-			`"schema_version": "${CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION}"`,
-		);
-		expect(payload.memory_write.status).toBe("written");
-		expect(payload.memory_write.generated_at).toBeDefined();
-		expect(payload.memory_write.source_hash).toMatch(/^[a-f0-9]{64}$/);
+	test("memoryMode 파라미터는 거부된다", () => {
+		const result = obsidianContentQueryParamsZod.safeParse({
+			action: "collect_context",
+			topic: "x",
+			memoryMode: "vault_note",
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	test("load_memory 액션은 거부된다", () => {
+		const result = obsidianContentQueryParamsZod.safeParse({
+			action: "load_memory",
+		});
+
+		expect(result.success).toBe(false);
 	});
 
 	test("uses cache for repeated collect_context requests", async () => {

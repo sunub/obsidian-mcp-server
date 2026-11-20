@@ -26,7 +26,6 @@ Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 
   - `list_all`: Vault 문서 목록 조회
   - `stats`: Vault 및 인덱스 상태 조회
   - `collect_context`: 주제와 연관된 문서를 선별해 `memory_packet` 생성
-  - `load_memory`: 저장된 컨텍스트 메모리 스냅샷 로드
 - `generate_property`: 문서 내용을 바탕으로 frontmatter 후보 생성
 - `write_property`: frontmatter 쓰기
 - `create_document_with_properties`: 문서 분석 후 속성 생성/쓰기 2단계 워크플로우

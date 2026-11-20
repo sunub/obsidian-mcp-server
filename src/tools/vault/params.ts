@@ -32,11 +32,10 @@ export const obsidianContentActions = z
 		"list_all",
 		"stats",
 		"collect_context",
-		"load_memory",
 		"index_vault_to_vectordb",
 	])
 	.describe(
-		"The action to perform: search documents, read specific file, list all content, get stats, collect contextual memory packets, load stored memory, or trigger indexing",
+		"The action to perform: search documents, read specific file, list all content, get stats, collect contextual memory packets, or trigger indexing",
 	);
 export const obsidianContentKeyword = z
 	.string()
@@ -102,45 +101,34 @@ export const obsidianContentMaxCharsPerDoc = z
 	.describe(
 		"Maximum number of characters extracted per document for collect_context",
 	);
-export const obsidianContentMemoryMode = z
-	.enum(["response_only", "vault_note", "both"])
-	.default("response_only")
-	.describe(
-		"Memory output mode for collect_context. response_only: return packet only, vault_note: save to vault note only, both: return and save.",
-	);
 export const obsidianContentContinuationToken = z
 	.string()
 	.min(1)
 	.describe(
 		"Continuation token to resume a previous collect_context batch operation",
 	);
-export const obsidianContentMemoryPath = z
-	.string()
-	.describe(
-		"Path to a stored memory note for load_memory (default: memory/context_memory_snapshot.v1.md)",
-	);
 
 // input schema
-export const obsidianContentQueryParamsZod = z.object({
-	action: obsidianContentActions,
-	keyword: obsidianContentKeyword.optional(),
-	query: obsidianContentQuery.optional(),
-	filename: obsidianContentFilename.optional(),
-	limit: obsidianContentLimit.optional(),
-	includeContent: obsidianContentIncludeContent.optional(),
-	includeFrontmatter: obsidianContentIncludeFrontmatter.optional(),
-	excerptLength: obsidianContentExcerptLength.optional(),
-	topic: obsidianContentTopic.optional(),
-	scope: obsidianContentScope.optional(),
-	maxDocs: obsidianContentMaxDocs.optional(),
-	maxCharsPerDoc: obsidianContentMaxCharsPerDoc.optional(),
-	memoryMode: obsidianContentMemoryMode.optional(),
-	continuationToken: obsidianContentContinuationToken.optional(),
-	memoryPath: obsidianContentMemoryPath.optional(),
-	compressionMode: compressionModeSchema.optional(),
-	maxOutputChars: maxOutputCharsSchema.optional(),
-	quiet: quietMode.optional(),
-});
+export const obsidianContentQueryParamsZod = z
+	.object({
+		action: obsidianContentActions,
+		keyword: obsidianContentKeyword.optional(),
+		query: obsidianContentQuery.optional(),
+		filename: obsidianContentFilename.optional(),
+		limit: obsidianContentLimit.optional(),
+		includeContent: obsidianContentIncludeContent.optional(),
+		includeFrontmatter: obsidianContentIncludeFrontmatter.optional(),
+		excerptLength: obsidianContentExcerptLength.optional(),
+		topic: obsidianContentTopic.optional(),
+		scope: obsidianContentScope.optional(),
+		maxDocs: obsidianContentMaxDocs.optional(),
+		maxCharsPerDoc: obsidianContentMaxCharsPerDoc.optional(),
+		continuationToken: obsidianContentContinuationToken.optional(),
+		compressionMode: compressionModeSchema.optional(),
+		maxOutputChars: maxOutputCharsSchema.optional(),
+		quiet: quietMode.optional(),
+	})
+	.strict();
 
 export type ObsidianContentQueryParams = z.infer<
 	typeof obsidianContentQueryParamsZod

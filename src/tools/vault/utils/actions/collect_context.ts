@@ -6,7 +6,6 @@ import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js
 import type { ObsidianContentQueryParams } from "../../params.js";
 import {
 	type CollectContextDocument,
-	type CollectContextMemoryMode,
 	type CollectContextMemoryPacket,
 	type CollectContextPayload,
 	type CollectContextRelevance,
@@ -17,10 +16,7 @@ import {
 	collectContextResponseDataSchema,
 	collectContextTokenV1Schema,
 } from "../../types/collect_context.js";
-import {
-	CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-	CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
-} from "../constants.js";
+import { COLLECT_CONTEXT_CACHE_SCHEMA_VERSION } from "../constants.js";
 import {
 	ACTION_DEFAULT_MAX_OUTPUT_CHARS,
 	finalizePayloadWithCompression,
@@ -230,15 +226,12 @@ function buildCollectContextPayload(params: {
 	matchedTotal: number;
 	totalInVault: number;
 	documents: CollectContextDocument[];
-	memoryMode: CollectContextMemoryMode;
-	memoryWriteRequested: boolean;
 	cache?: {
 		key: string;
 		hit: boolean;
 		schema_version: string;
 		topic: string | null;
 		doc_hash: string;
-		mode: CollectContextMemoryMode;
 	};
 	startCursor: number;
 	processedDocs: number;
@@ -259,15 +252,6 @@ function buildCollectContextPayload(params: {
 			params.topic,
 			params.documents,
 		),
-		memory_mode: params.memoryMode,
-		memory_write: params.memoryWriteRequested
-			? {
-					requested: true,
-					status: "failed",
-					reason:
-						"Memory note write requested but no write result was provided.",
-				}
-			: { requested: false, status: "not_requested" },
 		cache: params.cache,
 		batch: {
 			start_cursor: params.startCursor,
@@ -386,7 +370,6 @@ function buildCollectContextCacheKey(params: {
 	scope: CollectContextScope;
 	topic: string | null;
 	docHash: string;
-	mode: CollectContextMemoryMode;
 	startCursor: number;
 	maxDocs: number;
 	maxCharsPerDoc: number;
@@ -395,8 +378,7 @@ function buildCollectContextCacheKey(params: {
 		scope: params.scope,
 		topic: params.topic,
 		doc_hash: params.docHash,
-		schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
-		mode: params.mode,
+		schema_version: COLLECT_CONTEXT_CACHE_SCHEMA_VERSION,
 		start_cursor: params.startCursor,
 		max_docs: params.maxDocs,
 		max_chars_per_doc: params.maxCharsPerDoc,
@@ -433,162 +415,6 @@ function setCollectContextCache(
 	}
 
 	return structuredClone(cachedPayload);
-}
-
-function buildCollectContextSourceHash(
-	payload: Pick<
-		CollectContextPayload,
-		"scope" | "topic" | "matched_total" | "documents" | "memory_packet"
-	>,
-): string {
-	const normalized = {
-		scope: payload.scope,
-		topic: payload.topic,
-		matched_total: payload.matched_total,
-		documents: payload.documents.map((doc) => ({
-			fullPath: doc.fullPath,
-			doc_hash: doc.doc_hash,
-			title: doc.title,
-			tags: doc.tags,
-			summary: doc.summary,
-			relevance: doc.relevance,
-			contentLength: doc.stats.contentLength,
-			backlinks_count: doc.backlinks_count,
-			truncated: doc.truncated,
-		})),
-		memory_packet: payload.memory_packet,
-	};
-
-	return createHash("sha256")
-		.update(JSON.stringify(normalized), "utf8")
-		.digest("hex");
-}
-
-function buildContextMemorySnapshotMarkdown(params: {
-	payload: CollectContextPayload;
-	generatedAt: string;
-	sourceHash: string;
-	notePath: string;
-}): string {
-	const { payload, generatedAt, sourceHash, notePath } = params;
-
-	const canonical = {
-		schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
-		generated_at: generatedAt,
-		source_hash: sourceHash,
-		note_path: notePath,
-		action: payload.action,
-		scope: payload.scope,
-		topic: payload.topic,
-		matched_total: payload.matched_total,
-		total_in_vault: payload.total_in_vault,
-		documents: payload.documents.map((doc) => ({
-			fullPath: doc.fullPath,
-			doc_hash: doc.doc_hash,
-			title: doc.title,
-			tags: doc.tags,
-			relevance: doc.relevance,
-			summary: doc.summary,
-			evidence_snippets: doc.evidence_snippets,
-			stats: doc.stats,
-			backlinks_count: doc.backlinks_count,
-			truncated: doc.truncated,
-		})),
-		memory_packet: payload.memory_packet,
-	};
-
-	const keyFacts = payload.memory_packet.keyFacts
-		.slice(0, 8)
-		.map((fact) => `- ${fact}`)
-		.join("\n");
-	const experienceBullets = payload.memory_packet.experienceBullets
-		.slice(0, 8)
-		.map((item) => `- ${item}`)
-		.join("\n");
-	const sourceRefs = payload.memory_packet.sourceRefs
-		.slice(0, 10)
-		.map(
-			(ref) =>
-				`- [${ref.relevance}] ${ref.title} (${ref.filePath})${ref.evidenceSnippets.length > 0 ? `\n  - ${ref.evidenceSnippets.join("\n  - ")}` : ""}`,
-		)
-		.join("\n");
-	const openQuestions =
-		payload.memory_packet.openQuestions.length > 0
-			? payload.memory_packet.openQuestions.map((q) => `- ${q}`).join("\n")
-			: "- None";
-
-	return [
-		"# Context Memory Snapshot v1",
-		"",
-		`- generated_at: ${generatedAt}`,
-		`- source_hash: ${sourceHash}`,
-		`- schema_version: ${CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION}`,
-		`- topic: ${payload.topic ?? "null"}`,
-		`- scope: ${payload.scope}`,
-		`- matched_total: ${payload.matched_total}`,
-		`- total_in_vault: ${payload.total_in_vault}`,
-		"",
-		"## Topic Summary",
-		payload.memory_packet.topicSummary || "(empty)",
-		"",
-		"## Key Facts",
-		keyFacts || "- None",
-		"",
-		"## Experience Bullets",
-		experienceBullets || "- None",
-		"",
-		"## Source Refs",
-		sourceRefs || "- None",
-		"",
-		"## Open Questions",
-		openQuestions,
-		"",
-		"## Confidence",
-		`${payload.memory_packet.confidence}`,
-		"",
-		"## Canonical JSON",
-		"```json",
-		JSON.stringify(canonical, null, 2),
-		"```",
-		"",
-	].join("\n");
-}
-
-async function writeContextMemorySnapshotNote(
-	vaultManager: VaultManager,
-	payload: CollectContextPayload,
-): Promise<CollectContextPayload["memory_write"]> {
-	const generatedAt = new Date().toISOString();
-	const sourceHash = buildCollectContextSourceHash(payload);
-	const markdown = buildContextMemorySnapshotMarkdown({
-		payload,
-		generatedAt,
-		sourceHash,
-		notePath: CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-	});
-
-	try {
-		await vaultManager.writeRawDocument(
-			CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-			markdown,
-		);
-		return {
-			requested: true,
-			status: "written",
-			note_path: CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-			generated_at: generatedAt,
-			source_hash: sourceHash,
-		};
-	} catch (error) {
-		return {
-			requested: true,
-			status: "failed",
-			note_path: CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-			generated_at: generatedAt,
-			source_hash: sourceHash,
-			reason: error instanceof Error ? error.message : String(error),
-		};
-	}
 }
 
 function trimCollectContextPayloadToOutputLimit(
@@ -636,7 +462,6 @@ function trimCollectContextPayloadToOutputLimit(
 			topic: next.topic,
 			maxDocs: next.batch.max_docs,
 			maxCharsPerDoc: next.batch.max_chars_per_doc,
-			memoryMode: next.memory_mode,
 		});
 	}
 
@@ -711,7 +536,6 @@ function decodeCollectContextContinuationToken(
 			topic: validation.data.topic,
 			maxDocs: Math.floor(validation.data.maxDocs),
 			maxCharsPerDoc: Math.floor(validation.data.maxCharsPerDoc),
-			memoryMode: validation.data.memoryMode,
 		};
 	} catch {
 		return null;
@@ -759,8 +583,6 @@ export async function collectContext(
 	const maxDocs = continuation?.maxDocs ?? params.maxDocs ?? 20;
 	const maxCharsPerDoc =
 		continuation?.maxCharsPerDoc ?? params.maxCharsPerDoc ?? 1800;
-	const memoryMode: CollectContextMemoryMode =
-		continuation?.memoryMode ?? params.memoryMode ?? "response_only";
 	const startCursor = continuation?.cursor ?? 0;
 
 	if (scope === "topic" && !topic) {
@@ -793,7 +615,6 @@ export async function collectContext(
 		scope,
 		topic,
 		docHash: emptyDocHash,
-		mode: memoryMode,
 		startCursor,
 		maxDocs,
 		maxCharsPerDoc,
@@ -815,15 +636,12 @@ export async function collectContext(
 					matchedTotal: orderedCandidates.length,
 					totalInVault: allDocuments.length,
 					documents: [],
-					memoryMode,
-					memoryWriteRequested: false,
 					cache: {
 						key: emptyCacheKey,
 						hit: false,
-						schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
+						schema_version: COLLECT_CONTEXT_CACHE_SCHEMA_VERSION,
 						topic,
 						doc_hash: emptyDocHash,
-						mode: memoryMode,
 					},
 					startCursor,
 					processedDocs: 0,
@@ -845,17 +663,6 @@ export async function collectContext(
 			});
 		}
 
-		if (memoryMode !== "response_only") {
-			const memoryWrite = await writeContextMemorySnapshotNote(
-				vaultManager,
-				emptyPayload,
-			);
-			emptyPayload = collectContextPayloadSchema.parse({
-				...emptyPayload,
-				memory_mode: memoryMode,
-				memory_write: memoryWrite,
-			});
-		}
 		const finalizedPayload = collectContextResponseDataSchema.parse(
 			finalizePayloadWithCompression(emptyPayload, {
 				mode,
@@ -921,8 +728,6 @@ export async function collectContext(
 					matchedTotal: orderedCandidates.length,
 					totalInVault: allDocuments.length,
 					documents,
-					memoryMode,
-					memoryWriteRequested: false,
 					startCursor,
 					processedDocs: documents.length,
 					consumedCandidates,
@@ -974,7 +779,6 @@ export async function collectContext(
 				topic,
 				maxDocs,
 				maxCharsPerDoc,
-				memoryMode,
 			})
 		: null;
 
@@ -983,7 +787,6 @@ export async function collectContext(
 		scope,
 		topic,
 		docHash: docHash,
-		mode: memoryMode,
 		startCursor,
 		maxDocs,
 		maxCharsPerDoc,
@@ -1001,15 +804,12 @@ export async function collectContext(
 				matchedTotal: orderedCandidates.length,
 				totalInVault: allDocuments.length,
 				documents,
-				memoryMode,
-				memoryWriteRequested: false,
 				cache: {
 					key: cacheKey,
 					hit: false,
-					schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
+					schema_version: COLLECT_CONTEXT_CACHE_SCHEMA_VERSION,
 					topic,
 					doc_hash: docHash,
-					mode: memoryMode,
 				},
 				startCursor,
 				processedDocs: documents.length,
@@ -1032,25 +832,13 @@ export async function collectContext(
 					: {
 							key: cacheKey,
 							hit: true,
-							schema_version: CONTEXT_MEMORY_SNAPSHOT_SCHEMA_VERSION,
+							schema_version: COLLECT_CONTEXT_CACHE_SCHEMA_VERSION,
 							topic,
 							doc_hash: docHash,
-							mode: memoryMode,
 						},
 			})
 		: basePayload;
 
-	if (memoryMode !== "response_only") {
-		const memoryWrite = await writeContextMemorySnapshotNote(
-			vaultManager,
-			basePayload,
-		);
-		payloadForCompression = collectContextPayloadSchema.parse({
-			...basePayload,
-			memory_mode: memoryMode,
-			memory_write: memoryWrite,
-		});
-	}
 	if (typeof maxOutputChars === "number") {
 		const trimmed = trimCollectContextPayloadToOutputLimit(
 			payloadForCompression,
