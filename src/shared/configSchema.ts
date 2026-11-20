@@ -26,10 +26,8 @@ const vaultPathSchema = z
 export const configSchema = z.object({
 	vaultPath: vaultPathSchema.optional(), // Allow optional for CLI fallback building
 	loggingLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
-	llmApiUrl: z.string().url().default("http://127.0.0.1:8080"),
 	llmEmbeddingApiUrl: z.string().url().default("http://127.0.0.1:8081"),
 	llmEmbeddingModel: z.string().default("nomic-embed-text"),
-	llmChatModel: z.string().default("llama3"),
 	llmRerankerApiUrl: z.string().url().default("http://127.0.0.1:8082"),
 });
 

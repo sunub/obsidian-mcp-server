@@ -49,7 +49,6 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 	        
 	        Environment requirements:
 	        - VAULT_DIR_PATH: Path to your Obsidian vault directory.
-	        - LLM_API_URL: (Optional) Remote chat server URL (default: http://127.0.0.1:8080).
 	        
 	        Local Search Optimization:
 	        - To enable high-performance local hybrid search, run 'npx @sunub/obsidian-mcp-server setup' once.

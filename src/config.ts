@@ -32,13 +32,7 @@ const vaultPathSchema = z
 export const configSchema = z.object({
 	vaultPath: vaultPathSchema,
 	loggingLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
-	llmApiUrl: z.string().url().default("http://127.0.0.1:8080"),
-	llmChatModel: z.string().default("llama3"),
 	llmRerankerApiUrl: z.string().url().default("http://127.0.0.1:8082"),
-	llmTimeoutMs: z.coerce.number().default(120000),
-	// 로컬 모델 서버의 컨텍스트 한도. 넘는 입력은 서버가 앞에서부터 조용히 잘라내므로
-	// 대화 압축 기준으로 쓴다. Ollama 기본값에 맞춰 16384로 둔다.
-	llmContextTokens: z.coerce.number().int().positive().default(16384),
 });
 
 export type ObsidianMcpConfig = z.infer<typeof configSchema>;
@@ -46,12 +40,8 @@ export type ObsidianMcpConfig = z.infer<typeof configSchema>;
 const _rawConfig = {
 	vaultPath: process.env["VAULT_DIR_PATH"] || "",
 	loggingLevel: "info" as const,
-	llmApiUrl: process.env["LLM_API_URL"] || "http://127.0.0.1:8080",
-	llmChatModel: process.env["LLM_CHAT_MODEL"] || "llama3",
 	llmRerankerApiUrl:
 		process.env["LLM_RERANKER_API_URL"] || "http://127.0.0.1:8082",
-	llmTimeoutMs: process.env["LLM_TIMEOUT_MS"] || "120000",
-	llmContextTokens: process.env["LLM_CONTEXT_TOKENS"] || "16384",
 };
 
 const _parseResult = configSchema.safeParse(_rawConfig);
@@ -74,26 +64,6 @@ export function getOptions(): ObsidianMcpConfig | false {
 			"Logging level (debug, info, warn, error)",
 			process.env["LOGGING_LEVEL"] ?? "info",
 		)
-		.option(
-			"--llm-api-url <url>",
-			"LLM Chat API URL",
-			process.env["LLM_API_URL"] ?? "http://127.0.0.1:8080",
-		)
-		.option(
-			"--llm-chat-model <model>",
-			"LLM Chat Model",
-			process.env["LLM_CHAT_MODEL"] ?? "llama3",
-		)
-		.option(
-			"--llm-timeout-ms <ms>",
-			"LLM Timeout in Milliseconds",
-			process.env["LLM_TIMEOUT_MS"] ?? "120000",
-		)
-		.option(
-			"--llm-context-tokens <tokens>",
-			"LLM context window size in tokens",
-			process.env["LLM_CONTEXT_TOKENS"] ?? "16384",
-		)
 		.allowUnknownOption()
 		.allowExcessArguments(true)
 		.parse(process.argv);
@@ -114,10 +84,6 @@ export function getOptions(): ObsidianMcpConfig | false {
 
 	state.vaultPath = parseResult.data.vaultPath;
 	state.loggingLevel = parseResult.data.loggingLevel;
-	state.llmApiUrl = parseResult.data.llmApiUrl;
-	state.llmChatModel = parseResult.data.llmChatModel;
-	state.llmTimeoutMs = parseResult.data.llmTimeoutMs;
-	state.llmContextTokens = parseResult.data.llmContextTokens;
 
 	return state;
 }

@@ -94,16 +94,13 @@ Claude Desktop, Cursor, Copilot 등 MCP 클라이언트에는 다음처럼 등�
 | --- | --- | --- | --- |
 | `VAULT_DIR_PATH` | 없음 | Obsidian Vault 절대 경로 | 예 |
 | `LOGGING_LEVEL` | `info` | `debug`, `info`, `warn`, `error` | 아니오 |
-| `LLM_API_URL` | `http://127.0.0.1:8080` | CLI UI가 사용할 OpenAI 호환 로컬 LLM endpoint | CLI 사용 시 |
-| `LLM_CHAT_MODEL` | `llama3` | CLI UI 답변 생성 모델명 | CLI 사용 시 |
 
-MCP 서버의 Vault 검색/읽기 도구에는 `VAULT_DIR_PATH`가 핵심 설정입니다. `LLM_API_URL`과 `LLM_CHAT_MODEL`은 저장소에 포함된 개발용 CLI UI에서 대화형 스트리밍 답변을 받을 때 필요합니다.
+MCP 서버의 Vault 검색/읽기 도구에는 `VAULT_DIR_PATH`가 핵심 설정입니다.
 
 ## 주의 사항
 
 - `VAULT_DIR_PATH`가 없거나 잘못되면 Vault 관련 도구가 동작하지 않습니다.
 - semantic search와 reranking을 쓰려면 `setup`으로 로컬 모델을 설치해야 합니다.
-- CLI의 명시적 RAG는 `vault` 관련 명령, 서버명, 도구명이 입력에서 트리거될 때만 사전 문맥 수집을 시도합니다.
 - `collect_context`는 긴 주제 정리와 메모리 패킷 생성에 적합하고, 단건 조회는 `search`나 `read`가 더 단순합니다.
 - 쓰기 계열 도구는 Vault 바깥 경로에 쓰지 않도록 차단합니다.
 
