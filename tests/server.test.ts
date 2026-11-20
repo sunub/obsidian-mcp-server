@@ -138,13 +138,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 	test("서버에 등록된 모든 도구 목록을 가져올 수 있다", async () => {
 		const toolsResult = await mcpClient.listTools();
 		const toolNames = toolsResult.tools.map((tool) => tool.name);
-		const expectedTools = [
-			"vault",
-			"create_document_with_properties",
-			"write_property",
-			"generate_property",
-			"organize_attachments",
-		];
+		const expectedTools = ["vault", "write_property", "organize_attachments"];
 
 		expect(toolNames).toEqual(expect.arrayContaining(expectedTools));
 	});

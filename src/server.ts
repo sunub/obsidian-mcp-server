@@ -42,9 +42,7 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 	          * action="read": Read a specific document's content and metadata.
 	          * action="list_all": List all documents in the vault.
 	          * action="index_vault_to_vectordb": Manually trigger a full vault re-indexing for semantic search.
-	        - generate_property: Generate frontmatter property suggestions from document content.
 	        - write_property: Write frontmatter properties to a markdown file.
-	        - create_document_with_properties: Two-step workflow for AI-generated properties and write.
 	        - organize_attachments: Move linked attachments and update markdown links.
 	        
 	        Environment requirements:

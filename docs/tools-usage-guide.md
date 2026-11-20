@@ -2,15 +2,13 @@
 
 이 문서는 현재 등록된 모든 top-level MCP 도구의 사용 의도를 한 번에 정리합니다.
 
-핵심은 `vault`가 액션 라우터이고, 나머지 4개 도구는 속도/재사용/안전성 중심으로 분리된 특수 기능입니다.
+핵심은 `vault`가 액션 라우터이고, 나머지 도구는 속도/재사용/안전성 중심으로 분리된 특수 기능입니다.
 
 ## 1. 도구 목록(등록 순서)
 
 1. `vault`
-2. `generate_property`
-3. `write_property`
-4. `create_document_with_properties`
-5. `organize_attachments`
+2. `write_property`
+3. `organize_attachments`
 
 ## 2. vault: 액션 기반 공용 인터페이스
 
@@ -124,25 +122,7 @@
 
 상세 동작 원리, 템플릿, 이어받기 예시는 `docs/collect-context-guide.md`를 참고하세요.
 
-## 3. generate_property
-
-목적: 지정한 문서에서 프론트메타 생성용 입력 payload를 AI가 바로 처리할 수 있는 형태로 반환.
-
-요청 예시:
-
-```json
-{
-  "filename": "my-first-post.md",
-  "overwrite": false
-}
-```
-
-특징:
-- 디스크에 쓰지 않음
-- `content_preview` + 스키마(필수 필드와 타입) 응답
-- 일반적으로 다음 단계로 `write_property` 또는 `create_document_with_properties` 연동
-
-## 4. write_property
+## 3. write_property
 
 목적: 실제 frontmatter 반영.
 
@@ -167,44 +147,7 @@
 - `filePath`는 `VAULT_DIR_PATH` 내부여야 함
 - 현재 기본 `quiet` 값은 `true`이므로 상세 응답이 필요하면 `false` 설정
 
-## 5. create_document_with_properties
-
-목적: AI가 속성 후보를 만들어 즉시 쓰기까지 가능한 2단계 워크플로우.
-
-1단계:
-
-```json
-{
-  "sourcePath": "draft/my-article.md",
-  "outputPath": "notes/my-article.md",
-  "overwrite": true
-}
-```
-
-이 호출은 분석 instruction과 텍스트 preview를 반환합니다.
-
-2단계:
-
-```json
-{
-  "sourcePath": "draft/my-article.md",
-  "outputPath": "notes/my-article.md",
-  "overwrite": true,
-  "aiGeneratedProperties": {
-    "title": "Serverless 환경에서 I/O 처리 최적화",
-    "date": "2025-04-03",
-    "tags": ["serverless", "io", "optimization"],
-    "summary": "Promise 패턴과 워커를 활용한 병렬 처리 전략.",
-    "slug": "serverless-io",
-    "category": "engineering",
-    "completed": true
-  }
-}
-```
-
-이 호출은 내부적으로 `write_property`와 같은 write 로직으로 저장합니다.
-
-## 6. organize_attachments
+## 4. organize_attachments
 
 목적: 마크다운 내 첨부 이미지/첨부 링크를 `images/<문서제목>/` 형태로 정리하고 링크 갱신.
 
@@ -224,7 +167,7 @@
 - 처리 대상은 `keyword`로 검색된 여러 문서
 - 반환에는 문서별 처리 상태(summary/details)가 들어감
 
-## 7. 도구 조합 추천 패턴
+## 5. 도구 조합 추천 패턴
 
 ### 패턴 A: 탐색-확인-요약
 1) `vault/search`
@@ -236,13 +179,13 @@
 2) 이후 대화 context에 `memory_packet` 우선 투입
 
 ### 패턴 C: 메타데이터 자동화
-1) `generate_property`
-2) `create_document_with_properties` 2단계
+1) `vault/read`로 문서를 읽고 속성을 작성
+2) `write_property`로 저장
 
-## 8. 사용자 입장에서 꼭 알아야 할 기본 체크
+## 6. 사용자 입장에서 꼭 알아야 할 기본 체크
 
 - `VAULT_DIR_PATH`가 먼저 유효해야 모든 도구가 동작
 - `vault`의 `action`은 필수이며 잘못된 값은 즉시 에러
 - `collect_context`는 긴 조회/요약에 최적, 1회성 조회는 `search`/`read`
 - `quiet`를 많이 켜면 답변이 간결해져 후속 파싱이 쉬움
-- 저장 동작(`write_property`, `create_document_with_properties`)은 vault 외부 경로 쓰기를 차단
+- 저장 동작(`write_property`)은 vault 외부 경로 쓰기를 차단
