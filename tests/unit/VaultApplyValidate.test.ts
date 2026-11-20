@@ -147,6 +147,39 @@ describe("checkMoveBoundary", () => {
 		).toBe(CROSS_FOLDER);
 	});
 
+	test("루트 노트만 참조하는 첨부는 루트의 첨부 폴더로 따라간다", () => {
+		expect(
+			checkMoveBoundary({
+				from: "images/좋은코드는어떻게작성해야하나/1.png",
+				to: "attachments/1.png",
+				kind: "attachment",
+				referencingNotes: ["좋은코드는어떻게작성해야하나.md"],
+			}),
+		).toBeNull();
+	});
+
+	test("루트 노트와 폴더 노트가 함께 참조하면 루트 첨부 폴더로 가지 못한다", () => {
+		expect(
+			checkMoveBoundary({
+				from: "images/a/1.png",
+				to: "attachments/1.png",
+				kind: "attachment",
+				referencingNotes: ["a.md", "스터디/b.md"],
+			}),
+		).toBe(CROSS_FOLDER);
+	});
+
+	test("루트 노트만 참조해도 다른 폴더의 첨부 폴더로는 가지 못한다", () => {
+		expect(
+			checkMoveBoundary({
+				from: "images/a/1.png",
+				to: "스터디/attachments/1.png",
+				kind: "attachment",
+				referencingNotes: ["a.md"],
+			}),
+		).toBe(CROSS_FOLDER);
+	});
+
 	test("참조가 없는 첨부는 다른 최상위 폴더로 갈 수 없다", () => {
 		expect(
 			checkMoveBoundary({
