@@ -2,11 +2,6 @@ import { z } from "zod";
 import { compressionModeSchema, responseTypeSchema } from "../params.js";
 
 export const collectContextScopeSchema = z.enum(["topic", "all"]);
-export const collectContextMemoryModeSchema = z.enum([
-	"response_only",
-	"vault_note",
-	"both",
-]);
 export const collectContextRelevanceSchema = z.enum(["high", "medium", "low"]);
 
 export const collectContextTokenV1Schema = z.object({
@@ -16,7 +11,6 @@ export const collectContextTokenV1Schema = z.object({
 	topic: z.string().nullable(),
 	maxDocs: z.number().int().min(1),
 	maxCharsPerDoc: z.number().int().min(200),
-	memoryMode: collectContextMemoryModeSchema,
 });
 
 export const collectContextDocumentSchema = z.object({
@@ -62,15 +56,6 @@ export const collectContextPayloadSchema = z.object({
 	total_in_vault: z.number().int().nonnegative(),
 	documents: z.array(collectContextDocumentSchema),
 	memory_packet: collectContextMemoryPacketSchema,
-	memory_mode: collectContextMemoryModeSchema,
-	memory_write: z.object({
-		requested: z.boolean(),
-		status: z.enum(["not_requested", "written", "failed"]),
-		note_path: z.string().optional(),
-		generated_at: z.string().optional(),
-		source_hash: z.string().optional(),
-		reason: z.string().optional(),
-	}),
 	cache: z
 		.object({
 			key: z.string(),
@@ -78,7 +63,6 @@ export const collectContextPayloadSchema = z.object({
 			schema_version: z.string(),
 			topic: z.string().nullable(),
 			doc_hash: z.string(),
-			mode: collectContextMemoryModeSchema,
 		})
 		.optional(),
 	batch: z.object({
@@ -113,9 +97,6 @@ export const collectContextResponseSchema = z.object({
 });
 
 export type CollectContextScope = z.infer<typeof collectContextScopeSchema>;
-export type CollectContextMemoryMode = z.infer<
-	typeof collectContextMemoryModeSchema
->;
 export type CollectContextRelevance = z.infer<
 	typeof collectContextRelevanceSchema
 >;

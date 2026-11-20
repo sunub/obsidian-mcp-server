@@ -17,7 +17,7 @@
 `vault`는 내부적으로 `action` 하나를 받아 아래 6개 동작 중 하나를 실행합니다.
 
 공통 입력 필드:
-- `action` (필수): `search` | `read` | `list_all` | `stats` | `collect_context` | `load_memory`
+- `action` (필수): `search` | `read` | `list_all` | `stats` | `collect_context`
 - `compressionMode`: `aggressive` | `balanced` | `none`
 - `maxOutputChars`: 출력 크기 제한(500~12000)
 - `quiet`: true일 때 결과 축약 응답
@@ -113,7 +113,6 @@
   "topic": "ES6",
   "maxDocs": 12,
   "maxCharsPerDoc": 900,
-  "memoryMode": "both",
   "compressionMode": "balanced"
 }
 ```
@@ -121,35 +120,9 @@
 운영 포인트:
 - `scope=topic`이면 `topic`이 필수
 - `has_more=true`면 `continuationToken`으로 이어서 호출
-- 장기 컨텍스트 재사용은 `memoryMode`를 `vault_note` 또는 `both`로 둠
+- 결과는 응답으로만 돌려주며 Vault에 노트를 쓰지 않음
 
 상세 동작 원리, 템플릿, 이어받기 예시는 `docs/collect-context-guide.md`를 참고하세요.
-
-### 2.6 `load_memory`
-
-목적: `collect_context`가 저장한 메모 노트(`memory/context_memory_snapshot.v1.md`)를 읽어 복원.
-
-요청 예시:
-
-```json
-{
-  "action": "load_memory"
-}
-```
-
-요청 예시(커스텀 경로):
-
-```json
-{
-  "action": "load_memory",
-  "memoryPath": "memory/custom_memory_snapshot.md",
-  "quiet": false
-}
-```
-
-권장 쓰임:
-- 한 번 수집한 컨텍스트를 다음 세션에서 재주입
-- 토큰이 부족한 대화에서 이전 결과 재활용
 
 ## 3. generate_property
 
@@ -258,10 +231,9 @@
 2) `vault/read`
 3) `vault/collect_context`
 
-### 패턴 B: 지속형 지식 적재
-1) `vault/collect_context` (`memoryMode: both`)
-2) `vault/load_memory`
-3) 이후 대화 context에 `memory_packet` 우선 투입
+### 패턴 B: 컨텍스트 정리
+1) `vault/collect_context`
+2) 이후 대화 context에 `memory_packet` 우선 투입
 
 ### 패턴 C: 메타데이터 자동화
 1) `generate_property`

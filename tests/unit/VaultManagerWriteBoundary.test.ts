@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
-import { CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH } from "../../src/tools/vault/utils/constants.js";
 import {
 	VaultManager,
 	VaultPathError,
@@ -126,16 +125,13 @@ describe("VaultManager write boundary", () => {
 
 	test("vault 내부 경로는 writeRawDocument로 쓸 수 있다", async () => {
 		const vaultManager = new VaultManager(TEST_VAULT_PATH);
-		await vaultManager.writeRawDocument(
-			CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH,
-			"# memory",
-		);
+		await vaultManager.writeRawDocument("notes/inside.md", "# inside");
 
 		const updated = await fs.readFile(
-			path.join(TEST_VAULT_PATH, CONTEXT_MEMORY_SNAPSHOT_NOTE_PATH),
+			path.join(TEST_VAULT_PATH, "notes", "inside.md"),
 			"utf-8",
 		);
-		expect(updated).toContain("# memory");
+		expect(updated).toContain("# inside");
 	});
 
 	test("vault 외부 경로는 writeRawDocument에서 차단된다", async () => {

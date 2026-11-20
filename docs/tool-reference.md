@@ -13,11 +13,11 @@
 
 ## 공통: `vault` 입력 파라미터
 
-- `action` (필수): `search | read | list_all | stats | collect_context | load_memory`
+- `action` (필수): `search | read | list_all | stats | collect_context`
 - `quiet` (기본값: `true`), `compressionMode` (기본값: `balanced`)
 - `maxOutputChars` (기본값: 액션별 상한)
 
-`quiet: true`는 `search`, `list_all`, `load_memory`에서 축약 응답을 반환합니다.
+`quiet: true`는 `search`, `list_all`에서 축약 응답을 반환합니다.
 
 모든 `vault` 호출 기본 형태:
 
@@ -118,16 +118,15 @@ Vault 문서 목록을 반환합니다.
 주제/전체 범위에서 문서를 추려 장기 메모리 패킷을 생성합니다.
 
 - 필수: `scope=topic`이면 `topic`
-- 선택: `topic`, `maxDocs`(기본 20), `maxCharsPerDoc`(기본 1800), `memoryMode`, `continuationToken`, `scope`
-- `memoryMode`: `response_only | vault_note | both` (기본 `response_only`)
+- 선택: `topic`, `maxDocs`(기본 20), `maxCharsPerDoc`(기본 1800), `continuationToken`, `scope`
 - 배치 처리로 `batch.continuation_token`을 반환해 이어 호출 가능
 - 토큰은 `base64url` 인코딩 형식
 - 기본적으로 최근 조회 결과를 캐시하며(최대 200개), `cache`에 키/해시/히트 여부를 포함
-- `memoryMode`가 `vault_note|both`면 `memory/context_memory_snapshot.v1.md`에 Canonical JSON 블록 포함 노트 저장 시도
+- 결과는 응답으로만 돌려주며 Vault에 파일을 쓰지 않음. 이전의 메모 저장 파라미터와 저장본을 읽는 액션은 제거되어, 보내면 검증 오류로 거부됨
 
 주요 응답 필드:
 - `action`, `scope`, `topic`, `matched_total`, `total_in_vault`
-- `documents`, `memory_packet`, `memory_mode`, `memory_write`
+- `documents`, `memory_packet`
 - `batch` (`has_more`, `continuation_token` 포함)
 - `compression`
 
@@ -140,7 +139,6 @@ Vault 문서 목록을 반환합니다.
   "topic": "next.js",
   "maxDocs": 12,
   "maxCharsPerDoc": 900,
-  "memoryMode": "both",
   "compressionMode": "balanced"
 }
 ```
@@ -151,26 +149,6 @@ Vault 문서 목록을 반환합니다.
 {
   "action": "collect_context",
   "continuationToken": "<batch.continuation_token>"
-}
-```
-
-### `load_memory`
-
-`memory/context_memory_snapshot.v1.md`(또는 `memoryPath`)를 읽어 canonical JSON을 파싱합니다.
-
-- 선택: `memoryPath`, `quiet`, `includeContent`, `excerptLength`
-- 기본 응답:
-  - `action`, `found`, `memory_path`, `has_canonical_json`
-  - `schema_version`, `topic`, `scope`, `documents_count`, `memory_packet`, `preview`, `compression`
-- `quiet: true`면 요약 메타만 반환
-
-예시:
-
-```json
-{
-  "action": "load_memory",
-  "excerptLength": 800,
-  "quiet": false
 }
 ```
 
@@ -270,4 +248,3 @@ Vault 문서 목록을 반환합니다.
 
 - `vault` 액션은 단일 툴에 묶여 있으므로 `action` 문자열이 가장 자주 실패 원인입니다.
 - `collect_context`는 큰 vault에서 `maxDocs`를 작게 시작해 배치로 확장하는 게 비용 효율적입니다.
-- `load_memory`는 canonical JSON이 유효할 때만 `memory_packet`을 반영합니다.
