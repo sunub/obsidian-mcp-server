@@ -1,7 +1,9 @@
 import type { RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { VaultToolDeps } from "@shared/vault-ops/types.js";
 import pkg from "../package.json" with { type: "json" };
-import tools from "./tools/index.js";
+import state from "./config.js";
+import tools, { toolsWithDeps } from "./tools/index.js";
 import type { ServerLifecycle } from "./utils/ServerLifecycle.js";
 
 type ToolConfig = {
@@ -69,6 +71,11 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 
 	for (const tool of Object.values(tools)) {
 		tool.register(mcpServer);
+	}
+
+	const deps: VaultToolDeps = { vaultRoot: () => state.vaultPath };
+	for (const tool of toolsWithDeps) {
+		tool.register(mcpServer, deps);
 	}
 
 	return mcpServer;
