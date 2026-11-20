@@ -43,7 +43,9 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 	          * action="list_all": List all documents in the vault.
 	          * action="index_vault_to_vectordb": Manually trigger a full vault re-indexing for semantic search.
 	        - write_property: Write frontmatter properties to a markdown file.
-	        - organize_attachments: Move linked attachments and update markdown links.
+	        - tidy_plan: Build a vault tidy plan (attachments, duplicates, untitled notes, empty folders) and return a preview. Changes no files.
+	        - plan_apply: Apply only the plan operations the user approved, keeping every link pointing at the same file.
+	        - plan_undo: Revert a plan_apply run by its runId.
 	        
 	        Environment requirements:
 	        - VAULT_DIR_PATH: Path to your Obsidian vault directory.

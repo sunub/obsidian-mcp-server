@@ -101,7 +101,7 @@ next.js 주제로 장기 컨텍스트를 만들어줘.
 
 ## 2) `vault` 이외 도구 호출
 
-`write_property`, `organize_attachments`는 `name`을 직접 지정해 호출합니다.
+`write_property`는 `name`을 직접 지정해 호출합니다.
 
 ### 예시 6: frontmatter 적용
 
@@ -118,20 +118,6 @@ next.js 주제로 장기 컨텍스트를 만들어줘.
         "summary": "간단 요약"
       },
       "quiet": false
-    }
-  }
-}
-```
-
-### 예시 8: 첨부 이미지 정리
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "organize_attachments",
-    "arguments": {
-      "keyword": "이미지"
     }
   }
 }

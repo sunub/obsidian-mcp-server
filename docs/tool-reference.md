@@ -177,25 +177,6 @@ Vault 문서 목록을 반환합니다.
 }
 ```
 
-### `organize_attachments`
-
-- 키워드로 문서를 검색한 뒤 이미지 링크를 Vault 내 폴더로 이동하고 링크를 갱신합니다.
-- 현재 구현은 기본적으로 `images/<문서 제목>/` 하위로 이동합니다. (`destination`, `useTitleAsFolderName`은 스키마에는 있으나 완전 반영 제한)
-- 입력: `keyword`, `destination`, `useTitleAsFolderName`, `quiet`
-- 출력:
-  - `summary`
-  - `details[]`: `document`, `status`, `targetDirectory`, `movedFiles`, `errors`
-  - `status` 값은 `success`, `skipped` 중심(요약 시 0개 이동 시 `skipped`)
-
-예시:
-
-```json
-{
-  "keyword": "my-first-post",
-  "quiet": false
-}
-```
-
 ## 실사용 포인트
 
 - `vault` 액션은 단일 툴에 묶여 있으므로 `action` 문자열이 가장 자주 실패 원인입니다.
