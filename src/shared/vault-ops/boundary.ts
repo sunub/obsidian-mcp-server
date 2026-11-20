@@ -16,15 +16,19 @@ function isExcluded(path: string): boolean {
 	return top !== null && EXCLUDED_DIRS.includes(top);
 }
 
+function isFolderDirectlyUnderRoot(to: string): boolean {
+	return to.split("/").length === 2;
+}
+
 function followsReferencingNotes(
 	to: string,
 	referencingNotes: readonly string[],
 ): boolean {
+	if (referencingNotes.length === 0) return false;
 	const destination = topFolderOf(to);
-	return (
-		referencingNotes.length > 0 &&
-		referencingNotes.every((note) => topFolderOf(note) === destination)
-	);
+	const tops = referencingNotes.map((note) => topFolderOf(note));
+	if (tops.every((top) => top === destination)) return true;
+	return isFolderDirectlyUnderRoot(to) && tops.every((top) => top === null);
 }
 
 export function checkMoveBoundary(input: {
