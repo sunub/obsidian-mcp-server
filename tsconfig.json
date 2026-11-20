@@ -30,11 +30,9 @@
 		"resolveJsonModule": true,
 		"paths": {
 			"@/*": ["./src/*"],
-			"@cli/*": ["./src/cli/*"],
 			"@shared/*": ["./src/shared/*"]
-		},
-		"jsx": "react-jsx"
+		}
 	},
-	"include": ["src/**/*", "src/cli/**/*"],
+	"include": ["src/**/*"],
 	"exclude": ["node_modules"]
 }
