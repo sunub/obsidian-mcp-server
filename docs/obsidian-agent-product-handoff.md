@@ -1,5 +1,7 @@
 # Obsidian Agent Product — New Project Handoff
 
+> 이 문서가 다루는 에이전트 CLI는 별도 프로젝트 `cli-agent`(`/Users/sunub/workspace/cli-agent`)로 분리되었다. 이 저장소에는 MCP 서버와 Claude Code 플러그인만 남는다.
+
 ## 1. 이 문서의 목적
 
 이 문서는 기존 `obsidian-mcp-server` 저장소에서 논의한 제품 전환 결정을 새 프로젝트와 새 세션으로 옮기기 위한 self-contained handoff다. 새 세션은 이전 대화에 접근할 수 없다고 가정하며, 이 문서만으로 제품 목표, 확정된 결정, MVP 범위, 기술 경계, 기존 코드에서 가져올 것과 버릴 것, 첫 작업 순서를 이해할 수 있어야 한다.

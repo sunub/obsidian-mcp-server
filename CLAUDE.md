@@ -1,6 +1,6 @@
 # obsidian-mcp-server
 
-Obsidian vault용 MCP 서버와 CLI. TypeScript(ESM), Vitest, Biome.
+Obsidian vault용 MCP 서버와 Claude Code 플러그인. TypeScript(ESM), Vitest, Biome.
 
 ## 명령어
 
@@ -8,7 +8,7 @@ Obsidian vault용 MCP 서버와 CLI. TypeScript(ESM), Vitest, Biome.
 - `npm test`: Vitest. 단일 파일은 `npx vitest run tests/unit/<name>.test.ts`.
 - `npm run check`: Biome format, lint, import 정렬을 한 번에 적용한다.
 
-import alias는 `@/*`(src), `@cli/*`, `@shared/*`이다.
+import alias는 `@/*`(src), `@shared/*`이다.
 
 ## 코드 규칙
 
