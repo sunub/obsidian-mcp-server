@@ -18,7 +18,6 @@ import { ragIndexer } from "@shared/indexing/RAGIndexer.js";
 import { type ChunkMetadata, vectorDB } from "@shared/indexing/VectorDB.js";
 import { localEmbedder } from "@shared/local-ai/Embedder.js";
 import { localModelManager } from "@shared/local-ai/LocalModelManager.js";
-import { localReranker } from "@shared/local-ai/LocalReranker.js";
 import type { DocumentIndex } from "@shared/markdown/types.js";
 import {
 	SEARCH_SETUP_COMMAND,
@@ -121,11 +120,7 @@ export class VaultManager {
 
 	private async checkAIAvailability(): Promise<void> {
 		try {
-			const [embedderReady, rerankerReady] = await Promise.all([
-				localEmbedder.checkModelPresence(),
-				localReranker.checkModelPresence(),
-			]);
-			this.isLocalAIReady = embedderReady && rerankerReady;
+			this.isLocalAIReady = await localEmbedder.checkModelPresence();
 		} catch (error) {
 			console.error("[VaultManager] AI 가용성 체크 중 오류:", error);
 			this.isLocalAIReady = false;
@@ -336,26 +331,20 @@ export class VaultManager {
 	public async upsertDocument(filePath: string): Promise<void> {
 		await this.indexer.upsertFile(filePath, this.ioSemaphore);
 
-		if (!this.isLocalAIReady || !localModelManager.isEmbedderReady) {
+		if (!this.isLocalAIReady) {
 			return;
 		}
 
-		if (localModelManager.isEmbedderReady) {
-			await this.dbSemaphore.acquire();
-			try {
-				await ragIndexer.processFile(filePath);
-			} catch (error) {
-				console.error(
-					`[VaultManager] Failed to process RAG index for ${filePath}:`,
-					error,
-				);
-			} finally {
-				this.dbSemaphore.release();
-			}
-		} else {
+		await this.dbSemaphore.acquire();
+		try {
+			await ragIndexer.processFile(filePath);
+		} catch (error) {
 			console.error(
-				`[VaultManager] Embedding server is down. Skipping RAG index for: ${filePath}`,
+				`[VaultManager] Failed to process RAG index for ${filePath}:`,
+				error,
 			);
+		} finally {
+			this.dbSemaphore.release();
 		}
 	}
 

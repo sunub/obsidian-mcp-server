@@ -9,6 +9,8 @@ import { DirectoryWalker } from "./DirectoryWalker.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
 import { WorkerPool } from "./worker/WorkerPool.js";
 
+const INDEXING_EMBEDDER_DEADLINE_MS = 10_000;
+
 export class RAGIndexer {
 	private embeddingSemaphore: Semaphore;
 	private ioSemaphore: Semaphore;
@@ -80,52 +82,55 @@ export class RAGIndexer {
 			birthTime: fileStat.birthtime.toISOString(),
 		});
 
-		return await localModelManager.withEmbedder(3000, async (isReady) => {
-			throwIfAborted(signal);
-			if (!isReady) {
-				return null;
-			}
-
-			const records: VectorRecord[] = [];
-
-			for (const metadata of chunkMetadatas) {
+		return await localModelManager.withEmbedder(
+			INDEXING_EMBEDDER_DEADLINE_MS,
+			async (isReady) => {
 				throwIfAborted(signal);
-				const combined = [
-					metadata.context ? metadata.context : "",
-					metadata.content,
-				]
-					.filter(Boolean)
-					.join("\n\n");
-
-				const MAX_EMBED_TOKENS = 500;
-				const combinedTokenCount = localEmbedder.getTokenCount(combined);
-				const safeText =
-					combinedTokenCount > MAX_EMBED_TOKENS
-						? combined.slice(
-								0,
-								Math.floor(
-									combined.length * (MAX_EMBED_TOKENS / combinedTokenCount),
-								),
-							)
-						: combined;
-
-				await this.embeddingSemaphore.acquire();
-				let vector: number[];
-				try {
-					throwIfAborted(signal);
-					vector = await localEmbedder.embed(safeText);
-				} finally {
-					this.embeddingSemaphore.release();
+				if (!isReady) {
+					return null;
 				}
 
-				records.push({
-					...metadata,
-					vector,
-				});
-			}
+				const records: VectorRecord[] = [];
 
-			return { records, mtime: fileStat.mtime.toISOString() };
-		});
+				for (const metadata of chunkMetadatas) {
+					throwIfAborted(signal);
+					const combined = [
+						metadata.context ? metadata.context : "",
+						metadata.content,
+					]
+						.filter(Boolean)
+						.join("\n\n");
+
+					const MAX_EMBED_TOKENS = 500;
+					const combinedTokenCount = localEmbedder.getTokenCount(combined);
+					const safeText =
+						combinedTokenCount > MAX_EMBED_TOKENS
+							? combined.slice(
+									0,
+									Math.floor(
+										combined.length * (MAX_EMBED_TOKENS / combinedTokenCount),
+									),
+								)
+							: combined;
+
+					await this.embeddingSemaphore.acquire();
+					let vector: number[];
+					try {
+						throwIfAborted(signal);
+						vector = await localEmbedder.embed(safeText);
+					} finally {
+						this.embeddingSemaphore.release();
+					}
+
+					records.push({
+						...metadata,
+						vector,
+					});
+				}
+
+				return { records, mtime: fileStat.mtime.toISOString() };
+			},
+		);
 	}
 
 	async processFile(

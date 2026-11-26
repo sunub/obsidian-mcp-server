@@ -84,6 +84,9 @@ export class VectorDB {
 	private metaTableName = "obsidian_meta";
 	private fileMetaTableName = "obsidian_file_meta";
 	private db: Connection | null = null;
+	private connectedDbPath: string | null = null;
+	private verifiedDbPath: string | null = null;
+	private warnedMismatchDbPath: string | null = null;
 	private writeSemaphore = new Semaphore(1);
 
 	private get dbPath(): string {
@@ -110,8 +113,12 @@ export class VectorDB {
 	}
 
 	private async getDb(): Promise<Connection> {
-		if (!this.db) {
+		const targetPath = this.dbPath;
+		if (!this.db || this.connectedDbPath !== targetPath) {
 			this.db = await this.connect();
+			this.connectedDbPath = targetPath;
+			this.verifiedDbPath = null;
+			this.warnedMismatchDbPath = null;
 		}
 		return this.db;
 	}
@@ -204,6 +211,36 @@ export class VectorDB {
 			{ key: "index_version", value: String(INDEX_VERSION) },
 		];
 		await db.createTable(this.metaTableName, records, { mode: "overwrite" });
+		this.verifiedDbPath = this.dbPath;
+		this.warnedMismatchDbPath = null;
+	}
+
+	async isIndexVersionCurrent(): Promise<boolean> {
+		const targetPath = this.dbPath;
+		if (this.verifiedDbPath === targetPath) {
+			return true;
+		}
+		const db = await this.getDb();
+		const tableNames = await db.tableNames();
+		if (!tableNames.includes(this.metaTableName)) {
+			return false;
+		}
+		const meta = await this.readMetadata(db);
+		const storedVersion = Number.parseInt(
+			(meta["index_version"] as string | undefined) ?? "0",
+			10,
+		);
+		if (storedVersion !== INDEX_VERSION) {
+			if (this.warnedMismatchDbPath !== targetPath) {
+				this.warnedMismatchDbPath = targetPath;
+				console.error(
+					`[VectorDB] Stale vector index detected (stored: v${storedVersion}, expected: v${INDEX_VERSION}). Skipping vector search until re-indexed.`,
+				);
+			}
+			return false;
+		}
+		this.verifiedDbPath = targetPath;
+		return true;
 	}
 
 	async createVectorIndex() {
@@ -242,16 +279,17 @@ export class VectorDB {
 	async upsertChunks(records: VectorRecord[]) {
 		await this.writeSemaphore.acquire();
 		try {
-			if (!this.db) {
-				this.db = await this.connect();
-			}
-			const tableNames = await this.db.tableNames();
+			const db = await this.getDb();
+			const tableNames = await db.tableNames();
 
 			if (!tableNames.includes(this.tableName)) {
-				await this.db.createEmptyTable(this.tableName, VaultDocumentSchema);
+				await db.createEmptyTable(this.tableName, VaultDocumentSchema);
+				if (!tableNames.includes(this.metaTableName)) {
+					await this.writeMetadata(db);
+				}
 			}
 
-			const table = await this.db.openTable(this.tableName);
+			const table = await db.openTable(this.tableName);
 			const filePaths = Array.from(new Set(records.map((r) => r.filePath)));
 
 			const inClause = filePaths
@@ -366,10 +404,8 @@ export class VectorDB {
 	async search(queryVector: number[], limit = 5) {
 		const table = await this.getTable();
 		if (!table) return [];
+		if (!(await this.isIndexVersionCurrent())) return [];
 
-		// 모든 파티션을 본다. nprobes가 20이면 파티션의 28%만 봐서 정확 검색 대비 상위 30개 청크의 약 8%를
-		// 놓쳤고, 인덱스를 다시 만들 때마다 놓치는 청크가 달라져 하이브리드 MRR@10이 0.711~0.753으로
-		// 흔들렸다. (docs/search-quality-evaluation.md 4.10) 파티션 수를 넘는 값은 전체와 같게 처리된다.
 		const nprobes = partitionCountFor(await table.countRows());
 		const results = await table
 			.vectorSearch(queryVector)

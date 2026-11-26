@@ -29,7 +29,7 @@ export function countTerms(
 	text: string,
 	extraAtoms: string[] = [],
 ): TermCounts {
-	const tokens = text.toLowerCase().match(INDEX_TOKEN) ?? [];
+	const tokens = text.normalize("NFC").toLowerCase().match(INDEX_TOKEN) ?? [];
 	const counts = new Map<string, number>();
 	for (const token of tokens) {
 		increment(counts, token);
@@ -37,7 +37,8 @@ export function countTerms(
 		if (stem !== token) increment(counts, STEM_PREFIX + stem);
 	}
 	for (const atom of extraAtoms) {
-		if (atom) increment(counts, atom);
+		const normalizedAtom = atom.normalize("NFC");
+		if (normalizedAtom) increment(counts, normalizedAtom);
 	}
 	return { length: tokens.length + extraAtoms.length, counts };
 }
@@ -68,6 +69,7 @@ function withoutDuplicates(alternatives: WeightedTerm[]): WeightedTerm[] {
 
 export function parseQuery(query: string): QueryUnit[] {
 	return query
+		.normalize("NFC")
 		.toLowerCase()
 		.split(/\s+/)
 		.filter((token) => token.length > 0)

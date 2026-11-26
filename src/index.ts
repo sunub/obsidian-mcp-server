@@ -31,7 +31,7 @@ function alertEmbedderState(
 		`${chalk.bold("• Local Reranker:")} ${rerankerReady ? chalk.green("✅ Ready") : chalk.yellow("⚠️ Missing")}`,
 	);
 
-	if (embedderReady && rerankerReady) {
+	if (embedderReady) {
 		console.error(
 			chalk.green.bold("✔ High-performance Hybrid Search is ENABLED\n"),
 		);
