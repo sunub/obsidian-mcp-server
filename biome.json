@@ -41,6 +41,24 @@
 			"linter": {
 				"enabled": false
 			}
+		},
+		{
+			"includes": ["docs/rag-study/src/**", "docs/rag-study-guide.html"],
+			"linter": {
+				"rules": {
+					"complexity": {
+						"noCommaOperator": "off",
+						"noImportantStyles": "off"
+					},
+					"style": {
+						"noDescendingSpecificity": "off"
+					},
+					"suspicious": {
+						"useIterableCallbackReturn": "off",
+						"noAssignInExpressions": "off"
+					}
+				}
+			}
 		}
 	]
 }

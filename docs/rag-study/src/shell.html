@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RAG 학습 코스</title>
+<meta name="description" content="RAG 개념, 원문, 그림, 브라우저 실습, 내려받을 수 있는 실습 코드" />
+<script>
+	try {
+		document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("rag-theme")) || "dark";
+	} catch {
+		document.documentElement.dataset.theme = "dark";
+	}
+</script>
+<style>
+/*@@STYLE@@*/
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+	<defs>
+		<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+			<path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)" />
+		</marker>
+	</defs>
+</svg>
+<div class="topbar">
+	<button class="btn ghost menu-toggle" id="menu-btn" aria-label="목차">☰</button>
+	<div class="brand">RAG <span>학습 코스</span></div>
+	<div class="progress"><i id="progress-bar"></i></div>
+	<span class="progress-label" id="progress-label"></span>
+	<span class="spacer"></span>
+	<button class="btn" data-dl="page" title="이 문서를 HTML 파일로 저장">⬇ <span class="dl-label">문서</span></button>
+	<button class="btn" data-dl="zip" title="실습 코드 전체를 zip으로 저장">📦 <span class="dl-label">실습 코드</span></button>
+	<button class="btn" id="theme-btn">☀️ 라이트</button>
+</div>
+<div class="layout">
+	<nav class="side" id="nav" aria-label="모듈"></nav>
+	<main id="main">
+<!--@@CONTENT@@-->
+	</main>
+</div>
+<dialog id="src-dialog">
+	<div class="dh">
+		<b id="src-name"></b>
+		<button class="btn sm" id="src-copy">복사</button>
+		<button class="btn sm" id="src-dl" data-dl="">⬇ 내려받기</button>
+		<button class="btn sm" id="src-close">닫기</button>
+	</div>
+	<pre><code id="src-code"></code></pre>
+</dialog>
+<div class="toast" id="toast"></div>
+<!--@@SOURCES@@-->
+<script>
+"use strict";
+/*@@LAB@@*/
+/*@@APP@@*/
+</script>
+</body>
+</html>

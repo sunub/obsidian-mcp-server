@@ -1,0 +1,1217 @@
+<!-- ================================================================ 시작 -->
+<section class="module" id="m-home" data-group="시작" data-nav="시작하기">
+	<header>
+		<div class="kicker">RAG 학습 코스 · 2026-11-16 기준</div>
+		<h1>읽고, 그림으로 보고, 직접 돌려 보는 RAG</h1>
+		<p class="lede">
+			면접에서 막혔던 두 질문, <b>"dense 검색이 없으면 RAG가 아닌가요?"</b>와 <b>"청킹 전략은 무엇을 썼나요?"</b>에서 시작합니다.
+			두 질문 모두 구현은 해 봤지만 개념의 이름과 근거로 설명하지 못해서 막혔습니다. 그래서 모듈마다 개념을 설명하고, 원문을 연결하고,
+			그림으로 보여 주고, 브라우저에서 바로 실험해 볼 수 있게 했습니다.
+		</p>
+	</header>
+
+	<div class="box goal">
+		<div class="box-h">🎯 이 코스를 마치면</div>
+		<ul>
+			<li>두 면접 질문에 <b>30초 답변</b>과 <b>2분 답변</b>을 근거와 함께 말할 수 있다.</li>
+			<li>BM25 점수를 <b>손으로 계산</b>할 수 있고, 이 프로젝트의 키워드 검색이 BM25와 어디가 다른지 말할 수 있다.</li>
+			<li>RRF, 청킹, IVF-PQ, Recall/MRR을 <b>직접 구현한 코드</b>로 설명할 수 있다.</li>
+			<li>이 프로젝트에서 무엇을 측정했고 무엇이 좋아졌는지 <b>숫자로</b> 말할 수 있다.</li>
+		</ul>
+	</div>
+
+	<h2>모듈 구성</h2>
+	<p>모든 개념 모듈은 같은 순서로 되어 있습니다. 순서대로 읽어도 되고, 필요한 블록만 골라 봐도 됩니다.</p>
+	<div class="grid2">
+		<div class="card"><h4>🎯 학습 목표</h4><p>이 모듈을 마치면 말할 수 있어야 하는 것</p></div>
+		<div class="card"><h4>📖 개념</h4><p>정의와 직관. 수식이 있으면 기호마다 뜻을 표로 정리</p></div>
+		<div class="card"><h4>🖼 그림</h4><p>구조와 흐름을 그림으로. 일부 그림은 슬라이더로 움직일 수 있습니다</p></div>
+		<div class="card"><h4>🔬 직접 해보기</h4><p>브라우저에서 바로 실행됩니다. 여기서 쓰는 코드는 내려받을 수 있는 실습 파일과 같은 코드입니다</p></div>
+		<div class="card"><h4>📜 원문</h4><p>근거가 된 논문과 문서, 원문의 요지, 무엇을 확인하려고 읽는지</p></div>
+		<div class="card"><h4>🛠 이 프로젝트에서는</h4><p>실제 코드 위치와 측정 결과</p></div>
+		<div class="card"><h4>🎤 면접에서 말하기</h4><p>그대로 말할 수 있는 답변 문장</p></div>
+		<div class="card"><h4>✅ 자가 점검</h4><p>눌러서 답 확인. 막히면 다시 볼 곳입니다</p></div>
+	</div>
+
+	<h2>학습 경로</h2>
+	<div class="roadmap" id="roadmap"></div>
+
+	<h2>근거 표시 읽는 법</h2>
+	<p>주장마다 근거의 종류를 붙였습니다. "그건 어디서 나온 이야기인가요?"라는 질문에 바로 답하기 위해서입니다. 번호를 누르면 참고문헌으로 이동합니다.</p>
+	<div class="table-wrap">
+		<table>
+			<tr><th>표시</th><th>뜻</th><th>믿어도 되는 정도</th></tr>
+			<tr><td><span class="b b-paper">논문 Rn</span></td><td>동료 심사를 거친 논문이나 arXiv 논문</td><td>높음. arXiv에만 있는 논문은 심사 전일 수 있음</td></tr>
+			<tr><td><span class="b b-doc">문서 Rn</span></td><td>공식 문서, 모델 카드, 기업 기술 블로그</td><td>중간~높음. 저자가 자기 제품을 설명하는 경우가 있음</td></tr>
+			<tr><td><span class="b b-exp">실측 4.x</span></td><td>이 저장소의 평가 결과 (<code>docs/search-quality-evaluation.md</code>의 절 번호)</td><td>이 Vault와 질의 42개에만 해당</td></tr>
+			<tr><td><span class="b b-code">코드</span></td><td>이 저장소의 소스 코드 위치</td><td>현재 코드의 동작 그대로</td></tr>
+			<tr><td><span class="b b-me">해석</span></td><td>위 근거를 바탕으로 한 해석</td><td>반박될 수 있음. 면접에서는 "제 해석으로는"이라고 말한다</td></tr>
+		</table>
+	</div>
+
+	<h2>내려받기</h2>
+	<div class="box">
+		<p>이 문서는 파일 하나짜리 HTML이라 인터넷 없이 열립니다. 실습 코드는 Node.js만 있으면 설치 없이 실행됩니다.</p>
+		<div class="controls">
+			<button class="btn primary" data-dl="page">📄 이 문서 (HTML)</button>
+			<button class="btn primary" data-dl="zip">📦 실습 코드 전체 (rag-lab.zip)</button>
+			<a class="btn" href="#m-code">실습 파일 하나씩 보기 →</a>
+		</div>
+		<pre><code>unzip rag-lab.zip &amp;&amp; cd rag-lab
+node --test lab.test.mjs   # 15개 테스트, 설치할 것 없음 (Node 18 이상)</code></pre>
+	</div>
+</section>
+
+<!-- ================================================================ 면접 답변 -->
+<section class="module" id="m-answers" data-group="시작" data-nav="두 면접 질문의 답">
+	<header>
+		<div class="kicker">목표</div>
+		<h1>두 면접 질문의 답</h1>
+		<p class="lede">먼저 이 페이지를 읽어 목표를 정하세요. 모르는 용어가 나오면 링크된 모듈에서 공부한 뒤 돌아와서, 소리 내어 답해 봅니다.</p>
+	</header>
+
+	<h2>Q1. "dense 검색이 없으면 RAG라고 할 수 없나요?"</h2>
+	<div class="box say">
+		<div class="box-h">🎤 30초 답변</div>
+		<blockquote>
+			아닙니다. RAG는 "외부 지식을 검색해서 생성 모델의 입력에 넣는다"는 구조를 가리키고, 검색 방식은 정해져 있지 않습니다.
+			RAG라는 이름을 만든 Lewis et al.(2020) 논문은 dense retriever를 썼지만, 이후 In-Context RALM(Ram et al., 2023)은 BM25만으로도 언어 모델 성능이 크게 오른다는 것을 보였습니다.
+			BEIR 벤치마크에서도 BM25는 여러 dense 모델보다 일반화를 잘했고, 그래서 요즘은 BM25와 dense를 같이 쓰는 하이브리드가 흔합니다.
+			제 프로젝트도 로컬 모델이 없으면 키워드 검색만으로 동작하고, 모델이 있으면 두 결과를 RRF로 합칩니다.
+		</blockquote>
+	</div>
+
+	<h3>2분으로 늘릴 때 덧붙일 근거</h3>
+	<ol>
+		<li><b>정의의 출처.</b> Lewis et al.은 RAG를 사전학습된 생성 모델(parametric memory)과 검색으로 접근하는 외부 지식(non-parametric memory)을 결합한 모델로 정의했다. 그 논문에서 외부 지식은 위키피디아의 dense vector index였다. 즉 <b>dense는 원 논문의 구현 선택이지 정의의 조건이 아니다.</b> [[P:R1]] → <a href="#m-rag">RAG의 구조</a></li>
+		<li><b>sparse만으로도 효과가 있다.</b> In-Context RALM은 모델 구조를 바꾸지 않고 검색한 문서를 프롬프트 앞에 붙이기만 했는데, 기성 BM25 검색기를 쓴 345M GPT-2가 762M GPT-2보다 나았다. [[P:R5]]</li>
+		<li><b>dense가 항상 낫지는 않다.</b> BEIR(18개 데이터셋, zero-shot)에서 BM25는 견고한 기준선이었고, dense 모델은 학습 분포 밖에서 BM25보다 크게 떨어지는 경우가 있었다. [[P:R7]] Weller et al.(ICLR 2026)은 단일 벡터 임베딩의 <b>차원 수가 표현할 수 있는 top-k 조합을 이론적으로 제한한다</b>는 것을 보였고, LIMIT 데이터셋에서 최신 임베딩 모델은 고전했지만 BM25는 거의 만점이었다. [[P:R8]] → <a href="#m-dense">Dense 검색</a></li>
+		<li><b>에이전트 시대의 흐름.</b> Anthropic은 Claude Code가 미리 만든 인덱스 대신 <code>glob</code>, <code>grep</code>으로 필요한 순간에 파일을 찾는(just-in-time) 방식을 쓰고, 처음부터 넣는 컨텍스트와 섞는 하이브리드라고 설명한다. [[D:R20]]</li>
+		<li><b>내 프로젝트의 측정.</b> 같은 질의 42개에서 키워드 검색만 쓴 구성이 Recall@5 0.665였고, 버그가 있던 당시 벡터 검색만 쓴 구성은 0.127이었다. [[E:4.1]] → <a href="#m-story">개선 이야기</a></li>
+	</ol>
+	<div class="box warn">
+		<div class="box-h">⚠️ 반문 대비: "그럼 dense는 필요 없나요?"</div>
+		<p>그렇지는 않습니다. 둘은 실패하는 질의가 다릅니다. BM25는 질의와 문서가 같은 단어를 써야 찾고, dense는 표현이 달라도 의미가 비슷하면 찾지만 고유명사나 에러 코드처럼 정확히 일치해야 하는 질의에 약합니다.
+			제 평가셋에서도 벡터 검색의 접두사 버그를 고친 뒤 하이브리드 검색의 의미 질의 유형 MRR@10이 0.207에서 0.667로, 질의 유형 중 가장 많이 올랐습니다. [[E:4.5]] 그래서 둘 중 하나를 고르기보다 합치는 쪽을 택했습니다. → <a href="#m-hybrid">하이브리드와 RRF</a></p>
+	</div>
+
+	<h2>Q2. "청킹 전략은 무엇을 사용했나요?"</h2>
+	<div class="box say">
+		<div class="box-h">🎤 30초 답변</div>
+		<blockquote>
+			마크다운 구분자 우선의 재귀 분할(recursive character splitting)을 쓰고, 청크 길이는 <b>임베딩 모델의 토크나이저로 세서</b> 256토큰, 겹침 32토큰으로 자릅니다.
+			각 청크에는 섹션 제목과 문서 개요를 짧게 붙여 임베딩합니다. 처음에는 GPT 토크나이저 기준 500토큰이었는데, 임베딩 모델이 128토큰으로 학습됐다는 걸 확인하고 크기별로 비교 실험을 했습니다.
+			256으로 줄였을 때 벡터 검색 MRR@10이 0.325에서 0.456으로 유의하게 올랐고, 128은 조금 더 좋았지만 청크가 2.3배로 늘어서 256을 골랐습니다. 제목 기준 분할도 시험했는데 추가 이득이 없었습니다.
+		</blockquote>
+	</div>
+	<h3>2분으로 늘릴 때: "전략" = 경계 + 크기 + 겹침 + 문맥 보강</h3>
+	<div class="table-wrap">
+		<table>
+			<tr><th>요소</th><th>이 프로젝트의 선택</th><th>근거</th></tr>
+			<tr><td>경계</td><td>문단(<code>\n\n</code>) → 줄 → 공백 → 글자 순으로 시도하는 재귀 분할</td><td>[[C:chunkDocument.ts:52]]</td></tr>
+			<tr><td>크기/겹침</td><td>256/32, 임베딩 모델 토큰 기준</td><td>[[C:chunkDocument.ts:17-18]] [[E:4.8]]</td></tr>
+			<tr><td>문맥 보강</td><td><code>Section: 섹션 제목</code>, <code>Outline: H1/H2 3개</code>를 본문 앞에 붙여 임베딩</td><td>[[C:chunkDocument.ts:84]]</td></tr>
+			<tr><td>전처리</td><td>base64 이미지(data URI)를 청킹 전에 제거</td><td>[[E:4.7]]</td></tr>
+			<tr><td>왜 semantic 청킹을 안 했나</td><td>비싼 방법이 단순한 방법보다 일관되게 낫지 않다는 연구들, 그리고 제목 기준 분할도 이득이 없었던 내 측정</td><td>[[P:R11]] [[P:R13]]</td></tr>
+		</table>
+	</div>
+	<div class="box warn">
+		<div class="box-h">⚠️ 반문 대비: "청크가 문맥을 잃는 문제는요?"</div>
+		<p>청크 앞에 섹션 제목과 문서 개요를 붙여 일부 보완했습니다. Anthropic의 Contextual Retrieval과 같은 방향인데, 그쪽은 LLM으로 청크마다 문맥 설명을 생성하고 저는 비용 때문에 제목 구조만 씁니다.
+			문맥을 붙이면 임베딩 입력이 길어지므로 청크 크기를 정할 때 여유를 남겨야 했습니다. 500토큰 기준으로 자르면 문맥을 붙인 뒤 390개 청크가 입력 한도를 넘어 잘렸습니다. [[D:R16]] [[E:4.8]] → <a href="#m-chunk">청킹</a></p>
+	</div>
+</section>
+
+<!-- ================================================================ RAG -->
+<section class="module" id="m-rag" data-group="개념" data-nav="RAG의 구조" data-sub="정의, 파이프라인, 발전 단계">
+	<header>
+		<div class="kicker">개념 1</div>
+		<h1>RAG의 구조</h1>
+		<p class="lede">RAG는 특정 기술이 아니라 <b>구조</b>입니다. 검색(Retrieval)으로 자료를 찾아 입력을 보강(Augmented)한 뒤 생성(Generation)합니다.</p>
+	</header>
+	<div class="box goal">
+		<div class="box-h">🎯 학습 목표</div>
+		<ul>
+			<li>RAG의 정의를 parametric / non-parametric memory로 설명한다.</li>
+			<li>색인 단계와 질의 단계에 무엇이 있는지 그림 없이 말한다.</li>
+			<li>"검색 방식은 정의의 일부가 아니다"를 원문으로 뒷받침한다.</li>
+		</ul>
+	</div>
+
+	<h2>📖 정의: 두 종류의 기억</h2>
+	<p>Lewis et al.(2020)은 모델이 쓰는 지식을 두 종류로 나눴습니다. [[P:R1]]</p>
+	<div class="grid2">
+		<div class="card">
+			<h4>🧠 parametric memory</h4>
+			<p>모델 가중치에 저장된 지식</p>
+			<p>👍 빠르고, 추론에 녹아 있다</p>
+			<p>👎 바꾸려면 다시 학습해야 하고, 출처를 댈 수 없고, 환각이 생긴다</p>
+		</div>
+		<div class="card">
+			<h4>📚 non-parametric memory</h4>
+			<p>검색으로 꺼내는 외부 문서</p>
+			<p>👍 문서만 바꾸면 최신이 되고, 출처를 보여 줄 수 있다</p>
+			<p>👎 검색이 틀리면 답도 틀린다</p>
+		</div>
+	</div>
+	<p>RAG는 이 둘을 결합합니다. 원 논문은 외부 지식으로 위키피디아의 <b>dense vector index</b>를 썼지만, 그것은 <b>구현 선택</b>입니다. 같은 시기의 REALM은 검색기를 사전학습 단계부터 함께 학습했고, RAG는 사전학습된 검색기와 생성기를 결합해 미세조정했습니다. [[P:R2]]</p>
+
+	<h2>🖼 파이프라인</h2>
+	<figure class="fig">
+		<svg viewBox="0 0 860 300" role="img" aria-label="RAG 파이프라인">
+			<text x="20" y="22" class="muted" font-size="13" font-weight="700">색인 단계 · 미리 한 번 (문서가 바뀔 때)</text>
+			<rect class="lane" x="10" y="32" width="840" height="86" rx="12" />
+			<g font-size="14" text-anchor="middle">
+				<rect class="node" x="24" y="52" width="118" height="46" rx="9" /><text x="83" y="80">문서</text>
+				<rect class="node" x="166" y="52" width="118" height="46" rx="9" /><text x="225" y="80">파싱·정제</text>
+				<rect class="node-y" x="308" y="52" width="118" height="46" rx="9" /><text x="367" y="80">청킹</text>
+				<rect class="node" x="450" y="52" width="118" height="46" rx="9" /><text x="509" y="80">임베딩</text>
+				<rect class="node-a" x="592" y="46" width="244" height="58" rx="9" /><text x="714" y="71">색인 저장</text><text x="714" y="91" font-size="12" class="muted">역색인(sparse) + 벡터 DB(dense)</text>
+			</g>
+			<path class="arrow" d="M142 75 H162" /><path class="arrow" d="M284 75 H304" /><path class="arrow" d="M426 75 H446" /><path class="arrow" d="M568 75 H588" />
+			<text x="20" y="160" class="muted" font-size="13" font-weight="700">질의 단계 · 요청마다</text>
+			<rect class="lane" x="10" y="170" width="840" height="100" rx="12" />
+			<g font-size="14" text-anchor="middle">
+				<rect class="node" x="24" y="196" width="104" height="46" rx="9" /><text x="76" y="224">질의</text>
+				<rect class="node-a" x="150" y="190" width="124" height="58" rx="9" /><text x="212" y="215">검색 R</text><text x="212" y="235" font-size="12" class="muted">sparse / dense</text>
+				<rect class="node" x="296" y="196" width="112" height="46" rx="9" /><text x="352" y="218">결합</text><text x="352" y="234" font-size="11" class="muted">RRF · 리랭킹</text>
+				<rect class="node" x="430" y="196" width="112" height="46" rx="9" /><text x="486" y="218">선택·압축</text><text x="486" y="234" font-size="11" class="muted">컨텍스트 예산</text>
+				<rect class="node-g" x="564" y="190" width="124" height="58" rx="9" /><text x="626" y="215">프롬프트 A</text><text x="626" y="235" font-size="12" class="muted">자료 + 질문</text>
+				<rect class="node-p" x="710" y="190" width="126" height="58" rx="9" /><text x="773" y="215">LLM 생성 G</text><text x="773" y="235" font-size="12" class="muted">근거 있는 답</text>
+			</g>
+			<path class="arrow" d="M128 219 H146" /><path class="arrow" d="M274 219 H292" /><path class="arrow" d="M408 219 H426" /><path class="arrow" d="M542 219 H560" /><path class="arrow" d="M688 219 H706" />
+			<path class="arrow" d="M650 104 C 650 150, 260 140, 228 186" stroke-dasharray="5 4" />
+			<text x="440" y="148" font-size="12" class="muted" text-anchor="middle">미리 만든 색인에서 찾는다</text>
+		</svg>
+		<figcaption>R·A·G가 각각 어느 단계인지 표시했다. 검색 상자 안의 방식(sparse/dense)은 갈아 끼울 수 있는 부품이다.</figcaption>
+	</figure>
+
+	<div class="lab" id="lab-minirag">
+		<div class="lab-h"><span class="tag">🔬 직접 해보기</span><h3>미니 RAG: "보강"이 실제로 무엇인지 보기</h3><span class="spacer"></span>[[SRC:bm25.mjs]]</div>
+		<p class="desc">아래 노트 6개에서 질문으로 검색(BM25)하고, 찾은 자료를 붙인 <b>프롬프트</b>를 만듭니다. 이 프롬프트를 LLM에 보내는 것이 RAG의 G 단계입니다. LLM 호출은 하지 않습니다.</p>
+		<div class="controls">
+			<label>질문 <input type="text" class="wide" id="mr-q" value="LanceDB 색인을 다시 만들면 결과가 왜 달라지나요?" /></label>
+			<label>top-k <input type="range" id="mr-k" min="1" max="4" value="2" /><output id="mr-k-o">2</output></label>
+		</div>
+		<div class="lab-cols">
+			<div class="panel"><h4>① 검색 결과 (R)</h4><div id="mr-hits"></div></div>
+			<div class="panel"><h4>② LLM에 보낼 프롬프트 (A)</h4><div class="calc" id="mr-prompt"></div></div>
+		</div>
+		<div class="try"><b>해 볼 것</b> 질문을 "차량 정비"처럼 노트에 없는 단어로 바꿔 보세요. BM25는 같은 단어가 없으면 아무것도 찾지 못합니다. 그러면 프롬프트에 자료가 없고, 모델은 자기 기억(parametric)으로만 답하게 됩니다. 이것이 dense 검색이 필요한 이유입니다.</div>
+	</div>
+
+	<h2>📖 발전 단계</h2>
+	<p>Gao et al.의 서베이는 RAG를 세 단계로 나눕니다. [[P:R3]] 2025년 이후에는 에이전트가 <b>언제, 무엇을, 몇 번</b> 검색할지 스스로 정하는 Agentic RAG가 별도 분야로 정리됐습니다. [[P:R4]]</p>
+	<div class="table-wrap">
+		<table>
+			<tr><th>단계</th><th>특징</th><th>예</th></tr>
+			<tr><td>Naive RAG</td><td>색인 → 검색 → 생성의 고정된 한 번 흐름</td><td>top-k 청크를 그대로 붙임</td></tr>
+			<tr class="hl"><td>Advanced RAG</td><td>검색 전후 최적화</td><td>질의 재작성, 하이브리드 검색, 리랭킹, 압축 ← <b>이 프로젝트</b></td></tr>
+			<tr><td>Modular RAG</td><td>모듈을 바꾸고 조합</td><td>라우팅, 반복 검색, 메모리</td></tr>
+			<tr><td>Agentic RAG</td><td>에이전트가 검색 시점과 횟수를 정함</td><td>도구 호출로 검색, grep도 검색</td></tr>
+		</table>
+	</div>
+
+	<h2>📖 RAG가 해결하지 못하는 것</h2>
+	<ul>
+		<li><b>검색이 틀리면 생성도 틀린다.</b> 그래서 이 프로젝트는 생성 품질보다 검색 품질(Recall, MRR)을 먼저 측정했다.</li>
+		<li><b>찾아도 모델이 안 쓸 수 있다.</b> 긴 입력의 중간에 있는 정보를 덜 활용한다는 "Lost in the Middle" 결과가 있다. [[P:R18]] → 많이 넣기보다 정확한 몇 개를 넣는다.</li>
+		<li><b>긴 컨텍스트 모델이면 RAG가 필요 없나?</b> 4K 컨텍스트 + 검색이 16K 컨텍스트 모델과 비슷했고, 긴 컨텍스트 모델에도 검색을 더하면 더 좋아졌다는 결과가 있다. [[P:R19]]</li>
+	</ul>
+
+	<h2>📜 원문</h2>
+	<div class="sources">
+		<div class="src">
+			<div class="t">Lewis et al. (2020) Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</div>
+			<div class="meta">NeurIPS 2020 · <a href="#ref-R1">R1</a> · ✅ 원문 초록 확인</div>
+			<p class="claim"><b>원문 요지</b> 사전학습된 seq2seq 생성 모델(parametric)과, 사전학습된 neural retriever로 접근하는 위키피디아 dense vector index(non-parametric)를 결합한다.</p>
+			<p class="claim"><b>왜 읽나</b> RAG 정의의 출처. 초록에서 "외부 지식 + 검색기"가 구조이고 dense index는 그 구현이라는 점을 확인한다.</p>
+			<div class="links"><a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">arXiv 초록 ↗</a><a href="https://arxiv.org/pdf/2005.11401" target="_blank" rel="noopener">PDF ↗</a></div>
+		</div>
+		<div class="src">
+			<div class="t">Ram et al. (2023) In-Context Retrieval-Augmented Language Models</div>
+			<div class="meta">TACL 11 · <a href="#ref-R5">R5</a> · ✅ 원문 확인</div>
+			<p class="claim"><b>원문 요지</b> 언어 모델 구조를 바꾸지 않고 검색한 문서를 입력 앞에 붙이기만 해도 성능이 크게 오른다. 기성 BM25 검색기로도 효과가 있었다.</p>
+			<p class="claim"><b>왜 읽나</b> "dense 없이도 RAG"의 가장 직접적인 근거.</p>
+			<div class="links"><a href="https://arxiv.org/abs/2302.00083" target="_blank" rel="noopener">arXiv ↗</a><a href="https://github.com/AI21Labs/in-context-ralm" target="_blank" rel="noopener">코드 ↗</a></div>
+		</div>
+		<div class="src">
+			<div class="t">Gao et al. (2023) Retrieval-Augmented Generation for Large Language Models: A Survey</div>
+			<div class="meta"><a href="#ref-R3">R3</a> · 📚 서지 정보만</div>
+			<p class="claim"><b>왜 읽나</b> Naive / Advanced / Modular RAG 분류와 각 단계의 기법 목록. 처음 전체 지도를 그릴 때 좋다.</p>
+			<div class="links"><a href="https://arxiv.org/abs/2312.10997" target="_blank" rel="noopener">arXiv ↗</a></div>
+		</div>
+	</div>
+
+	<h2>🛠 이 프로젝트에서는</h2>
+	<div class="box project">
+		<p>하이브리드 검색과 RRF를 쓰므로 Advanced RAG에 해당합니다. 검색 결과를 에이전트용 컨텍스트로 선택하고 압축하는 단계까지 RAG의 범위로 봅니다. [[C:docs/adr/0001]]</p>
+		<div class="table-wrap">
+			<table>
+				<tr><th>단계</th><th>파일</th></tr>
+				<tr><td>파일 탐색·감시</td><td><code>src/utils/DirectoryWalker.ts</code>, <code>VaultWatcher.ts</code></td></tr>
+				<tr><td>키워드 색인</td><td><code>src/utils/Indexer.ts</code></td></tr>
+				<tr><td>전처리·청킹</td><td><code>processor/MatterParser.ts</code>, <code>stripEmbeddedData.ts</code>, <code>worker/chunkDocument.ts</code></td></tr>
+				<tr><td>임베딩·저장</td><td><code>RAGIndexer.ts</code>, <code>Embedder.ts</code>, <code>VectorDB.ts</code> (LanceDB)</td></tr>
+				<tr><td>하이브리드 검색</td><td><code>VaultManger/VaultManager.ts:97</code></td></tr>
+				<tr><td>평가</td><td><code>scripts/eval/search-quality.ts</code>, <code>lib/metrics.ts</code></td></tr>
+			</table>
+		</div>
+	</div>
+
+	<h2>✅ 자가 점검</h2>
+	<details class="qa"><summary>parametric memory만 쓰는 LLM의 약점 세 가지는?</summary><div class="a">갱신하려면 재학습해야 한다, 답의 출처를 댈 수 없다, 모르는 것을 그럴듯하게 지어낸다(환각).</div></details>
+	<details class="qa"><summary>RAG 원 논문이 dense index를 썼는데, 왜 dense가 정의의 조건이 아닌가?</summary><div class="a">논문이 정의한 것은 "검색으로 접근하는 외부 지식(non-parametric memory)과 생성 모델의 결합"이라는 구조이고, dense index는 그 구현이다. In-Context RALM은 BM25로 같은 구조의 효과를 보였다.</div></details>
+	<details class="qa"><summary>미니 RAG 실습에서 검색이 아무것도 찾지 못하면 프롬프트는 어떻게 되고, 그 결과 무엇이 문제인가?</summary><div class="a">자료 없이 질문만 들어가므로 모델은 가중치 속 지식만으로 답한다. RAG의 이점(최신성, 출처, 환각 감소)이 사라진다. 검색 품질을 먼저 재야 하는 이유다.</div></details>
+</section>
+
+<!-- ================================================================ 역색인 -->
+<section class="module" id="m-index" data-group="개념" data-nav="토큰화와 역색인" data-sub="analyzer 원칙과 토큰화 버그">
+	<header>
+		<div class="kicker">개념 2</div>
+		<h1>토큰화와 역색인</h1>
+		<p class="lede">키워드 검색은 "질의의 단어가 들어 있는 문서"를 찾습니다. 그러려면 문서와 질의를 <b>같은 규칙으로</b> 단어로 잘라야 합니다. 이 프로젝트는 이 원칙을 어겨서 검색을 놓치고 있었습니다.</p>
+	</header>
+	<div class="box goal">
+		<div class="box-h">🎯 학습 목표</div>
+		<ul>
+			<li>역색인이 무엇이고 왜 빠른지 설명한다.</li>
+			<li>"색인과 질의에 같은 analyzer"라는 원칙과, 이 프로젝트가 그것을 어겼던 사례를 말한다.</li>
+			<li>한국어 키워드 검색의 어려움(조사)을 예로 든다.</li>
+		</ul>
+	</div>
+
+	<h2>📖 역색인 (inverted index)</h2>
+	<p>책 뒤의 "찾아보기"와 같습니다. <code>단어 → 그 단어가 나오는 문서 목록</code>을 미리 만들어 두면, 모든 문서를 훑지 않고 질의의 단어로 목록을 바로 꺼낼 수 있습니다.</p>
+	<figure class="fig">
+		<svg viewBox="0 0 780 250" role="img" aria-label="역색인 구조">
+			<g font-size="13">
+				<rect class="node" x="14" y="20" width="250" height="56" rx="9" /><text x="26" y="42" font-weight="700">a.md</text><text x="26" y="62" class="muted">LanceDB 인덱스를 다시 만든다</text>
+				<rect class="node" x="14" y="96" width="250" height="56" rx="9" /><text x="26" y="118" font-weight="700">b.md</text><text x="26" y="138" class="muted">청킹 크기를 줄였다</text>
+				<rect class="node" x="14" y="172" width="250" height="56" rx="9" /><text x="26" y="194" font-weight="700">c.md</text><text x="26" y="214" class="muted">LanceDB 청킹 실험</text>
+			</g>
+			<text x="300" y="130" font-size="13" class="muted" text-anchor="middle">토큰화</text>
+			<path class="arrow" d="M272 138 H332" />
+			<g font-size="13">
+				<rect class="node-a" x="344" y="20" width="420" height="208" rx="10" />
+				<text x="360" y="44" font-weight="700">역색인: 단어 → 문서</text>
+				<text x="360" y="76" class="mono">"lancedb"</text><text x="480" y="76">→ { a.md, c.md }</text>
+				<text x="360" y="104" class="mono">"인덱스를"</text><text x="480" y="104">→ { a.md }</text>
+				<text x="360" y="132" class="mono">"청킹"</text><text x="480" y="132">→ { b.md, c.md }</text>
+				<text x="360" y="160" class="mono">"크기를"</text><text x="480" y="160">→ { b.md }</text>
+				<text x="360" y="194" class="muted" font-size="12">질의 "lancedb 청킹" → 두 목록을 꺼내 합치면 끝</text>
+				<text x="360" y="214" class="muted" font-size="12">BM25를 하려면 문서별 횟수(tf)와 문서 길이도 저장해야 한다</text>
+			</g>
+		</svg>
+		<figcaption>"인덱스를", "크기를"처럼 한국어는 조사가 붙은 채 색인된다. 질의 "인덱스"와는 다른 토큰이다.</figcaption>
+	</figure>
+
+	<h2>📖 같은 analyzer 원칙</h2>
+	<p>검색 엔진에서 텍스트를 토큰으로 바꾸는 규칙 묶음을 <b>analyzer</b>라고 합니다(소문자화, 문장부호 처리, 형태소 분석, 불용어 제거 등). 색인할 때와 질의할 때 규칙이 다르면, 같은 단어라도 서로 다른 토큰이 되어 맞지 않습니다. 그래서 Elasticsearch 같은 엔진은 기본적으로 필드에 지정한 analyzer를 질의에도 그대로 씁니다. [[D:R25]]</p>
+	<div class="box warn">
+		<div class="box-h">🐛 이 프로젝트가 어긴 사례 (2026-11-10 수정)</div>
+		<p>본문은 <code>/[a-z0-9가-힣]+/g</code>로 잘라 문장부호에서 끊었는데, 질의는 공백으로만 잘랐습니다. [[C:Indexer.ts:83]] [[C:Indexer.ts:262]] 그래서 질의 <code>LanceDB,</code>나 <code>tailwind-merge</code>, <code>Next.js</code>가 본문의 <code>lancedb</code>, <code>tailwind</code>+<code>merge</code>와 맞지 않았습니다. 아래 실습에서 직접 확인해 보세요.</p>
+	</div>
+
+	<div class="lab" id="lab-index">
+		<div class="lab-h"><span class="tag">🔬 직접 해보기</span><h3>역색인 만들기와 토큰화 버그 재현</h3><span class="spacer"></span>[[SRC:tokenize.mjs]]</div>
+		<p class="desc">문서를 고치면 역색인이 바로 다시 만들어집니다. 질의를 넣으면 질의 토큰마다 <b>수정 전</b>(원형만)과 <b>수정 후</b>(원형 · 앞뒤 문장부호 제거 · 중간 조각 모두 일치)로 어떤 문서와 맞는지 보여 줍니다.</p>
+		<div class="lab-cols">
+			<div><label class="mono" style="font-size:13px;color:var(--muted)">문서 (한 줄에 하나, <code>이름: 본문</code>)</label><textarea id="ix-docs" rows="5"></textarea></div>
+			<div class="panel"><h4>문서별 토큰</h4><div id="ix-toks"></div></div>
+		</div>
+		<div class="controls"><label>질의 <input type="text" class="wide" id="ix-q" value="tailwind-merge, LanceDB? next.js" /></label></div>
+		<div class="lab-cols">
+			<div class="panel"><h4>질의 토큰별 일치 비교</h4><div id="ix-match"></div></div>
+			<div class="panel"><h4>역색인 (질의와 맞은 토큰 강조)</h4><div id="ix-inv" style="max-height:280px;overflow:auto"></div></div>
+		</div>
+		<div class="try"><b>해 볼 것</b> ① 질의를 <code>I/O</code>로 바꿔 보세요. 한 글자 조각(i, o)은 버리므로 아무것도 맞지 않습니다. 버리지 않으면 "i", "o"가 든 거의 모든 문서가 걸립니다. ② 질의를 <code>인덱스</code>로 바꿔 보세요. 본문에는 "인덱스를"로 색인되어 맞지 않습니다. 이것이 아직 남은 한국어 조사 문제입니다.</div>
+	</div>
+
+	<h2>📖 한국어는 왜 더 어려운가</h2>
+	<p>한국어는 단어에 조사와 어미가 붙는 교착어라서, 공백 단위(어절)로 색인하면 문서의 "검색을"과 질의의 "검색"이 다른 토큰이 됩니다. Elasticsearch는 이 문제를 Nori 같은 형태소 분석기로 풀고, 다국어 검색 연구에서도 한국어 BM25에 Nori를 씁니다. [[P:R17]] 다만 형태소 분석기별 한국어 검색 성능을 통제된 조건에서 비교한 공개 연구는 찾지 못했습니다. 직접 평가셋으로 재야 합니다. [[I]]</p>
+
+	<h2>🛠 이 프로젝트에서는</h2>
+	<div class="box project">
+		<p>질의 토큰마다 ① 원형 ② 앞뒤 문장부호를 뗀 형태 ③ 중간 문장부호로 나뉜 조각이 <b>모두</b> 들어 있는 문서, 이 셋 중 하나라도 맞으면 일치로 봅니다. 질의 토큰 하나는 문서당 한 번만 셉니다. [[C:Indexer.ts:96-130]]</p>
+		<ul>
+			<li>원형을 남긴 이유: 태그(<code>c++</code>)와 파일명(<code>my-note</code>)은 문장부호째 색인되기 때문.</li>
+			<li>한 글자 조각을 뺀 이유: 처음 구현에서 질의 <code>I/O</code>(q11)가 나빠졌다. 이 규칙은 평가셋을 보고 넣은 것이라 새 질의로 다시 확인해야 한다.</li>
+			<li>결과: 현재 동작의 Recall@5 0.752 → 0.800, MRR@10 0.650 → 0.711. 하이픈이 든 라이브러리 이름 질의 3개가 1위로 올라왔고 나빠진 질의는 없었다. 신뢰구간 하한이 0이라 유의하다고 단정할 수는 없다. [[E:4.9]]</li>
+		</ul>
+	</div>
+	<div class="box say">
+		<div class="box-h">🎤 면접에서 말하기</div>
+		<blockquote>색인할 때와 질의할 때 같은 analyzer를 써야 한다는 원칙을 어긴 버그가 있었습니다. 본문은 문장부호에서 끊고 질의는 공백으로만 잘라서 <code>tailwind-merge</code> 같은 질의가 맞지 않았습니다. 질의 토큰도 같은 규칙으로 정리하도록 고친 뒤 Recall@5가 0.752에서 0.800으로 올랐습니다. 다만 42개 질의로는 유의하다고 말할 수 없어서 "나빠진 질의 없이 개선"이라고만 말합니다.</blockquote>
+	</div>
+
+	<h2>✅ 자가 점검</h2>
+	<details class="qa"><summary>수정 전에 <code>tailwind-merge</code> 질의가 본문의 "tailwind-merge"와 맞지 않았던 이유는?</summary><div class="a">본문은 문장부호에서 잘려 "tailwind", "merge" 두 토큰으로 색인됐는데, 질의는 공백으로만 잘려 "tailwind-merge" 한 토큰으로 찾았다. 역색인에 그 토큰이 없다.</div></details>
+	<details class="qa"><summary>중간 조각 일치에서 한 글자 조각을 버리는 이유는?</summary><div class="a">"i", "o" 같은 한 글자 토큰은 거의 모든 문서에 있어서, 최소 일치 조건만 채우는 잡음이 된다. 실제로 질의 <code>I/O</code>의 순위가 나빠졌다.</div></details>
+	<details class="qa"><summary>원형 일치를 남겨 둔 이유는?</summary><div class="a">태그와 파일명은 문장부호를 포함한 원형 그대로 색인되기 때문이다. 원형을 버리면 <code>c++</code> 태그를 찾을 수 없다.</div></details>
+</section>
+
+<!-- ================================================================ BM25 -->
+<section class="module" id="m-bm25" data-group="개념" data-nav="BM25" data-sub="TF 포화, 길이 보정, IDF">
+	<header>
+		<div class="kicker">개념 3</div>
+		<h1>BM25</h1>
+		<p class="lede">가장 널리 쓰이는 키워드 검색 점수 함수입니다. TF-IDF의 문제 두 가지를 매개변수 <code>k1</code>, <code>b</code>로 다룹니다.</p>
+	</header>
+	<div class="box goal">
+		<div class="box-h">🎯 학습 목표</div>
+		<ul>
+			<li>TF, IDF, TF 포화, 문서 길이 정규화를 각각 한 문장으로 설명한다.</li>
+			<li>BM25 수식의 <code>k1</code>, <code>b</code>가 무엇을 조절하는지, 극단값(0, ∞)에서 어떻게 되는지 말한다.</li>
+			<li>작은 예시로 점수를 손으로 계산한다.</li>
+			<li>이 프로젝트의 키워드 검색이 "k1 = 0인 BM25"와 같은 구조임을 보인다.</li>
+		</ul>
+	</div>
+
+	<h2>📖 단계 1. TF와 IDF</h2>
+	<p>문서 점수는 "질의 단어가 이 문서에 얼마나 중요한가"의 합입니다. 중요도는 두 가지로 정합니다.</p>
+	<div class="grid2">
+		<div class="card"><h4>TF (term frequency)</h4><p>이 문서에 그 단어가 몇 번 나오나. 많을수록 관련이 높다.</p></div>
+		<div class="card"><h4>IDF (inverse document frequency)</h4><p>그 단어가 전체 문서 중 몇 개에 나오나. 드물수록 변별력이 높다. "것", "the"는 낮고 "LanceDB"는 높다.</p></div>
+	</div>
+	<div class="math">@@F:tfidf@@</div>
+	<p>TF-IDF는 둘을 곱합니다. 여기에는 문제가 두 가지 있습니다.</p>
+	<ol>
+		<li>단어가 100번 나온 문서가 10번 나온 문서보다 10배 관련 있지는 않다. → <b>TF 포화(saturation)</b>가 필요하다.</li>
+		<li>긴 문서는 길다는 이유만으로 단어가 많이 나온다. → <b>문서 길이 정규화</b>가 필요하다.</li>
+	</ol>
+
+	<h2>📖 단계 2. BM25 수식</h2>
+	<p>BM25(Okapi BM25)는 확률적 관련성 모델(Probabilistic Relevance Framework)에서 나온 점수 함수입니다. [[P:R6]]</p>
+	<div class="math">@@F:bm25@@</div>
+	<div class="table-wrap">
+		<table>
+			<tr><th>기호</th><th>뜻</th><th>극단값에서</th></tr>
+			<tr><td><code>f(q, D)</code></td><td>문서 D에서 단어 q가 나온 횟수 (TF)</td><td></td></tr>
+			<tr><td><code>|D|</code>, <code>avgdl</code></td><td>문서 D의 길이, 전체 문서 평균 길이</td><td></td></tr>
+			<tr><td><code>k1</code></td><td>TF가 얼마나 빨리 포화되는지</td><td>0이면 TF 무시(나왔나만 봄). 무한대면 포화 없음(TF에 비례)</td></tr>
+			<tr><td><code>b</code></td><td>길이 정규화 강도</td><td>0이면 길이 무시, 1이면 완전히 정규화</td></tr>
+			<tr><td>IDF</td><td>Lucene 구현은 아래 식. N은 전체 문서 수, n(q)는 q가 나온 문서 수</td><td>항상 양수</td></tr>
+		</table>
+	</div>
+	<div class="math">@@F:idf@@</div>
+	<p>Lucene(Elasticsearch, OpenSearch의 기반)의 기본값은 <b>k1 = 1.2, b = 0.75</b>입니다. [[D:R15]]</p>
+
+	<h2>🖼 그림으로 보기: 분수 부분이 어떻게 움직이나</h2>
+	<figure class="fig">
+		<div class="controls" style="justify-content:center">
+			<label>k1 <input type="range" id="bc-k1" min="0" max="3" step="0.1" value="1.2" /><output id="bc-k1-o">1.2</output></label>
+			<label>b <input type="range" id="bc-b" min="0" max="1" step="0.05" value="0.75" /><output id="bc-b-o">0.75</output></label>
+		</div>
+		<svg id="bm25-chart" viewBox="0 0 640 300" role="img" aria-label="BM25 TF 포화 곡선"></svg>
+		<figcaption>가로축은 단어 횟수 tf, 세로축은 IDF에 곱해지는 분수 부분. 세 선은 문서 길이가 평균의 0.5배, 1배, 2배일 때. 점선은 상한 k1+1. k1을 0으로 내리면 세 선이 모두 1로 붙는다(이 프로젝트 방식).</figcaption>
+	</figure>
+	<div class="box tip">
+		<div class="box-h">💡 직관으로 외우기</div>
+		<p>TF가 커질수록 분수는 <code>k1+1</code>에 가까워지고 더 커지지 않는다(포화). 문서가 평균보다 길면 분모가 커져 점수가 깎인다(길이 정규화). <code>b</code>는 그 깎는 정도다.</p>
+	</div>
+
+	<div class="lab" id="lab-bm25">
+		<div class="lab-h"><span class="tag">🔬 직접 해보기</span><h3>BM25 vs 이 프로젝트 방식</h3><span class="spacer"></span>[[SRC:bm25.mjs]]</div>
+		<p class="desc">같은 문서와 질의로 BM25와 이 프로젝트의 IDF 가중 불리언 매칭을 나란히 계산합니다. 막대 색은 질의 단어별 기여입니다. <b>BM25 결과의 행을 누르면</b> 그 문서의 계산 과정을 숫자로 보여 줍니다.</p>
+		<textarea id="bm-docs" rows="6"></textarea>
+		<div class="controls">
+			<label>질의 <input type="text" id="bm-q" value="lancedb 색인" /></label>
+			<label>k1 <input type="range" id="bm-k1" min="0" max="3" step="0.1" value="1.2" /><output id="bm-k1-o">1.2</output></label>
+			<label>b <input type="range" id="bm-b" min="0" max="1" step="0.05" value="0.75" /><output id="bm-b-o">0.75</output></label>
+		</div>
+		<div class="controls">
+			<button class="btn sm" data-bm="1.2,0.75">Lucene 기본 (1.2, 0.75)</button>
+			<button class="btn sm" data-bm="0,0.75">k1 = 0 (이 프로젝트와 같은 구조)</button>
+			<button class="btn sm" data-bm="1.2,0">b = 0 (길이 무시)</button>
+			<button class="btn sm" data-bm="3,1">k1 = 3, b = 1</button>
+		</div>
+		<div class="legend" id="bm-legend"></div>
+		<div class="lab-cols">
+			<div class="panel"><h4>BM25</h4><div id="bm-res"></div></div>
+			<div class="panel"><h4>이 프로젝트 방식 (tf·길이 무시, ln(N/n)+1)</h4><div id="bm-proj"></div></div>
+		</div>
+		<div id="bm-calc"></div>
+		<div class="try"><b>해 볼 것</b> ① "k1 = 0"을 누르고 BM25 순위가 오른쪽과 같아지는지 보세요(IDF 공식이 달라 점수 크기는 다릅니다). ② "b = 0"을 누르면 긴 문서 <code>long-log</code>의 순위가 어떻게 되나요? ③ 계산 과정에서 tf가 2일 때와 1일 때 분수 부분이 2배가 되지 않는 것을 확인하세요. ④ <code>lancedb-mention</code>은 왜 어느 쪽에도 안 나올까요? 본문의 "LanceDB를"이 영문과 한글이 붙은 한 토큰 <code>lancedb를</code>로 색인되기 때문입니다. 한국어 조사 문제의 또 다른 모습입니다.</div>
+	</div>
+
+	<h2>📖 이 프로젝트의 키워드 검색은 BM25인가?</h2>
+	<p><b>아닙니다.</b> 정확히는 <b>IDF 가중 불리언 매칭</b>입니다. [[C:Indexer.ts:77-164]]</p>
+	<div class="table-wrap">
+		<table>
+			<tr><th>항목</th><th>BM25</th><th>이 프로젝트 <code>Indexer.search</code></th></tr>
+			<tr><td>TF</td><td>포화 함수로 반영</td><td><b>반영 안 함.</b> 역색인이 <code>Set&lt;filePath&gt;</code>라 횟수를 저장하지 않는다 (<code>Indexer.ts:16</code>)</td></tr>
+			<tr><td>길이 정규화</td><td><code>b</code>로 반영</td><td><b>없음</b></td></tr>
+			<tr><td>IDF</td><td>ln(1 + (N−n+0.5)/(n+0.5))</td><td>ln(N/df) + 1 (<code>Indexer.ts:123</code>)</td></tr>
+			<tr><td>최소 일치</td><td>없음(엔진 옵션)</td><td>질의 토큰 수에 따른 minimum-should-match (<code>Indexer.ts:147</code>)</td></tr>
+			<tr><td>색인 단위</td><td>보통 문서 또는 필드</td><td>문서 단위. 본문 + 제목 + 태그 + 파일명을 한 집합에</td></tr>
+		</table>
+	</div>
+	<div class="math">@@F:proj@@</div>
+	<div class="box tip">
+		<div class="box-h">💡 면접에서 쓸 수 있는 연결</div>
+		<p>BM25에서 k1 = 0으로 두면 분수 부분이 "나왔으면 1, 아니면 0"이 됩니다.</p>
+		<div class="math">@@F:k0@@</div>
+		<p>즉 이 프로젝트의 점수는 <b>k1 = 0인 BM25의 극단(IDF 공식만 다름)</b>과 같은 구조입니다. 이렇게 설명하면 "BM25를 모른다"가 아니라 "BM25의 어느 부분을 생략했고 그 대가가 무엇인지 안다"가 됩니다. [[I]]</p>
+	</div>
+	<p>그럼에도 이 단순한 키워드 검색이 질의 42개에서 Recall@5 0.665였습니다. 개인 노트는 짧고, 제목·태그·고유명사로 찾는 질의가 많아 TF의 이득이 작은 환경이기 때문이라고 해석합니다. [[E:4.1]] [[I]]</p>
+
+	<h2>✍️ 손으로 계산하기</h2>
+	<div class="box">
+		<p>문서 3개, 평균 길이 avgdl = 10, k1 = 1.2, b = 0.75. 질의 "lancedb"는 문서 A(길이 5, tf 2)와 B(길이 15, tf 1)에만 나온다 (N = 3, n = 2).</p>
+		<div class="calc">IDF = ln(1 + (3 − 2 + 0.5) / (2 + 0.5)) = ln(1.6) = 0.470
+
+A: 길이 보정 = 1 − 0.75 + 0.75 × 5/10  = 0.625
+   분수 = 2 × 2.2 / (2 + 1.2 × 0.625)    = 4.4 / 2.75 = 1.600
+   점수 = 0.470 × 1.600                  = 0.752
+
+B: 길이 보정 = 1 − 0.75 + 0.75 × 15/10 = 1.375
+   분수 = 1 × 2.2 / (1 + 1.2 × 1.375)    = 2.2 / 2.65 = 0.830
+   점수 = 0.470 × 0.830                  = 0.390</div>
+		<p>A가 B의 약 1.9배입니다. tf는 2배지만 포화 때문에 분수는 1.9배에 그치고, A가 짧아서 오히려 이득을 봤습니다. k1 = 0이면 두 문서의 점수가 같아집니다. 위 실습에서 같은 계산을 숫자를 바꿔 가며 확인할 수 있습니다.</p>
+	</div>
+
+	<h2>📜 원문</h2>
+	<div class="sources">
+		<div class="src">
+			<div class="t">Robertson &amp; Zaragoza (2009) The Probabilistic Relevance Framework: BM25 and Beyond</div>
+			<div class="meta">Foundations and Trends in IR 3(4) · <a href="#ref-R6">R6</a> · 📚 고전, 서지 정보만</div>
+			<p class="claim"><b>원문 요지</b> 문서가 질의에 관련될 확률로 순위를 매기는 틀에서 BM25를 유도한다. TF 포화와 길이 정규화가 왜 필요한지, BM25F(필드별 가중) 같은 확장까지 다룬다.</p>
+			<p class="claim"><b>왜 읽나</b> "BM25는 어디서 나왔나요?"에 대한 정식 출처. k1, b의 의미를 저자들의 설명으로 확인한다.</p>
+			<div class="links"><a href="https://doi.org/10.1561/1500000019" target="_blank" rel="noopener">DOI ↗</a></div>
+		</div>
+		<div class="src">
+			<div class="t">Apache Lucene BM25Similarity</div>
+			<div class="meta">공식 API 문서 · <a href="#ref-R15">R15</a> · 📚 링크만</div>
+			<p class="claim"><b>원문 요지</b> Lucene의 BM25 구현. 기본 k1 = 1.2, b = 0.75.</p>
+			<p class="claim"><b>왜 읽나</b> "실무 기본값이 얼마인가"에 대한 출처. Elasticsearch와 OpenSearch가 이 구현을 쓴다.</p>
+			<div class="links"><a href="https://lucene.apache.org/core/9_0_0/core/org/apache/lucene/search/similarities/BM25Similarity.html" target="_blank" rel="noopener">Lucene 문서 ↗</a></div>
+		</div>
+	</div>
+
+	<h2>✅ 자가 점검</h2>
+	<details class="qa"><summary>b = 0이면 어떤 일이 생기나? k1 → ∞이면?</summary><div class="a">b = 0이면 길이 보정값이 항상 1이라 문서 길이를 무시한다. k1 → ∞이면 분수가 tf / (길이 보정값)에 가까워져 포화가 사라지고 TF에 비례한다(TF-IDF에 가까워짐).</div></details>
+	<details class="qa"><summary>이 프로젝트의 키워드 점수를 BM25 매개변수로 표현하면?</summary><div class="a">k1 = 0인 BM25(b는 영향 없음)에 IDF를 ln(N/df) + 1로 바꾼 것. 단어가 있으면 IDF만큼 더한다.</div></details>
+	<details class="qa"><summary>이 프로젝트를 진짜 BM25로 바꾸려면 색인에 무엇을 더 저장해야 하나?</summary><div class="a">문서별 단어 횟수(tf)와 문서 길이, 그리고 평균 문서 길이. 지금 역색인은 <code>Set&lt;filePath&gt;</code>라 둘 다 없다. 실습 파일 <code>bm25.mjs</code>의 <code>buildIndex</code>가 그 구조다.</div></details>
+	<details class="qa"><summary>개인 노트 Vault에서 TF가 없는데도 키워드 검색이 잘 된 이유는? (해석)</summary><div class="a">노트가 짧아 tf 차이가 작고, 제목·태그·고유명사처럼 "있나 없나"만으로 구별되는 질의가 많기 때문이라고 해석한다.</div></details>
+</section>
+
+<!-- ================================================================ Dense -->
+<section class="module" id="m-dense" data-group="개념" data-nav="Dense 검색과 임베딩" data-sub="bi-encoder, cosine, mean pooling">
+	<header>
+		<div class="kicker">개념 4</div>
+		<h1>Dense 검색과 임베딩</h1>
+		<p class="lede">단어가 겹치지 않아도 의미가 비슷하면 찾습니다. 대신 정확히 일치해야 하는 질의에는 약합니다.</p>
+	</header>
+	<div class="box goal">
+		<div class="box-h">🎯 학습 목표</div>
+		<ul>
+			<li>sparse와 dense 벡터의 모양 차이를 그림으로 설명한다.</li>
+			<li>bi-encoder와 cross-encoder의 차이와 쓰는 위치를 말한다.</li>
+			<li>mean pooling 때문에 긴 입력의 신호가 흐려진다는 가설과, 접두사 버그를 설명한다.</li>
+		</ul>
+	</div>
+
+	<h2>🖼 sparse와 dense는 벡터 모양의 차이</h2>
+	<figure class="fig">
+		<svg viewBox="0 0 780 200" role="img" aria-label="sparse 벡터와 dense 벡터">
+			<text x="10" y="26" font-size="14" font-weight="700">sparse (BM25, SPLADE)</text>
+			<text x="10" y="46" font-size="12" class="muted">어휘 크기만큼 긴 벡터. 문서에 나온 단어 칸만 값이 있고 나머지는 0</text>
+			<g id="sparse-cells"></g>
+			<text x="10" y="126" font-size="14" font-weight="700">dense (임베딩)</text>
+			<text x="10" y="146" font-size="12" class="muted">수백 차원(이 프로젝트 384). 모든 칸에 실수 값. 칸 하나하나에 사람이 읽을 뜻은 없다</text>
+			<g id="dense-cells"></g>
+		</svg>
+		<figcaption>"sparse = 키워드 검색"으로만 외우면 SPLADE 질문에서 막힌다. sparse는 벡터의 <b>모양</b>(대부분 0)을 가리키는 말이다.</figcaption>
+	</figure>
+	<div class="table-wrap">
+		<table>
+			<tr><th>분류</th><th>대표</th><th>강점</th><th>약점</th></tr>
+			<tr><td>sparse (어휘 기반)</td><td>TF-IDF, BM25</td><td>정확한 단어·고유명사·코드 일치, 학습 불필요, 설명 가능</td><td>동의어·다른 표현을 못 찾음 (vocabulary mismatch)</td></tr>
+			<tr><td>dense (의미 기반)</td><td>DPR, Sentence-BERT, E5</td><td>표현이 달라도 의미가 같으면 찾음</td><td>학습 분포 밖에서 약함, 정확한 일치에 약함</td></tr>
+			<tr><td>learned sparse</td><td>SPLADE</td><td>역색인 그대로 쓰면서 의미 확장</td><td>모델 필요</td></tr>
+			<tr><td>late interaction</td><td>ColBERT</td><td>토큰 단위 비교, 품질 높음</td><td>저장 공간이 큼</td></tr>
+		</table>
+	</div>
+	<p>[[P:R6]] [[P:R7]] [[P:R9]] [[P:R10]]</p>
+
+	<h2>📖 코사인 유사도</h2>
+	<div class="math">@@F:cos@@</div>
+	<p>두 벡터가 가리키는 <b>방향</b>이 얼마나 비슷한지입니다. 1이면 같은 방향, 0이면 무관, −1이면 반대입니다. 벡터를 길이 1로 정규화해 두면 내적만으로 계산됩니다.</p>
+
+	<div class="lab" id="lab-dense">
+		<div class="lab-h"><span class="tag">🔬 직접 해보기</span><h3>의미 공간에서 질의 벡터 움직이기</h3></div>
+		<p class="desc">원 위의 <b>주황 화살표(질의)를 끌어 보세요.</b> 코사인 유사도 순위가 바뀝니다. 오른쪽에는 같은 질의 문장으로 BM25를 돌린 결과를 함께 보여 줍니다. 2차원 벡터는 설명을 위해 손으로 정한 값입니다(실제 모델은 384차원).</p>
+		<div class="controls">
+			<button class="btn sm" data-dq="0">"차량 정비 방법"</button>
+			<button class="btn sm" data-dq="1">"요리 레시피 추천"</button>
+			<button class="btn sm" data-dq="2">"LanceDB 오류 E1102"</button>
+		</div>
+		<div class="lab-cols">
+			<div class="panel" style="display:grid;place-items:center"><svg id="dense-svg" viewBox="-180 -180 360 360" width="340" height="340" style="touch-action:none;max-width:100%"></svg></div>
+			<div>
+				<div class="panel"><h4>코사인 유사도 순위 (dense)</h4><div id="dense-cos"></div></div>
+				<div class="panel" style="margin-top:10px"><h4>BM25 순위 (sparse, 같은 질의 문장)</h4><div id="dense-bm"></div></div>
+			</div>
+		</div>
+		<div class="try"><b>해 볼 것</b> "차량 정비 방법"은 문서와 겹치는 단어가 없어 BM25가 아무것도 찾지 못하지만, dense는 "자동차 수리 기록"을 찾습니다(vocabulary mismatch). 반대로 "LanceDB 오류 E1102"는 BM25가 정확히 그 오류 코드 문서를 찾고, dense는 비슷한 주제의 문서를 섞습니다. 둘을 합치는 이유입니다.</div>
+	</div>
+
+	<h2>🖼 bi-encoder와 cross-encoder</h2>
+	<figure class="fig">
+		<svg viewBox="0 0 780 260" role="img" aria-label="bi-encoder와 cross-encoder">
+			<text x="20" y="24" font-size="15" font-weight="700">bi-encoder (검색 1단계)</text>
+			<g font-size="13" text-anchor="middle">
+				<rect class="node" x="20" y="44" width="120" height="38" rx="8" /><text x="80" y="68">질의</text>
+				<rect class="node" x="200" y="44" width="120" height="38" rx="8" /><text x="260" y="68">문서</text>
+				<rect class="node-a" x="20" y="110" width="120" height="38" rx="8" /><text x="80" y="134">인코더</text>
+				<rect class="node-a" x="200" y="110" width="120" height="38" rx="8" /><text x="260" y="134">인코더</text>
+				<rect class="node" x="20" y="176" width="120" height="30" rx="8" /><text x="80" y="196">벡터 q</text>
+				<rect class="node-g" x="200" y="176" width="120" height="30" rx="8" /><text x="260" y="196">벡터 d (미리 계산)</text>
+				<text x="170" y="240" class="muted">cos(q, d) → 수백만 개도 빠름</text>
+			</g>
+			<path class="arrow" d="M80 82 V106" /><path class="arrow" d="M260 82 V106" /><path class="arrow" d="M80 148 V172" /><path class="arrow" d="M260 148 V172" />
+			<line x1="390" y1="20" x2="390" y2="240" class="grid" />
+			<text x="420" y="24" font-size="15" font-weight="700">cross-encoder (2단계 리랭킹)</text>
+			<g font-size="13" text-anchor="middle">
+				<rect class="node" x="440" y="44" width="300" height="38" rx="8" /><text x="590" y="68">[질의] + [문서] 를 한 입력으로</text>
+				<rect class="node-p" x="440" y="110" width="300" height="38" rx="8" /><text x="590" y="134">인코더 (토큰끼리 서로 봄)</text>
+				<rect class="node" x="530" y="176" width="120" height="30" rx="8" /><text x="590" y="196">관련도 점수</text>
+				<text x="590" y="240" class="muted">정확하지만 후보마다 모델 실행 → 수십 개만</text>
+			</g>
+			<path class="arrow" d="M590 82 V106" /><path class="arrow" d="M590 148 V172" />
+		</svg>
+		<figcaption>DPR이 질의응답용 dense 검색에서 BM25를 이긴 대표 사례이고 [[P:R9]], 문장 임베딩 학습은 Sentence-BERT가 대표적이다 [[P:R10]].</figcaption>
+	</figure>
+
+	<h2>🖼 mean pooling과 긴 입력</h2>
+	<figure class="fig">
+		<svg viewBox="0 0 780 200" role="img" aria-label="mean pooling">
+			<g id="pool-fig"></g>
+		</svg>
+		<figcaption>문장 벡터 = 토큰 벡터들의 평균. 핵심 토큰(주황)이 3개일 때, 입력이 짧으면 평균에 그 신호가 강하게 남지만 길면 다른 토큰에 섞여 약해진다. 이 프로젝트 청크 크기 실험의 가설이다. [[I]]</figcaption>
+	</figure>
+	<div class="box warn">
+		<div class="box-h">⚠️ 질의/문서 접두사(prefix)</div>
+		<p>E5, nomic-embed 같은 모델은 <code>query: </code>, <code>search_query: </code> 같은 접두사를 붙이도록 학습됐습니다. 이 접두사를 <b>그렇게 학습되지 않은 모델</b>에 붙이면 오히려 품질이 떨어집니다. 이 프로젝트가 실제로 이 버그를 겪었고, 질의 쪽 접두사만 빼도 벡터 Recall@5가 0.127에서 0.480으로 올랐습니다. [[E:4.2]] 모델을 바꿀 때는 모델 카드의 사용법을 반드시 확인합니다.</p>
+	</div>
+
+	<h2>📖 dense만으로는 안 되는 이론적 이유 (2025)</h2>
+	<p>Weller et al.(ICLR 2026)은 단일 벡터 임베딩의 차원 d가 "어떤 문서 조합이 top-k로 나올 수 있는지"를 제한한다는 것을 보였습니다. "Jon은 사과를 좋아한다" 같은 단순한 문서로 만든 LIMIT 데이터셋에서 최신 임베딩 모델은 낮은 점수를 받았고, 어휘 차원이 매우 큰 BM25는 거의 만점이었습니다. [[P:R8]] "dense가 RAG의 본질"이라는 주장은 이론적으로도 성립하지 않습니다.</p>
+
+	<h2>🛠 이 프로젝트에서는</h2>
+	<div class="box project">
+		<div class="table-wrap">
+			<table>
+				<tr><th>항목</th><th>값</th><th>근거</th></tr>
+				<tr><td>모델</td><td><code>Xenova/paraphrase-multilingual-MiniLM-L12-v2</code> (ONNX 변환)</td><td>[[C:Embedder.ts:13]]</td></tr>
+				<tr><td>차원</td><td>384</td><td>[[C:VectorDB.ts:15]]</td></tr>
+				<tr><td>학습 방식</td><td>영어 모델을 교사로 한 지식 증류로 50개 이상 언어에 확장</td><td>[[P:R10b]] [[D:R14]]</td></tr>
+				<tr><td>최대 시퀀스 길이</td><td>128토큰</td><td>[[D:R14]]</td></tr>
+				<tr><td>풀링</td><td>mean pooling + L2 정규화</td><td>[[C:Embedder.ts:74-75]]</td></tr>
+			</table>
+		</div>
+	</div>
+
+	<h2>📜 원문</h2>
+	<div class="sources">
+		<div class="src">
+			<div class="t">Weller, Boratko, Naim &amp; Lee (2025) On the Theoretical Limitations of Embedding-Based Retrieval</div>
+			<div class="meta">ICLR 2026 · <a href="#ref-R8">R8</a> · ✅ 원문 확인</div>
+			<p class="claim"><b>원문 요지</b> 임베딩 차원이 표현 가능한 top-k 부분집합의 수를 제한한다. 이를 시험하는 LIMIT 데이터셋에서 최신 임베딩 모델은 고전하고 BM25는 거의 만점이다.</p>
+			<p class="claim"><b>왜 읽나</b> "dense만 있으면 된다"에 대한 가장 최근의 이론적 반론.</p>
+			<div class="links"><a href="https://arxiv.org/abs/2508.21038" target="_blank" rel="noopener">arXiv ↗</a><a href="https://github.com/google-deepmind/limit" target="_blank" rel="noopener">LIMIT 데이터 ↗</a></div>
+		</div>
+		<div class="src">
+			<div class="t">Thakur et al. (2021) BEIR: A Heterogeneous Benchmark for Zero-shot Evaluation of IR Models</div>
+			<div class="meta">NeurIPS 2021 Datasets &amp; Benchmarks · <a href="#ref-R7">R7</a> · ✅ 원문 확인</div>
+			<p class="claim"><b>원문 요지</b> 18개 데이터셋 zero-shot 평가에서 BM25는 견고한 기준선이고, dense 모델은 학습 분포 밖에서 크게 떨어지기도 한다. 리랭킹 모델이 평균 점수가 가장 높지만 계산 비용이 크다.</p>
+			<p class="claim"><b>왜 읽나</b> 결과 표에서 데이터셋마다 BM25와 dense 모델의 nDCG@10을 직접 비교해 본다.</p>
+			<div class="links"><a href="https://arxiv.org/abs/2104.08663" target="_blank" rel="noopener">arXiv ↗</a></div>
+		</div>
+		<div class="src">
+			<div class="t">Karpukhin et al. (2020) Dense Passage Retrieval · Reimers &amp; Gurevych (2019) Sentence-BERT</div>
+			<div class="meta"><a href="#ref-R9">R9</a> · <a href="#ref-R10">R10</a> · 📚 서지 정보만</div>
+			<p class="claim"><b>왜 읽나</b> bi-encoder dense 검색의 출발점. DPR은 질문/문단 인코더를 따로 학습하고, SBERT는 문장 임베딩을 코사인으로 비교하도록 학습한다.</p>
+			<div class="links"><a href="https://arxiv.org/abs/2004.04906" target="_blank" rel="noopener">DPR ↗</a><a href="https://arxiv.org/abs/1908.10084" target="_blank" rel="noopener">SBERT ↗</a><a href="https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2" target="_blank" rel="noopener">이 프로젝트 모델 카드 ↗</a></div>
+		</div>
+	</div>
+
+	<h2>✅ 자가 점검</h2>
+	<details class="qa"><summary>bi-encoder와 cross-encoder의 차이와, 각각 파이프라인의 어디에 쓰나?</summary><div class="a">bi-encoder는 질의와 문서를 따로 벡터로 만들어 비교한다. 문서 벡터를 미리 계산할 수 있어 1단계 검색에 쓴다. cross-encoder는 둘을 한 입력으로 넣어 점수를 낸다. 더 정확하지만 후보마다 모델을 돌려야 해서 2단계 리랭킹에 쓴다.</div></details>
+	<details class="qa"><summary>접두사 버그는 왜 벡터 검색을 망가뜨렸나?</summary><div class="a">접두사를 쓰도록 학습되지 않은 모델에 <code>search_query: </code>를 붙이자, 질의 벡터가 그 낯선 접두사 쪽으로 끌려가 문서 벡터와 어긋났다. 질의 쪽만 빼도 Recall@5가 0.127에서 0.480이 됐다.</div></details>
+	<details class="qa"><summary>dense가 실패하고 BM25가 성공하는 질의의 예는?</summary><div class="a">에러 코드, 라이브러리 이름, 고유명사처럼 정확히 일치해야 하는 질의. LIMIT처럼 여러 조건의 조합을 맞혀야 하는 질의.</div></details>
+</section>
+
+<!-- ================================================================ ANN -->
+<section class="module" id="m-ann" data-group="개념" data-nav="ANN 인덱스: IVF-PQ" data-sub="nprobes와 재색인 흔들림">
+	<header>
+		<div class="kicker">개념 5</div>
+		<h1>ANN 인덱스: IVF-PQ</h1>
+		<p class="lede">벡터가 많으면 모든 벡터와 비교하는 대신 <b>근사 최근접 이웃(ANN)</b>을 씁니다. 빨라지는 대신 정답 일부를 놓칠 수 있습니다.</p>
+	</header>
+	<div class="box goal">
+		<div class="box-h">🎯 학습 목표</div>
+		<ul>
+			<li>IVF의 파티션과 <code>nprobes</code>가 속도와 재현율을 어떻게 바꾸는지 설명한다.</li>
+			<li>PQ가 무엇을 압축하는지 말한다.</li>
+			<li>재색인할 때마다 결과가 흔들리는 이유와, 그래서 실험을 반복해야 했던 이유를 말한다.</li>
+		</ul>
+	</div>
+	<h2>📖 IVF와 PQ</h2>
+	<div class="grid2">
+		<div class="card"><h4>IVF (inverted file)</h4><p>벡터를 k-means로 여러 파티션에 나누고, 질의와 가까운 파티션 몇 개(<code>nprobes</code>)만 본다. 정답이 다른 파티션에 있으면 놓친다.</p></div>
+		<div class="card"><h4>PQ (product quantization)</h4><p>벡터를 여러 조각으로 나눠 조각마다 코드북 번호로 압축한다. 메모리가 줄고 거리 계산이 빨라지지만 근사 오차가 생긴다. [[P:R26]]</p></div>
+	</div>
+	<figure class="fig">
+		<svg viewBox="0 0 780 150" role="img" aria-label="PQ 압축">
+			<text x="10" y="22" font-size="13" font-weight="700">384차원 벡터</text>
+			<g id="pq-fig"></g>
+		</svg>
+		<figcaption>PQ: 384차원을 조각으로 나누고(이 프로젝트는 96조각, 조각당 4차원), 조각마다 가장 가까운 대표 벡터의 번호만 저장한다.</figcaption>
+	</figure>
+
+	<div class="lab" id="lab-ivf">
+		<div class="lab-h"><span class="tag">🔬 직접 해보기</span><h3>IVF: 파티션과 nprobes</h3><span class="spacer"></span>[[SRC:ivf.mjs]]</div>
+		<p class="desc">점 600개를 k-means로 파티션에 나눴습니다. <b>캔버스를 누르면</b> 그 위치가 질의가 됩니다. 흰 원은 정확 검색의 top-10, 채운 점은 IVF가 찾은 top-10입니다. 흐린 영역은 보지 않은 파티션입니다.</p>
+		<div class="controls">
+			<label>파티션 수 <input type="range" id="iv-p" min="4" max="40" value="24" /><output id="iv-p-o">24</output></label>
+			<label>nprobes <input type="range" id="iv-n" min="1" max="24" value="2" /><output id="iv-n-o">2</output></label>
+			<button class="btn sm" id="iv-re">🎲 재색인 (k-means 시드 변경)</button>
+		</div>
+		<div class="lab-cols">
+			<canvas id="iv-canvas" width="460" height="460"></canvas>
+			<div>
+				<div class="stats" id="iv-stats"></div>
+				<div class="panel"><h4>nprobes별 평균 Recall@10 (무작위 질의 60개, 현재 색인)</h4><svg id="iv-curve" viewBox="0 0 360 180"></svg></div>
+			</div>
+		</div>
+		<div class="try"><b>해 볼 것</b> ① 파티션 경계 근처를 눌러 보세요. nprobes = 1이면 정답 일부를 놓칩니다. ② "재색인"을 여러 번 눌러 보세요. 같은 데이터, 같은 질의인데 놓치는 점이 달라집니다. 이 프로젝트에서 같은 청크 구성을 세 번 다시 색인했을 때 하이브리드 MRR@10이 0.652~0.677로 흔들린 이유가 이것입니다.</div>
+	</div>
+
+	<h2>🛠 이 프로젝트에서는</h2>
+	<div class="box project">
+		<p>행이 256개 이상이면 <code>numPartitions = √N</code>, <code>numSubVectors = 96</code>, cosine으로 IVF-PQ를 만들고, 검색할 때 <code>nprobes = 20</code>을 씁니다. [[C:VectorDB.ts:216-229]] [[C:VectorDB.ts:371]]</p>
+		<p>재색인마다 결과가 흔들려서 청킹 비교 실험은 <b>3회 평균</b>으로 판단했습니다. 또 정확 검색과 비교해 ANN이 벡터 검색 부진의 원인이 아니라는 것도 확인했습니다. [[E:4.2]] [[E:4.7]] [[E:4.8]]</p>
+	</div>
+	<h2>📜 원문</h2>
+	<div class="sources">
+		<div class="src">
+			<div class="t">Jégou, Douze &amp; Schmid (2011) Product Quantization for Nearest Neighbor Search</div>
+			<div class="meta">IEEE TPAMI 33(1) · <a href="#ref-R26">R26</a> · 📚 고전, 서지 정보만</div>
+			<p class="claim"><b>원문 요지</b> 벡터를 부분 공간으로 나눠 각각 양자화하는 PQ와, 역파일(IVF)과 결합한 비완전 탐색(IVFADC)을 제안한다.</p>
+			<p class="claim"><b>왜 읽나</b> IVF-PQ라는 이름의 출처. LanceDB, FAISS의 IVF-PQ가 이 구조다.</p>
+			<div class="links"><a href="https://doi.org/10.1109/TPAMI.2010.57" target="_blank" rel="noopener">DOI ↗</a></div>
+		</div>
+	</div>
+	<h2>✅ 자가 점검</h2>
+	<details class="qa"><summary>nprobes를 올리면 무엇이 좋아지고 무엇이 나빠지나?</summary><div class="a">더 많은 파티션을 봐서 재현율이 오르지만, 비교할 벡터가 늘어 느려진다. nprobes = 전체 파티션 수면 정확 검색과 같다.</div></details>
+	<details class="qa"><summary>IVF-PQ 때문에 실험을 몇 번 반복했고 왜인가?</summary><div class="a">3번. k-means 초기값에 따라 파티션이 달라져 재색인마다 결과가 흔들렸기 때문이다(하이브리드 MRR@10 0.652~0.677).</div></details>
+	<details class="qa"><summary>청크가 수천 개인 이 규모에서 고려할 수 있는 대안은? (해석)</summary><div class="a">정확 검색(flat)이나 refineFactor를 올리는 방법. 지연을 재서 흔들림 제거의 가치와 비교한다.</div></details>
+</section>
+
+<!-- ================================================================ Hybrid -->
+<section class="module" id="m-hybrid" data-group="개념" data-nav="하이브리드와 RRF" data-sub="점수 대신 순위, 리랭커를 뺀 이유">
+	<header>
+		<div class="kicker">개념 6</div>
+		<h1>하이브리드 검색과 RRF</h1>
+		<p class="lede">BM25와 dense는 실패하는 질의가 다릅니다. 둘의 결과를 합칠 때는 점수가 아니라 <b>순위</b>로 합칩니다.</p>
+	</header>
+	<div class="box goal">
+		<div class="box-h">🎯 학습 목표</div>
+		<ul>
+			<li>점수 대신 순위로 합치는 이유 두 가지를 말한다.</li>
+			<li>RRF 수식과 k의 역할을 설명하고, 직접 계산한다.</li>
+			<li>이 프로젝트가 일반론과 달리 리랭커를 뺀 이유를 숫자로 말한다.</li>
+		</ul>
+	</div>
+	<h2>📖 왜 점수가 아니라 순위인가</h2>
+	<p>BM25 점수(0~수십, 상한 없음)와 코사인 유사도(−1~1)는 단위가 다릅니다. 그대로 더하면 한쪽이 지배합니다. min-max로 정규화해도 질의마다 분포가 달라 불안정합니다. <b>RRF(Reciprocal Rank Fusion)</b>는 점수를 버리고 순위만 씁니다. [[P:R11b]]</p>
+	<div class="math">@@F:rrf@@</div>
+	<ul>
+		<li>여러 검색기에서 모두 상위에 있는 문서가 올라온다.</li>
+		<li>k가 크면 순위 간 차이가 줄어 하위 문서도 기여하고, 작으면 1위가 지배한다.</li>
+		<li>k = 60이 사실상 표준값이다. Elasticsearch의 <code>rank_constant</code> 기본값도 60이다. [[D:R15b]] (원 논문이 k를 어떻게 정했는지는 PDF 본문을 확인하지 못했다.)</li>
+		<li>Cormack et al.(SIGIR 2009)은 이 단순한 방법이 Condorcet 결합이나 개별 학습 순위 방법보다 낫다고 보고했다. [[P:R11b]]</li>
+	</ul>
+
+	<div class="lab" id="lab-rrf">
+		<div class="lab-h"><span class="tag">🔬 직접 해보기</span><h3>RRF vs 점수 합산</h3><span class="spacer"></span>[[SRC:rrf.mjs]]</div>
+		<p class="desc">두 검색기의 결과를 <code>문서 | 점수</code> 형식으로 적습니다(위가 1위). RRF는 순위만, 점수 합산은 점수를 씁니다.</p>
+		<div class="lab-cols">
+			<div><label class="mono" style="font-size:13px;color:var(--muted)">키워드 검색 (BM25 점수)</label><textarea id="rr-a" rows="5"></textarea></div>
+			<div><label class="mono" style="font-size:13px;color:var(--muted)">벡터 검색 (코사인)</label><textarea id="rr-b" rows="5"></textarea></div>
+		</div>
+		<div class="controls">
+			<label>k <input type="range" id="rr-k" min="1" max="120" value="60" /><output id="rr-k-o">60</output></label>
+			<label>키워드 가중치 <input type="range" id="rr-wa" min="0" max="2" step="0.1" value="1" /><output id="rr-wa-o">1</output></label>
+			<label>벡터 가중치 <input type="range" id="rr-wb" min="0" max="2" step="0.1" value="1" /><output id="rr-wb-o">1</output></label>
+		</div>
+		<div class="lab-cols">
+			<div class="panel"><h4>RRF (순위만 사용)</h4><div id="rr-out"></div></div>
+			<div class="panel"><h4>원점수 그대로 합산</h4><div id="rr-raw"></div></div>
+			<div class="panel"><h4>min-max 정규화 후 합산</h4><div id="rr-mm"></div></div>
+		</div>
+		<div class="try"><b>해 볼 것</b> ① 원점수 합산은 BM25 점수가 커서 벡터 결과가 거의 무시됩니다. ② k를 1로 내리면 각 목록의 1위가 지배하고, 120으로 올리면 두 목록에 모두 있는 문서가 유리해집니다. ③ 벡터 목록의 점수만 바꿔 보세요. RRF 결과는 변하지 않습니다.</div>
+	</div>
+
+	<h2>🖼 이 프로젝트의 하이브리드 검색</h2>
+	<figure class="fig">
+		<svg viewBox="0 0 800 270" role="img" aria-label="이 프로젝트의 하이브리드 검색 흐름">
+			<g font-size="13" text-anchor="middle">
+				<rect class="node" x="14" y="110" width="90" height="44" rx="9" /><text x="59" y="137">질의</text>
+				<rect class="node-y" x="150" y="36" width="230" height="52" rx="9" /><text x="265" y="58">키워드 검색 Indexer.search</text><text x="265" y="77" font-size="11" class="muted">문서 단위 순위</text>
+				<rect class="node-a" x="150" y="150" width="230" height="52" rx="9" /><text x="265" y="172">벡터 검색 LanceDB</text><text x="265" y="191" font-size="11" class="muted">limit × 3개 청크</text>
+				<rect class="node-a" x="420" y="150" width="170" height="52" rx="9" /><text x="505" y="172">문서로 묶기</text><text x="505" y="191" font-size="11" class="muted">청크 중 최고 순위만</text>
+				<rect class="node-g" x="630" y="90" width="150" height="62" rx="9" /><text x="705" y="116">RRF (k = 60)</text><text x="705" y="136" font-size="11" class="muted">상위 limit개</text>
+				<text x="265" y="245" font-size="12" class="muted">임베딩 모델이 없으면 → 키워드 결과만 반환 (안내 메시지 포함)</text>
+			</g>
+			<path class="arrow" d="M104 126 C 124 100, 124 70, 146 64" /><path class="arrow" d="M104 140 C 124 160, 124 176, 146 176" />
+			<path class="arrow" d="M380 176 H416" /><path class="arrow" d="M590 170 C 610 165, 612 140, 626 132" /><path class="arrow" d="M380 60 C 520 60, 600 80, 626 108" />
+			<path class="arrow" d="M265 202 V226" stroke-dasharray="4 4" />
+		</svg>
+		<figcaption>[[C:VaultManager.ts:97-215]] 키워드 색인이 문서 단위라 벡터 결과도 문서 단위로 맞춘 뒤 합친다. 리랭커는 쓰지 않는다.</figcaption>
+	</figure>
+	<div class="table-wrap">
+		<table>
+			<tr><th>설계 결정</th><th>이유</th><th>대가</th></tr>
+			<tr><td>모델이 없으면 키워드만 반환</td><td>설치 직후나 모델 로딩 실패에도 검색이 동작해야 한다</td><td>의미 검색이 빠진다는 안내를 함께 반환</td></tr>
+			<tr><td>문서 단위로 결합</td><td>키워드 색인이 문서 단위라 단위를 맞춰야 한다</td><td>키워드로만 찾은 문서에는 "어느 부분이 맞았는지"(청크)가 없다</td></tr>
+			<tr><td>리랭커를 쓰지 않음</td><td>아래 표</td><td></td></tr>
+		</table>
+	</div>
+
+	<h2>📖 리랭킹, 그리고 이 프로젝트가 리랭커를 뺀 이유</h2>
+	<p>cross-encoder 리랭커는 일반적으로 품질을 올립니다. BEIR에서도 리랭킹 모델의 zero-shot 평균 점수가 가장 높았고 [[P:R7]], Anthropic의 실험에서도 리랭킹을 더하면 검색 실패율이 더 줄었습니다. [[D:R16]] 그런데 이 프로젝트는 측정 결과 리랭커를 뺐습니다. [[E:4.5]]</p>
+	<div class="table-wrap">
+		<table>
+			<tr><th>구성</th><th class="n">Recall@5</th><th class="n">MRR@10</th><th class="n">지연 p50</th></tr>
+			<tr class="hl"><td><b>리랭커 없음 (채택)</b></td><td class="n">0.752</td><td class="n"><b>0.672</b></td><td class="n"><b>16ms</b></td></tr>
+			<tr><td>기존 리랭커 (두 단계)</td><td class="n">0.714</td><td class="n">0.579</td><td class="n">5.4초</td></tr>
+			<tr><td>두 단계, 입력을 본문으로 수정</td><td class="n">0.754</td><td class="n">0.625</td><td class="n">6.1초</td></tr>
+		</table>
+	</div>
+	<div class="box say">
+		<div class="box-h">🎤 면접에서 말하기</div>
+		<blockquote>리랭커가 일반적으로는 품질을 올리지만, 제가 쓰던 <code>bge-reranker-base</code>는 한국어 노트가 많은 제 Vault에서 어떤 구성으로도 MRR을 올리지 못했고 지연은 100배 이상 늘었습니다. 질의 42개로는 품질 차이가 유의하지 않아서, "같거나 나은 품질을 훨씬 적은 비용으로"를 근거로 뺐습니다. 다국어 리랭커가 나오면 같은 평가셋으로 다시 비교할 계획입니다.</blockquote>
+	</div>
+
+	<h2>📜 원문</h2>
+	<div class="sources">
+		<div class="src">
+			<div class="t">Cormack, Clarke &amp; Büttcher (2009) Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods</div>
+			<div class="meta">SIGIR 2009, pp. 758–759 · <a href="#ref-R11b">R11b</a> · ✅ 서지·주장 확인, k 결정 과정은 미확인</div>
+			<p class="claim"><b>원문 요지</b> 순위의 역수를 더하는 단순한 결합이 Condorcet 결합이나 개별 학습 순위 방법보다 낫다.</p>
+			<p class="claim"><b>왜 읽나</b> 2쪽짜리 짧은 논문이다. k를 어떻게 정했는지 직접 확인해 이 문서의 미확인 항목을 채워 보자.</p>
+			<div class="links"><a href="https://doi.org/10.1145/1571941.1572114" target="_blank" rel="noopener">DOI ↗</a><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/rrf.html" target="_blank" rel="noopener">Elasticsearch RRF 문서 ↗</a></div>
+		</div>
+	</div>
+	<h2>✅ 자가 점검</h2>
+	<details class="qa"><summary>RRF가 점수 대신 순위를 쓰는 이유 두 가지는?</summary><div class="a">① 검색기마다 점수의 단위와 범위가 달라 그대로 더하면 한쪽이 지배한다. ② 정규화를 해도 질의마다 점수 분포가 달라 불안정하다. 순위는 학습 없이 바로 비교할 수 있다.</div></details>
+	<details class="qa"><summary>문서 x가 키워드 2위, 벡터 1위일 때 RRF(k = 60) 점수는?</summary><div class="a">1/(60+2) + 1/(60+1) = 0.01613 + 0.01639 = 0.03252.</div></details>
+	<details class="qa"><summary>가중치를 주고 싶으면?</summary><div class="a">검색기별 가중 RRF(위 실습의 가중치 슬라이더), 또는 점수를 정규화한 뒤 가중합(convex combination). 후자는 정규화 방식에 민감하다.</div></details>
+</section>
+
+<!-- ================================================================ Chunking -->
+<section class="module" id="m-chunk" data-group="개념" data-nav="청킹" data-sub="경계·크기·겹침·문맥">
+	<header>
+		<div class="kicker">개념 7</div>
+		<h1>청킹</h1>
+		<p class="lede">문서를 검색 단위로 자르는 일입니다. 크기는 <b>정밀도와 문맥 사이의 균형</b>이고, 정답 전략은 없습니다. 측정해서 정합니다.</p>
+	</header>
+	<div class="box goal">
+		<div class="box-h">🎯 학습 목표</div>
+		<ul>
+			<li>왜 자르는지 세 가지 이유를 말한다.</li>
+			<li>주요 전략 9가지를 그림과 함께 구별한다.</li>
+			<li>재귀 분할이 어떻게 동작하는지 직접 돌려 보고 설명한다.</li>
+			<li>이 프로젝트가 256/32를 고른 과정을 숫자로 말한다.</li>
+		</ul>
+	</div>
+	<h2>📖 왜 자르나</h2>
+	<ol>
+		<li><b>임베딩 모델의 입력 한도.</b> 이 프로젝트의 모델은 128토큰으로 학습됐다. 문서 전체를 넣을 수 없다. [[D:R14]]</li>
+		<li><b>검색 정밀도.</b> 문서 하나에 주제가 여러 개면 벡터 하나가 모든 주제의 평균이 되어 어느 질의와도 애매하게 가깝다. [[I]]</li>
+		<li><b>생성 모델의 컨텍스트 예산.</b> 관련 부분만 넣어야 비용이 줄고 "Lost in the Middle" 문제가 줄어든다. [[P:R18]]</li>
+	</ol>
+	<p>반대로 너무 작게 자르면 청크 하나에 답을 이해할 문맥이 부족해지고, 청크 수가 늘어 색인 비용이 커집니다.</p>
+
+	<h2>🖼 전략 한눈에 보기</h2>
+	<figure class="fig">
+		<svg id="chunk-strategies" viewBox="0 0 800 430" role="img" aria-label="청킹 전략 비교"></svg>
+		<figcaption>같은 문서(가는 세로선 = 문단 경계, 굵은 선 = 제목)를 각 전략이 어떻게 자르는지. 색 블록이 청크다.</figcaption>
+	</figure>
+	<div class="table-wrap">
+		<table>
+			<tr><th>전략</th><th>방법</th><th>장점</th><th>단점</th><th>근거</th></tr>
+			<tr><td>고정 크기</td><td>N토큰마다 자름</td><td>단순, 빠름</td><td>문장·문단 중간에서 잘림</td><td></td></tr>
+			<tr class="hl"><td><b>재귀 분할</b></td><td>큰 구분자(문단)부터 시도해 크기에 맞을 때까지 작은 구분자로</td><td>단순하면서 구조를 어느 정도 지킴</td><td>의미 경계를 보장하지 않음</td><td>이 프로젝트</td></tr>
+			<tr><td>구조 기반</td><td>마크다운 제목, HTML 태그 기준</td><td>저자가 정한 경계</td><td>섹션 길이가 들쑥날쑥</td><td>이 프로젝트에서 비교</td></tr>
+			<tr><td>의미 기반</td><td>인접 문장 임베딩 유사도가 떨어지는 곳에서 자름</td><td>주제 경계</td><td>모든 문장을 임베딩, 이득이 일관되지 않음</td><td>[[P:R11]] [[P:R13]]</td></tr>
+			<tr><td>명제 단위</td><td>LLM으로 원자적 사실 문장으로 다시 씀</td><td>검색 단위가 정밀</td><td>LLM 비용</td><td>[[P:R21]]</td></tr>
+			<tr><td>parent-child</td><td>작은 청크로 검색하고 큰 부모 청크를 반환</td><td>정밀도와 문맥을 모두</td><td>저장 구조가 복잡</td><td></td></tr>
+			<tr><td>RAPTOR</td><td>청크를 군집화·요약해 트리를 만들고 여러 층에서 검색</td><td>여러 문서에 걸친 질문</td><td>요약 비용</td><td>[[P:R22]]</td></tr>
+			<tr><td>late chunking</td><td>문서 전체를 긴 컨텍스트 모델에 넣은 <b>뒤</b> 토큰 벡터를 청크별로 풀링</td><td>청크 벡터가 문서 문맥을 담음</td><td>긴 컨텍스트 + mean pooling 모델 필요</td><td>[[P:R23]]</td></tr>
+			<tr><td>contextual retrieval</td><td>LLM으로 청크마다 문맥 설명을 생성해 붙인 뒤 임베딩과 BM25 색인</td><td>문맥 손실을 직접 보완</td><td>청크마다 LLM 호출 (캐싱으로 절감)</td><td>[[D:R16]]</td></tr>
+		</table>
+	</div>
+
+	<div class="lab" id="lab-chunk">
+		<div class="lab-h"><span class="tag">🔬 직접 해보기</span><h3>청킹 실험실</h3><span class="spacer"></span>[[SRC:chunker.mjs]]</div>
+		<p class="desc">노트를 붙여 넣고 전략과 크기를 바꿔 보세요. 색 블록이 청크, <b>빗금이 겹침(overlap)</b>입니다. 브라우저 실습은 <b>글자 수</b>로 잽니다(이 프로젝트는 임베딩 모델 토큰 수). 재귀 분할 코드는 LangChain <code>RecursiveCharacterTextSplitter</code>와 같은 결과를 내는지 저장소 문서 3개 × 설정 4개로 대조했습니다.</p>
+		<textarea id="ck-text" rows="8"></textarea>
+		<div class="controls">
+			<label>전략 <select id="ck-s"><option value="recursive">재귀 분할</option><option value="fixed">고정 크기</option><option value="heading">제목 기준 + 재귀</option></select></label>
+			<label>크기 <input type="range" id="ck-size" min="40" max="600" step="10" value="150" /><output id="ck-size-o">150</output></label>
+			<label>겹침 <input type="range" id="ck-ov" min="0" max="120" step="5" value="40" /><output id="ck-ov-o">40</output></label>
+			<label><input type="checkbox" id="ck-ctx" checked /> 섹션 문맥 붙이기</label>
+		</div>
+		<div class="stats" id="ck-stats"></div>
+		<div class="legend"><span><i class="c0"></i>청크 1</span><span><i class="c1"></i>청크 2</span><span><i class="c2"></i>청크 3</span><span><i class="c3"></i>청크 4</span><span><i class="cov"></i>두 청크가 겹친 부분</span></div>
+		<div class="lab-cols">
+			<div class="chunkview" id="ck-view"></div>
+			<div class="chunks" id="ck-list"></div>
+		</div>
+		<div class="try"><b>해 볼 것</b> ① "고정 크기"로 바꾸면 단어 중간에서 잘립니다. ② "제목 기준"으로 바꾸고 크기를 키우면 짧은 섹션이 아주 작은 청크로 남습니다. 이 프로젝트의 제목 기준 분할이 오히려 낮았던 이유입니다. ③ 문맥을 켜면 청크마다 <code>Section:</code>/<code>Outline:</code>이 붙습니다. 그만큼 임베딩 입력이 길어지므로 크기에 여유가 필요합니다.</div>
+	</div>
+
+	<h2>📖 최근 연구가 말하는 것 (2024~2026)</h2>
+	<div class="table-wrap">
+		<table>
+			<tr><th>연구</th><th>결론</th></tr>
+			<tr><td>Qu et al., Vectara (NAACL 2025 Findings)</td><td>semantic chunking의 계산 비용은 일관된 성능 향상으로 정당화되지 않는다 [[P:R11]]</td></tr>
+			<tr><td>Bhat et al., Fraunhofer (2025)</td><td>최적 청크 크기는 데이터셋과 임베딩 모델에 따라 다르다. 짧은 사실형 답은 64~128토큰, 넓은 문맥은 512~1024토큰 [[P:R12]]</td></tr>
+			<tr><td>Caspari et al. (2026.08)</td><td>8개 전략 × 2개 코퍼스 × 3개 임베딩 모델. 비싼 방법은 일관된 이득이 드물고, 비슷한 품질이어도 처리량·지연·메모리 비용이 크게 다르다. 단순한 방법이 강한 기본값이다 [[P:R13]]</td></tr>
+		</table>
+	</div>
+	<figure class="fig">
+		<svg viewBox="0 0 640 200" role="img" aria-label="Contextual Retrieval 실패율">
+			<g id="cr-fig"></g>
+		</svg>
+		<figcaption>Contextual Retrieval의 상위 20개 청크 검색 실패율. −35/−49/−67%는 <b>누적</b> 효과이고, 이것도 embedding + BM25 <b>하이브리드</b>다. [[D:R16]]</figcaption>
+	</figure>
+
+	<h2>🛠 이 프로젝트에서는</h2>
+	<div class="box project">
+		<ol>
+			<li><code>MatterParser</code>로 frontmatter와 본문을 분리한다.</li>
+			<li>base64 data URI를 지운다(<code>stripEmbeddedData</code>). 이미지 대체 텍스트는 남긴다.</li>
+			<li>H1~H3 제목의 위치를 기록한다.</li>
+			<li><code>RecursiveCharacterTextSplitter</code>로 256/32 토큰 단위로 자른다. 토큰은 <b>임베딩 모델 토크나이저</b>로 센다.</li>
+			<li>청크마다 섹션 제목과 문서 개요(H1/H2 최대 3개)를 <code>context</code>로 붙인다.</li>
+			<li>임베딩 직전에 <code>context + 본문</code>이 500토큰을 넘으면 뒤를 자른다. [[C:RAGIndexer.ts:103]]</li>
+		</ol>
+	</div>
+	<h3>크기 실험 결과 [[E:4.8]]</h3>
+	<figure class="fig">
+		<svg id="size-fig" viewBox="0 0 720 260" role="img" aria-label="청크 크기 실험"></svg>
+		<figcaption>막대 = 벡터 검색만 MRR@10, 점 = 청크 수. 256은 벡터 MRR이 유의하게 올랐고(+0.131, 95% CI가 0을 포함하지 않음), 128은 청크가 2.3배·색인 시간 +36%라 고르지 않았다.</figcaption>
+	</figure>
+	<div class="table-wrap">
+		<table>
+			<tr><th>구성 (토큰 기준:크기:겹침:경계)</th><th class="n">청크 수</th><th class="n">첫 색인</th><th class="n">하이브리드 MRR@10</th><th class="n">벡터만 MRR@10</th></tr>
+			<tr><td>기존 cl100k:500:50:재귀</td><td class="n">3,615</td><td class="n">93초</td><td class="n">0.664</td><td class="n">0.325</td></tr>
+			<tr><td>model:500:50:재귀</td><td class="n">2,462</td><td class="n">88초</td><td class="n">0.665</td><td class="n">0.341</td></tr>
+			<tr class="hl"><td><b>model:256:32:재귀 (채택)</b></td><td class="n">5,159</td><td class="n">100초</td><td class="n">0.701</td><td class="n"><b>0.456</b></td></tr>
+			<tr><td>model:128:16:재귀</td><td class="n">12,066</td><td class="n">136초</td><td class="n">0.718</td><td class="n">0.456</td></tr>
+			<tr><td>model:256:32:제목 기준</td><td class="n">6,238</td><td class="n">103초</td><td class="n">0.679</td><td class="n">0.436</td></tr>
+		</table>
+	</div>
+	<ul>
+		<li><b>왜 토크나이저가 중요한가.</b> GPT의 cl100k로 500을 세면 이 임베딩 모델 토크나이저로는 중앙값 296토큰이었다. 같은 "500토큰"도 토크나이저마다 길이가 다르고, 한국어에서 차이가 크다.</li>
+		<li>제목 기준 분할은 32토큰 미만 청크가 많이 생겨(119개, 재귀는 26개) 오히려 낮았다.</li>
+		<li>base64 제거: 한 파일이 이미지 때문에 청크 2,404개(전체의 40%)를 차지했다. 제거 후 청크 −39.8%, 첫 색인 170초 → 99초, 품질 차이는 유의하지 않음. [[E:4.7]]</li>
+		<li><b>아직 확인할 것:</b> 의미 질의 유형은 256에서 MRR이 0.667 → 0.587로 내려갔다(1회차). 12개 질의를 따로 봐야 한다.</li>
+	</ul>
+
+	<h2>📜 원문</h2>
+	<div class="sources">
+		<div class="src">
+			<div class="t">Anthropic (2024) Introducing Contextual Retrieval</div>
+			<div class="meta">기술 블로그 · <a href="#ref-R16">R16</a> · ✅ 원문 확인</div>
+			<p class="claim"><b>원문 요지</b> 청크마다 LLM으로 문맥 설명을 붙여 임베딩과 BM25를 색인하면 검색 실패율이 줄고, 리랭킹을 더하면 더 준다. 프롬프트 캐싱으로 비용을 줄인다.</p>
+			<p class="claim"><b>왜 읽나</b> 수치를 정확히 인용하기 위해. −67%가 누적 효과라는 점을 원문 표에서 확인한다.</p>
+			<div class="links"><a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noopener">원문 ↗</a></div>
+		</div>
+		<div class="src">
+			<div class="t">Caspari et al. (2026) When Is Complex Chunking Worth It?</div>
+			<div class="meta">arXiv · <a href="#ref-R13">R13</a> · ☑️ 서지 확인, 수치는 요약으로 확인</div>
+			<p class="claim"><b>원문 요지</b> 청킹 방법을 품질뿐 아니라 처리량·지연·메모리로 함께 평가했다. 비싼 방법은 목표 지표에서 측정된 이득으로 정당화해야 한다.</p>
+			<div class="links"><a href="https://arxiv.org/abs/2608.16586" target="_blank" rel="noopener">arXiv ↗</a><a href="https://arxiv.org/abs/2410.13070" target="_blank" rel="noopener">R11 Vectara ↗</a><a href="https://arxiv.org/abs/2505.21700" target="_blank" rel="noopener">R12 Fraunhofer ↗</a></div>
+		</div>
+		<div class="src">
+			<div class="t">Günther et al. (2024) Late Chunking</div>
+			<div class="meta">arXiv · <a href="#ref-R23">R23</a> · ✅ 원문 확인</div>
+			<p class="claim"><b>원문 요지</b> 긴 컨텍스트 임베딩 모델로 문서 전체를 먼저 인코딩한 뒤 청크 구간별로 풀링하면, 추가 학습 없이 청크 벡터에 문서 문맥이 담긴다.</p>
+			<div class="links"><a href="https://arxiv.org/abs/2409.04701" target="_blank" rel="noopener">arXiv ↗</a></div>
+		</div>
+	</div>
+	<h2>✅ 자가 점검</h2>
+	<details class="qa"><summary>청크 크기 128이 256보다 좋았는데 왜 256을 골랐나?</summary><div class="a">128은 하이브리드 MRR이 0.701 → 0.718로 조금 높았지만 유의하지 않았고, 벡터만 MRR은 같았다(0.456). 반면 청크 수는 2.3배, 첫 색인 시간은 +36%였다.</div></details>
+	<details class="qa"><summary>Contextual Retrieval의 "−67%"는 무엇과 무엇을 비교한 수치인가?</summary><div class="a">상위 20개 청크 검색 실패율 5.7%(기준)와, contextual embedding + contextual BM25 + 리랭킹을 모두 더한 1.9%의 비교. 리랭킹 단독 효과가 아니다.</div></details>
+	<details class="qa"><summary>겹침(overlap)은 왜 두나? 이 프로젝트는 얼마인가?</summary><div class="a">경계에서 잘린 문장이 양쪽 청크에 남아 검색되도록. 256 중 32(12.5%). 겹침 크기 자체는 비교하지 않았다(한계).</div></details>
+	<details class="qa"><summary>semantic chunking을 왜 안 했나?</summary><div class="a">비용 대비 이득이 일관되지 않다는 연구(R11, R13)와, 이 Vault에서 제목 기준 분할도 이득이 없었던 측정 때문.</div></details>
+</section>
+
+<!-- ================================================================ Eval -->
+<section class="module" id="m-eval" data-group="개념" data-nav="평가" data-sub="Recall, MRR, nDCG, 부트스트랩">
+	<header>
+		<div class="kicker">개념 8</div>
+		<h1>평가: 검색이 좋아졌다는 것을 어떻게 아나</h1>
+		<p class="lede">이 프로젝트에서 가장 중요한 교훈입니다. 좋다고 알려진 부품(리랭커, 접두사)을 붙였는데 측정해 보니 검색이 나빠져 있었습니다.</p>
+	</header>
+	<div class="box goal">
+		<div class="box-h">🎯 학습 목표</div>
+		<ul>
+			<li>Recall@k, Hit@1, MRR, nDCG를 정의하고 언제 쓰는지 말한다.</li>
+			<li>짝지은 부트스트랩 신뢰구간이 무엇이고 왜 썼는지 설명한다.</li>
+			<li>평가셋을 만들 때 지킨 원칙을 말한다.</li>
+		</ul>
+	</div>
+	<h2>📖 검색 지표</h2>
+	<div class="math">@@F:recall@@</div>
+	<div class="math">@@F:mrr@@</div>
+	<div class="math">@@F:ndcg@@</div>
+	<div class="table-wrap">
+		<table>
+			<tr><th>지표</th><th>뜻</th><th>언제 보나</th></tr>
+			<tr><td>Recall@k</td><td>정답 문서 중 상위 k개 안에 들어온 비율</td><td>생성 모델에 k개를 넘길 때 "필요한 자료가 들어갔나"</td></tr>
+			<tr><td>Hit@1</td><td>1위가 정답인 질의의 비율</td><td>결과를 하나만 쓸 때</td></tr>
+			<tr><td>MRR@k</td><td>첫 정답 순위의 역수 평균 (1위면 1, 2위면 0.5)</td><td>정답이 얼마나 위에 있나</td></tr>
+			<tr><td>nDCG@k</td><td>순위가 낮을수록 할인하고 관련도 등급을 반영</td><td>관련도가 여러 단계일 때. BEIR의 기본 지표 [[P:R7]]</td></tr>
+		</table>
+	</div>
+
+	<div class="lab" id="lab-metrics">
+		<div class="lab-h"><span class="tag">🔬 직접 해보기</span><h3>지표 계산기</h3><span class="spacer"></span>[[SRC:metrics.mjs]]</div>
+		<p class="desc">검색 결과 10칸을 <b>눌러서</b> 관련도를 바꿉니다(0 → 1 → 2). "정답 문서 총수"는 결과에 나오지 않은 정답까지 포함한 수입니다.</p>
+		<div class="slots" id="mt-slots"></div>
+		<div class="controls"><label>정답 문서 총수 <input type="number" id="mt-total" min="0" max="20" value="3" /></label></div>
+		<div class="stats" id="mt-stats"></div>
+		<div class="try"><b>해 볼 것</b> 정답 하나를 1위에서 3위로 옮겨 보세요. Recall@5는 그대로인데 MRR은 1에서 0.33으로 떨어집니다. 그래서 두 지표를 함께 봅니다.</div>
+	</div>
+
+	<h2>📖 짝지은 부트스트랩 신뢰구간</h2>
+	<p>질의 42개로 평균 MRR이 0.05 올랐다면, 그것은 진짜 개선일까요, 우연일까요? 같은 질의에 대한 두 구성의 <b>차이</b>를 질의 단위로 복원추출해 평균을 수천 번 다시 계산하면, 차이 평균의 분포가 생깁니다. 그 분포의 가운데 95% 구간이 0을 포함하지 않으면 "차이가 있다"고 말할 근거가 됩니다.</p>
+	<div class="lab" id="lab-boot">
+		<div class="lab-h"><span class="tag">🔬 직접 해보기</span><h3>부트스트랩: 질의 수와 신뢰구간</h3><span class="spacer"></span>[[SRC:metrics.mjs]]</div>
+		<p class="desc">질의별 MRR을 쉼표로 적습니다(A: 기존, B: 개선). 기본값은 설명용 예시 20개입니다. "질의 수 배율"을 올리면 같은 분포의 질의가 늘어난 것처럼 복제합니다.</p>
+		<label class="mono" style="font-size:13px;color:var(--muted)">A</label><input type="text" id="bt-a" style="width:100%" />
+		<label class="mono" style="font-size:13px;color:var(--muted)">B</label><input type="text" id="bt-b" style="width:100%" />
+		<div class="controls"><label>질의 수 배율 <input type="range" id="bt-x" min="1" max="5" value="1" /><output id="bt-x-o">×1</output></label></div>
+		<div class="stats" id="bt-stats"></div>
+		<svg id="bt-hist" viewBox="0 0 640 200"></svg>
+		<div class="try"><b>해 볼 것</b> 배율 ×1에서는 구간이 0을 걸칠 수 있지만, 질의가 늘면 같은 평균 차이로도 구간이 좁아져 0을 벗어납니다. "42개로는 유의하지 않았다"는 말이 무엇인지 체감해 보세요.</div>
+	</div>
+
+	<h2>🛠 이 프로젝트의 평가 방법에서 배울 점</h2>
+	<div class="box project">
+		<ol>
+			<li><b>질의를 결과를 보기 전에 작성했다.</b> 결과를 보고 질의를 고치면 평가셋이 현재 구현에 맞춰진다. (토큰화 수정의 한 글자 규칙은 이 원칙의 예외였고, 그래서 문서에 밝혔다.)</li>
+			<li><b>유형을 섞었다.</b> 제목, 키워드, 의미, 다중 문서, 링크, 답 없음. 유형별로 봐야 "의미 질의는 나빠졌다" 같은 것이 보인다.</li>
+			<li><b>짝지은 부트스트랩 95% 신뢰구간</b>을 냈다. 질의 42개는 작아서 차이가 커 보여도 유의하지 않은 경우가 많았다. "유의하지 않았다"를 숨기지 않고 말하는 것이 신뢰를 준다.</li>
+			<li><b>재현 코드가 실제 경로와 같은 결과를 내는지 확인했다.</b> 42개 질의 모두 순위까지 일치.</li>
+			<li><b>한계:</b> 한 사람이 만든 평가셋이라 정답 목록에 빠진 문서가 있을 수 있다. 그래서 절대값보다 구성 간 비교를 더 믿는다.</li>
+		</ol>
+		<p>문서 단위 이진 정답이라 Recall@k와 MRR@k를 주 지표로 썼다. 청크 단위로 채점하지 않은 이유는 청킹 방식이 바뀔 때마다 정답이 무너지기 때문이다. [[E:2.1]]</p>
+	</div>
+	<h2>📖 생성 지표</h2>
+	<p>검색이 맞아도 답이 틀릴 수 있습니다. RAGAS는 정답 없이 LLM으로 faithfulness(답이 검색 문맥에 근거하나), answer relevance, context relevance를 재는 프레임워크입니다. [[P:R24]] 이 프로젝트는 아직 생성 단계를 평가하지 않았습니다.</p>
+	<h2>📜 원문</h2>
+	<div class="sources">
+		<div class="src">
+			<div class="t">Es et al. (2024) RAGAS: Automated Evaluation of Retrieval Augmented Generation</div>
+			<div class="meta">EACL 2024 Demo · <a href="#ref-R24">R24</a> · 📚 서지 정보만</div>
+			<p class="claim"><b>왜 읽나</b> 다음 단계(생성 평가)를 설계할 때. faithfulness를 LLM으로 어떻게 재는지 본다.</p>
+			<div class="links"><a href="https://arxiv.org/abs/2309.15217" target="_blank" rel="noopener">arXiv ↗</a></div>
+		</div>
+	</div>
+	<h2>✅ 자가 점검</h2>
+	<details class="qa"><summary>Recall@5는 같은데 MRR이 다른 두 결과의 예는?</summary><div class="a">정답이 1위인 결과와 5위인 결과. 둘 다 Recall@5 = 1이지만 MRR은 1과 0.2.</div></details>
+	<details class="qa"><summary>42개 질의로 충분한가?</summary><div class="a">아니다. 그래서 유의하지 않은 차이는 "유지"나 "나빠진 질의 없이 개선"으로만 말한다. 질의를 늘리고 미판정 문서를 판정하는 것이 다음 단계다.</div></details>
+	<details class="qa"><summary>왜 청크 단위가 아니라 문서 단위로 채점했나?</summary><div class="a">청킹 방식을 바꾸면 청크 ID가 바뀌어 정답 목록이 무너진다. 문서 단위면 청킹 실험 전후를 같은 정답으로 비교할 수 있다.</div></details>
+</section>
+
+<!-- ================================================================ Story -->
+<section class="module" id="m-story" data-group="이 프로젝트" data-nav="개선 이야기" data-sub="STAR, 숫자까지">
+	<header>
+		<div class="kicker">이 프로젝트</div>
+		<h1>무엇을 어떻게 개선했나</h1>
+		<p class="lede">"어떤 문제를 어떻게 풀었나요?"에 대한 답입니다. STAR(상황 · 문제 · 행동 · 결과) 순서로 말하고, 숫자까지 외웁니다.</p>
+	</header>
+	<div class="box"><p><b>상황.</b> 하이브리드 검색과 리랭커를 붙였고 "하이브리드 검색 15ms", "초당 2.6만 건 인덱싱" 같은 수치를 쓰고 있었다.</p>
+		<p><b>문제 발견.</b> 그 수치를 만든 스크립트를 다시 읽어 보니, 15ms는 키워드 검색 한 번만 잰 값이었고, 처리량은 존재하지 않는 파일 80%의 실패까지 포함한 값이었다. 무엇보다 <b>검색이 정답을 찾는지는 한 번도 잰 적이 없었다.</b> [[E:1]]</p></div>
+	<figure class="fig">
+		<svg id="story-fig" viewBox="0 0 800 330" role="img" aria-label="단계별 개선 전후"></svg>
+		<figcaption>단계마다 잰 지표의 전후. 단계마다 측정 대상(구성, 색인)이 달라 이어지는 한 줄 그래프가 아니다. 예: ⑦의 기준 0.650은 ④의 0.672와 다른 회차 색인이다.</figcaption>
+	</figure>
+	<div class="table-wrap">
+		<table>
+			<tr><th>단계</th><th>한 일</th><th>결과</th></tr>
+			<tr><td>① 평가셋</td><td>실제 Vault에서 질의 42개, 6개 유형, 정답 문서 지정. A~F 구성 비교</td><td>현재 동작이 <b>키워드만 쓸 때보다 나쁘다</b>는 것을 발견 (MRR@10 0.381 vs 0.595), 지연 약 6초</td></tr>
+			<tr><td>② 원인 1: 접두사</td><td>nomic 계열 접두사를 그렇게 학습되지 않은 모델에 붙이고 있었다</td><td>질의 쪽만 빼도 벡터 Recall@5 0.127 → 0.480</td></tr>
+			<tr><td>③ 원인 2: 리랭커</td><td>키워드로만 찾은 문서는 청크가 없어 리랭커가 본문 대신 요약·경로를 채점. 입력을 고쳐도 리랭커 없는 구성보다 MRR이 높지 않음</td><td>리랭커 제거</td></tr>
+			<tr class="hl"><td>④ 수정 후 실제 경로</td><td></td><td>Recall@5 0.516 → <b>0.752</b>, MRR@10 0.381 → <b>0.672</b>, warm p50 5.9초 → <b>16ms</b>, cold 5.8초 → 605ms. 모두 95% CI가 0을 포함하지 않음</td></tr>
+			<tr><td>⑤ 청킹 정제</td><td>base64 이미지 제거</td><td>청크 −40%, 첫 색인 −42%, 품질 유지</td></tr>
+			<tr><td>⑥ 청크 크기</td><td>임베딩 모델 토크나이저 기준 256/32</td><td>벡터만 MRR@10 0.325 → 0.456 (유의)</td></tr>
+			<tr><td>⑦ 질의 토큰화</td><td>본문 색인과 질의의 토큰화 규칙을 맞춤</td><td>Recall@5 0.752 → 0.800, MRR@10 0.650 → 0.711. 나빠진 질의 0개 (CI 하한 0이라 유의하다고 단정할 수 없음)</td></tr>
+		</table>
+	</div>
+	<div class="box tip">
+		<div class="box-h">💡 교훈</div>
+		<p>"좋다고 알려진 부품을 붙이는 것"과 "검색이 좋아지는 것"은 다르다. 리랭커와 접두사는 둘 다 일반적으로 권장되는 기법이었지만 이 환경에서는 품질을 떨어뜨렸다. 측정하지 않으면 개선인지 악화인지 알 수 없다.</p>
+	</div>
+	<div class="box say">
+		<div class="box-h">🎤 1분 버전</div>
+		<blockquote>하이브리드 검색과 리랭커를 붙여 놓고 속도만 재고 있었는데, 정답을 찾는지는 잰 적이 없었습니다. 실제 노트로 질의 42개짜리 평가셋을 만들어 보니 현재 구성이 키워드 검색만 쓸 때보다 나빴습니다. 원인은 모델에 맞지 않는 질의 접두사와, 문서 단위 결과를 제대로 채점하지 못하던 리랭커였습니다. 둘을 고치고 리랭커를 빼자 Recall@5가 0.516에서 0.752로, MRR이 0.381에서 0.672로 오르고 지연은 6초에서 16ms로 줄었습니다. 이후 청크 크기를 임베딩 모델 기준으로 다시 정해 벡터 검색 MRR을 0.325에서 0.456으로 올렸습니다.</blockquote>
+	</div>
+	<h3>인용해도 되는 수치와 안 되는 수치</h3>
+	<p><code>docs/search-quality-evaluation.md</code> 4.6절을 따릅니다. "높은 검색 정확도" 같은 표현은 쓰지 않고 Recall@5와 MRR로 말합니다. 유의하지 않은 차이는 "개선"이 아니라 "유지"라고 말합니다.</p>
+</section>
+
+<!-- ================================================================ Next -->
+<section class="module" id="m-next" data-group="이 프로젝트" data-nav="한계와 다음 단계">
+	<header>
+		<div class="kicker">이 프로젝트</div>
+		<h1>현재 한계와 다음 단계</h1>
+		<p class="lede">우선순위는 해석입니다. 각 항목은 같은 평가셋으로 비교한 뒤에만 채택합니다.</p>
+	</header>
+	<div class="table-wrap">
+		<table>
+			<tr><th>한계</th><th>개선 방향</th><th>근거</th><th>실습</th></tr>
+			<tr><td>키워드 검색에 TF·길이 정규화 없음</td><td>진짜 BM25로 교체(역색인에 횟수와 문서 길이 저장). LanceDB 전문 검색(FTS)도 후보</td><td>[[P:R6]]</td><td><code>bm25.mjs</code></td></tr>
+			<tr><td>한국어 조사 미처리</td><td>질의와 문서에 같은 분석기, 형태소 분석기 또는 문자 n-gram 검토</td><td>[[P:R17]]</td><td>과제 2</td></tr>
+			<tr><td>키워드 검색이 문서 단위라 청크가 없음</td><td>청크 단위 BM25 색인으로 두 검색기의 단위를 맞춤</td><td>[[E:4.2]]</td><td></td></tr>
+			<tr><td>임베딩 모델이 128토큰 학습, 2020년 모델</td><td>최신 다국어 임베딩 모델과 비교. 접두사·최대 길이 규칙을 먼저 확인</td><td>[[D:R14]]</td><td></td></tr>
+			<tr><td>청크 문맥이 제목뿐</td><td>Contextual Retrieval(로컬 LLM) 또는 late chunking</td><td>[[D:R16]] [[P:R23]]</td><td></td></tr>
+			<tr><td>평가셋 42개, 한 사람이 작성</td><td>질의를 늘리고 미판정 문서를 판정해 정답 목록 보강</td><td>[[E:4.6]]</td><td>과제 5</td></tr>
+			<tr><td>IVF-PQ 재색인마다 흔들림</td><td>정확 검색이나 refineFactor 상향의 지연을 재서 비교</td><td>[[E:4.7]]</td><td>과제 6</td></tr>
+			<tr><td>생성 단계 평가 없음</td><td>faithfulness 등 RAGAS류 지표 도입</td><td>[[P:R24]]</td><td></td></tr>
+		</table>
+	</div>
+</section>
+
+<!-- ================================================================ Drill -->
+<section class="module" id="m-drill" data-group="연습" data-nav="꼬리 질문 사다리" data-sub="소리 내어 답하기">
+	<header>
+		<div class="kicker">연습</div>
+		<h1>꼬리 질문 사다리</h1>
+		<p class="lede">면접관이 이어서 물을 가능성이 높은 순서입니다. 답을 열기 전에 1~2문장으로 소리 내어 답해 보세요. 막히는 곳이 다시 공부할 곳입니다.</p>
+	</header>
+	<div class="controls"><button class="btn sm" id="qa-open">모두 펼치기</button><button class="btn sm" id="qa-close">모두 접기</button></div>
+	<h2>RAG 정의 줄기</h2>
+	<details class="qa"><summary>RAG란?</summary><div class="a">검색한 외부 지식을 생성 모델 입력에 보강하는 구조. parametric + non-parametric memory. <a href="#m-rag">→ RAG의 구조</a></div></details>
+	<details class="qa"><summary>dense 없이도 RAG인가?</summary><div class="a">예. <a href="#m-answers">→ 두 면접 질문의 답</a></div></details>
+	<details class="qa"><summary>그럼 왜 dense를 쓰나?</summary><div class="a">vocabulary mismatch. 표현이 다른 질의를 찾는다. 내 평가에서는 벡터 검색 버그를 고친 뒤 의미 질의 MRR이 가장 크게 올랐다.</div></details>
+	<details class="qa"><summary>BM25와 dense가 각각 실패하는 예는?</summary><div class="a">BM25: "차량 정비"로 "자동차 수리" 문서 찾기. dense: 에러 코드, 라이브러리 이름, LIMIT 같은 조합 질의. <a href="#m-dense">→ 의미 공간 실습</a></div></details>
+	<details class="qa"><summary>둘을 어떻게 합쳤나? k는 무엇을 조절하나?</summary><div class="a">RRF, k = 60. 점수 단위가 달라 순위로 합친다. k는 상위 순위의 지배력: 작으면 1위 중심, 크면 평평. <a href="#m-hybrid">→ RRF 실습</a></div></details>
+	<h2>BM25 줄기</h2>
+	<details class="qa"><summary>BM25를 설명해 보세요.</summary><div class="a">IDF × TF 포화 함수, 문서 길이 정규화. k1은 포화 속도, b는 길이 정규화 강도. Lucene 기본 1.2/0.75.</div></details>
+	<details class="qa"><summary>TF-IDF와 차이는?</summary><div class="a">TF 포화와 문서 길이 정규화.</div></details>
+	<details class="qa"><summary>당신 구현은 BM25인가?</summary><div class="a">아니다. IDF 가중 불리언 매칭, k1 = 0인 BM25와 같은 구조.</div></details>
+	<details class="qa"><summary>그런데 왜 잘 됐나?</summary><div class="a">개인 노트는 짧고 제목·태그·고유명사 질의가 많아 TF의 이득이 작다(해석).</div></details>
+	<details class="qa"><summary>한국어 BM25의 문제는?</summary><div class="a">교착어. 어절 단위 색인은 조사 때문에 일치 실패. 형태소 분석(Nori 등)이나 n-gram. 색인과 질의에 같은 분석기.</div></details>
+	<details class="qa"><summary>SPLADE는?</summary><div class="a">모델이 단어 가중치와 확장어를 학습한 sparse 벡터. 역색인 그대로 의미 확장.</div></details>
+	<h2>청킹 줄기</h2>
+	<details class="qa"><summary>크기를 어떻게 정했나?</summary><div class="a">임베딩 모델 토크나이저 기준, 128/256/500 비교, 3회 색인 평균, 부트스트랩 CI.</div></details>
+	<details class="qa"><summary>왜 토크나이저가 중요한가?</summary><div class="a">같은 "500토큰"도 cl100k와 모델 토크나이저에서 길이가 다르다(중앙값 296). 한국어에서 차이가 크다.</div></details>
+	<details class="qa"><summary>문맥 손실은?</summary><div class="a">섹션/개요 보강. Contextual Retrieval, late chunking과의 차이를 설명.</div></details>
+	<details class="qa"><summary>청크 단위 vs 문서 단위 검색은?</summary><div class="a">벡터는 청크로 찾고 문서로 합친다. 키워드는 문서 단위. 단위 불일치가 리랭커 실패의 원인이었다.</div></details>
+	<h2>평가·운영 줄기</h2>
+	<details class="qa"><summary>검색 품질을 어떻게 쟀나?</summary><div class="a">42개 질의, 6개 유형, Recall@k, MRR, 짝지은 부트스트랩 CI.</div></details>
+	<details class="qa"><summary>리랭커를 왜 뺐나?</summary><div class="a">어떤 구성으로도 MRR을 올리지 못했고 지연은 100배 이상. 품질 차이는 유의하지 않아 "같거나 나은 품질, 훨씬 적은 비용".</div></details>
+	<details class="qa"><summary>생성 품질은?</summary><div class="a">아직 안 쟀다. faithfulness를 다음 단계로.</div></details>
+	<details class="qa"><summary>긴 컨텍스트 모델이면 RAG가 필요 없지 않나?</summary><div class="a">비용·지연, Lost in the Middle, 둘을 같이 쓸 때 가장 좋다는 연구(R18, R19).</div></details>
+	<details class="qa"><summary>에이전트가 grep으로 찾으면 되지 않나?</summary><div class="a">그것도 검색이다(just-in-time retrieval). 정확 일치에 강하지만 탐색이 느리고 의미 검색이 안 된다. 미리 만든 색인과 섞는 하이브리드가 실무 방향(R20).</div></details>
+</section>
+
+<!-- ================================================================ Code -->
+<section class="module" id="m-code" data-group="연습" data-nav="직접 구현하기" data-sub="실습 파일과 과제">
+	<header>
+		<div class="kicker">연습</div>
+		<h1>직접 구현하기</h1>
+		<p class="lede">이 문서의 모든 실습은 아래 파일의 코드로 돌아갑니다. 내려받아 Node.js로 실행하고, 과제를 풀며 고쳐 보세요.</p>
+	</header>
+	<div class="box">
+		<div class="controls"><button class="btn primary" data-dl="zip">📦 rag-lab.zip 내려받기</button></div>
+		<pre><code>unzip rag-lab.zip &amp;&amp; cd rag-lab
+node --test lab.test.mjs     # 15개 테스트
+node                         # REPL에서 직접 불러 보기
+&gt; const { buildIndex, bm25Search } = await import("./bm25.mjs")
+&gt; bm25Search(buildIndex([{ id: "a", text: "LanceDB 노트" }]), "lancedb")</code></pre>
+	</div>
+	<h2>파일</h2>
+	<div class="table-wrap" id="code-files"></div>
+
+	<h2>과제</h2>
+	<p>쉬운 것부터 순서대로입니다. 과제마다 테스트를 먼저 쓰고(<code>lab.test.mjs</code>), 통과하게 고칩니다.</p>
+	<details class="qa"><summary>과제 1. BM25에 필드 가중치 넣기 (제목 ×2)</summary><div class="a"><code>buildIndex</code>가 <code>{ id, title, text }</code>를 받아, 제목 토큰의 tf를 2배로 세게 바꾼다. 제목에만 있는 단어로 검색했을 때 순위가 오르는지 테스트한다. 더 나아가 Robertson &amp; Zaragoza의 BM25F와 무엇이 다른지 찾아본다(R6).</div></details>
+	<details class="qa"><summary>과제 2. 한국어 조사 떼기</summary><div class="a"><code>tokenize.mjs</code>에 간단한 조사 목록(을/를/이/가/은/는/에서/으로/로/의/와/과/도)을 떼는 함수를 넣고, 색인과 질의 <b>양쪽에</b> 같은 함수를 적용한다. "검색" 질의가 "검색을" 문서를 찾는지 확인하고, "고양이"가 "고양"이 되는 오분리도 관찰한다. 형태소 분석기가 왜 필요한지 체감하는 과제.</div></details>
+	<details class="qa"><summary>과제 3. 가중 RRF 실험</summary><div class="a"><code>rrf(lists, 60, [1, 0.5])</code>처럼 가중치를 바꿔 결과가 어떻게 달라지는지 표로 만든다. 가중치를 평가셋 없이 정하면 왜 위험한지 한 문장으로 쓴다.</div></details>
+	<details class="qa"><summary>과제 4. 내 노트로 청크 크기별 통계</summary><div class="a">노트 파일 하나를 읽어 <code>recursiveChunks</code>를 크기 100/200/400으로 돌리고 청크 수, 평균 길이, 50자 미만 청크 수를 출력한다. <code>headingChunks</code>와 비교한다.</div></details>
+	<details class="qa"><summary>과제 5. 작은 평가 루프 만들기</summary><div class="a">노트 8개와 질의 5개(정답 문서 지정)를 만든다. 질의마다 <code>bm25Search</code>와 <code>projectSearch</code>의 순위로 <code>reciprocalRank</code>를 구하고 평균 MRR과 <code>pairedBootstrap</code> 구간을 출력한다. 질의를 결과를 보기 전에 써야 하는 이유를 몸으로 느끼는 과제.</div></details>
+	<details class="qa"><summary>과제 6. nprobes별 재현율 곡선</summary><div class="a"><code>buildIvf</code>로 시드 3개를 만들고, nprobes 1~8에서 평균 Recall@10과 평균 <code>scanned</code>를 표로 출력한다. 시드 간 차이가 가장 큰 nprobes는 어디인가?</div></details>
+	<details class="qa"><summary>과제 7 (설계). 이 프로젝트 Indexer를 진짜 BM25로</summary><div class="a"><code>src/utils/Indexer.ts</code>의 역색인을 <code>Map&lt;token, Map&lt;filePath, tf&gt;&gt;</code>로 바꾸고 문서 길이를 저장하는 설계를 쓴다. <code>removeFileEntries</code>와 증분 업데이트에서 평균 길이를 어떻게 갱신할지, 태그·제목 같은 필드를 어떻게 다룰지, 평가셋으로 무엇을 비교할지까지 적는다.</div></details>
+</section>
+
+<!-- ================================================================ Refs -->
+<section class="module" id="m-refs" data-group="연습" data-nav="참고문헌">
+	<header>
+		<div class="kicker">근거</div>
+		<h1>참고문헌</h1>
+		<p class="lede">✅ 원문 페이지에서 서지 정보와 핵심 주장을 확인 · ☑️ 서지 정보는 확인, 세부 수치는 2차 요약으로 확인 · 📚 널리 인용되는 고전이나 공식 문서로 서지 정보·링크만 기재</p>
+	</header>
+	<h2>RAG 정의와 서베이</h2>
+	<ul class="refs">
+		<li id="ref-R1"><b>R1</b> ✅ Lewis, P. et al. (2020). <i>Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.</i> NeurIPS 2020. <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">arXiv:2005.11401</a></li>
+		<li id="ref-R2"><b>R2</b> 📚 Guu, K. et al. (2020). <i>REALM: Retrieval-Augmented Language Model Pre-Training.</i> ICML 2020. <a href="https://arxiv.org/abs/2002.08909" target="_blank" rel="noopener">arXiv:2002.08909</a></li>
+		<li id="ref-R3"><b>R3</b> 📚 Gao, Y. et al. (2023). <i>Retrieval-Augmented Generation for Large Language Models: A Survey.</i> <a href="https://arxiv.org/abs/2312.10997" target="_blank" rel="noopener">arXiv:2312.10997</a></li>
+		<li id="ref-R4"><b>R4</b> ☑️ Singh, A. et al. (2025, v4 2026.04). <i>Agentic Retrieval-Augmented Generation: A Survey on Agentic RAG.</i> <a href="https://arxiv.org/abs/2501.09136" target="_blank" rel="noopener">arXiv:2501.09136</a></li>
+	</ul>
+	<h2>sparse와 dense</h2>
+	<ul class="refs">
+		<li id="ref-R5"><b>R5</b> ✅ Ram, O. et al. (2023). <i>In-Context Retrieval-Augmented Language Models.</i> TACL 11:1316–1331. <a href="https://arxiv.org/abs/2302.00083" target="_blank" rel="noopener">arXiv:2302.00083</a></li>
+		<li id="ref-R6"><b>R6</b> 📚 Robertson, S. &amp; Zaragoza, H. (2009). <i>The Probabilistic Relevance Framework: BM25 and Beyond.</i> Foundations and Trends in IR 3(4). <a href="https://doi.org/10.1561/1500000019" target="_blank" rel="noopener">doi:10.1561/1500000019</a></li>
+		<li id="ref-R7"><b>R7</b> ✅ Thakur, N. et al. (2021). <i>BEIR: A Heterogeneous Benchmark for Zero-shot Evaluation of Information Retrieval Models.</i> NeurIPS 2021 Datasets and Benchmarks. <a href="https://arxiv.org/abs/2104.08663" target="_blank" rel="noopener">arXiv:2104.08663</a></li>
+		<li id="ref-R8"><b>R8</b> ✅ Weller, O., Boratko, M., Naim, I. &amp; Lee, J. (2025). <i>On the Theoretical Limitations of Embedding-Based Retrieval.</i> ICLR 2026. <a href="https://arxiv.org/abs/2508.21038" target="_blank" rel="noopener">arXiv:2508.21038</a></li>
+		<li id="ref-R9"><b>R9</b> 📚 Karpukhin, V. et al. (2020). <i>Dense Passage Retrieval for Open-Domain Question Answering.</i> EMNLP 2020. <a href="https://arxiv.org/abs/2004.04906" target="_blank" rel="noopener">arXiv:2004.04906</a> · 관련: Formal, T. et al. (2021). <i>SPLADE.</i> <a href="https://arxiv.org/abs/2107.05720" target="_blank" rel="noopener">arXiv:2107.05720</a> · Khattab, O. &amp; Zaharia, M. (2020). <i>ColBERT.</i> <a href="https://arxiv.org/abs/2004.12832" target="_blank" rel="noopener">arXiv:2004.12832</a></li>
+		<li id="ref-R10"><b>R10</b> 📚 Reimers, N. &amp; Gurevych, I. (2019). <i>Sentence-BERT.</i> EMNLP 2019. <a href="https://arxiv.org/abs/1908.10084" target="_blank" rel="noopener">arXiv:1908.10084</a></li>
+		<li id="ref-R10b"><b>R10b</b> 📚 Reimers, N. &amp; Gurevych, I. (2020). <i>Making Monolingual Sentence Embeddings Multilingual using Knowledge Distillation.</i> EMNLP 2020. <a href="https://arxiv.org/abs/2004.09813" target="_blank" rel="noopener">arXiv:2004.09813</a></li>
+		<li id="ref-R26"><b>R26</b> 📚 Jégou, H., Douze, M. &amp; Schmid, C. (2011). <i>Product Quantization for Nearest Neighbor Search.</i> IEEE TPAMI 33(1). <a href="https://doi.org/10.1109/TPAMI.2010.57" target="_blank" rel="noopener">doi:10.1109/TPAMI.2010.57</a></li>
+	</ul>
+	<h2>결합</h2>
+	<ul class="refs">
+		<li id="ref-R11b"><b>R11b</b> ✅ Cormack, G. V., Clarke, C. L. A. &amp; Büttcher, S. (2009). <i>Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods.</i> SIGIR 2009, pp. 758–759. <a href="https://doi.org/10.1145/1571941.1572114" target="_blank" rel="noopener">doi:10.1145/1571941.1572114</a> — 원문에서 k 결정 과정은 확인하지 못함</li>
+	</ul>
+	<h2>청킹</h2>
+	<ul class="refs">
+		<li id="ref-R11"><b>R11</b> ☑️ Qu, R., Tu, R. &amp; Bao, F. (2024). <i>Is Semantic Chunking Worth the Computational Cost?</i> Findings of NAACL 2025. <a href="https://arxiv.org/abs/2410.13070" target="_blank" rel="noopener">arXiv:2410.13070</a></li>
+		<li id="ref-R12"><b>R12</b> ☑️ Bhat, S. R. et al. (2025). <i>Rethinking Chunk Size For Long-Document Retrieval: A Multi-Dataset Analysis.</i> <a href="https://arxiv.org/abs/2505.21700" target="_blank" rel="noopener">arXiv:2505.21700</a></li>
+		<li id="ref-R13"><b>R13</b> ☑️ Caspari, L. et al. (2026). <i>When Is Complex Chunking Worth It? A Multi-Objective Evaluation of Chunking Methods at Scale.</i> <a href="https://arxiv.org/abs/2608.16586" target="_blank" rel="noopener">arXiv:2608.16586</a></li>
+		<li id="ref-R21"><b>R21</b> 📚 Chen, T. et al. (2023). <i>Dense X Retrieval: What Retrieval Granularity Should We Use?</i> <a href="https://arxiv.org/abs/2312.06648" target="_blank" rel="noopener">arXiv:2312.06648</a></li>
+		<li id="ref-R22"><b>R22</b> 📚 Sarthi, P. et al. (2024). <i>RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval.</i> ICLR 2024. <a href="https://arxiv.org/abs/2401.18059" target="_blank" rel="noopener">arXiv:2401.18059</a></li>
+		<li id="ref-R23"><b>R23</b> ✅ Günther, M. et al. (2024). <i>Late Chunking: Contextual Chunk Embeddings Using Long-Context Embedding Models.</i> <a href="https://arxiv.org/abs/2409.04701" target="_blank" rel="noopener">arXiv:2409.04701</a></li>
+	</ul>
+	<h2>생성과 컨텍스트</h2>
+	<ul class="refs">
+		<li id="ref-R18"><b>R18</b> 📚 Liu, N. F. et al. (2024). <i>Lost in the Middle: How Language Models Use Long Contexts.</i> TACL 12. <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">arXiv:2307.03172</a></li>
+		<li id="ref-R19"><b>R19</b> 📚 Xu, P. et al. (2024). <i>Retrieval meets Long Context Large Language Models.</i> ICLR 2024. <a href="https://arxiv.org/abs/2310.03025" target="_blank" rel="noopener">arXiv:2310.03025</a></li>
+		<li id="ref-R24"><b>R24</b> 📚 Es, S. et al. (2024). <i>RAGAS: Automated Evaluation of Retrieval Augmented Generation.</i> EACL 2024 Demo. <a href="https://arxiv.org/abs/2309.15217" target="_blank" rel="noopener">arXiv:2309.15217</a></li>
+	</ul>
+	<h2>공식 문서·기술 블로그</h2>
+	<ul class="refs">
+		<li id="ref-R14"><b>R14</b> ☑️ sentence-transformers, <i>paraphrase-multilingual-MiniLM-L12-v2</i> 모델 카드. <a href="https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2" target="_blank" rel="noopener">Hugging Face</a> · <a href="https://sbert.net/docs/sentence_transformer/pretrained_models.html" target="_blank" rel="noopener">sbert.net</a> — max_seq_length 128, 384차원, 50개 이상 언어</li>
+		<li id="ref-R15"><b>R15</b> 📚 Apache Lucene, <code>BM25Similarity</code> (기본 k1 = 1.2, b = 0.75). <a href="https://lucene.apache.org/core/9_0_0/core/org/apache/lucene/search/similarities/BM25Similarity.html" target="_blank" rel="noopener">Lucene 9.0 문서</a></li>
+		<li id="ref-R15b"><b>R15b</b> 📚 Elasticsearch Reference, <i>Reciprocal rank fusion</i> (<code>rank_constant</code> 기본 60). <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/rrf.html" target="_blank" rel="noopener">elastic.co</a></li>
+		<li id="ref-R25"><b>R25</b> 📚 Elasticsearch Reference, <i>Specify an analyzer</i> — 색인 analyzer와 검색 analyzer. <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/specify-analyzer.html" target="_blank" rel="noopener">elastic.co</a></li>
+		<li id="ref-R16"><b>R16</b> ✅ Anthropic (2024.09). <i>Introducing Contextual Retrieval.</i> <a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noopener">anthropic.com</a></li>
+		<li id="ref-R17"><b>R17</b> ☑️ Asai, A. et al. (2021). <i>XOR QA: Cross-lingual Open-Retrieval Question Answering.</i> NAACL 2021. <a href="https://arxiv.org/abs/2010.11856" target="_blank" rel="noopener">arXiv:2010.11856</a> — 한국어 BM25에 Nori 사용</li>
+		<li id="ref-R20"><b>R20</b> ✅ Anthropic (2025.09.29). <i>Effective context engineering for AI agents.</i> <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">anthropic.com</a></li>
+	</ul>
+	<h2>이 저장소</h2>
+	<ul class="refs">
+		<li><code>docs/search-quality-evaluation.md</code> — 모든 실측 수치의 원본. 절 번호(4.1, 4.5 등)를 그대로 인용했다.</li>
+		<li><code>docs/rag-study-guide.md</code> — 이 코스의 긴 글 버전.</li>
+		<li><code>docs/adr/0001-agent-context-pipeline-over-search-backend.md</code> — RAG를 컨텍스트 파이프라인으로 정의한 결정.</li>
+	</ul>
+</section>
