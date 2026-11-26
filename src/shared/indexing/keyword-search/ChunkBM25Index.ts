@@ -31,8 +31,8 @@ function requiredUnitMatches(unitCount: number): number {
 }
 
 function fileNameWithoutExtension(filePath: string): string {
-	const name = filePath.split("/").pop() ?? "";
-	return name.toLowerCase().replace(MARKDOWN_EXTENSION, "");
+	const name = filePath.split(/[/\\]/).pop() ?? "";
+	return name.normalize("NFC").toLowerCase().replace(MARKDOWN_EXTENSION, "");
 }
 
 function maxScore(
@@ -69,12 +69,14 @@ export class ChunkBM25Index {
 	public addDocument(document: KeywordDocument): void {
 		this.removeDocument(document.filePath);
 		const fileId = this.fileIdOf(document.filePath);
+		const fileName = fileNameWithoutExtension(document.filePath);
 		const metadataTerms = countTerms(
-			[document.title, ...document.tags].join(" "),
+			[document.title, fileName, ...document.tags].join(" "),
 			[
-				fileNameWithoutExtension(document.filePath),
-				...document.tags.map((tag) => tag.toLowerCase()),
+				fileName,
+				...document.tags.map((tag) => tag.normalize("NFC").toLowerCase()),
 				...document.title
+					.normalize("NFC")
 					.toLowerCase()
 					.split(/\s+/)
 					.filter((token) => token.length > 0),
