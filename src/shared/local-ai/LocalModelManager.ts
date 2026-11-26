@@ -27,6 +27,7 @@ export class LocalModelManager {
 	private embedderState: WarmState = "idle";
 	private rerankerState: WarmState = "idle";
 	private idleTimer: NodeJS.Timeout | null = null;
+	private disposal: Promise<void> | null = null;
 	private lateWarmupCleanupScheduled = false;
 	private isShutdown = false;
 	private activeUses = 0;
@@ -54,34 +55,33 @@ export class LocalModelManager {
 		return this.reranker.checkModelPresence();
 	}
 
-	async withEmbedder<T>(
-		softDeadlineMs: number,
-		fn: (ready: boolean) => Promise<T>,
-	): Promise<T> {
+	async holdModels<T>(task: () => Promise<T>): Promise<T> {
 		this.activeUses++;
 		this.cancelIdleDispose();
 		try {
-			const ready = await this.waitFor("embedder", softDeadlineMs);
-			return await fn(ready);
+			return await task();
 		} finally {
 			this.activeUses--;
 			this.scheduleIdleDispose();
 		}
 	}
 
+	async withEmbedder<T>(
+		softDeadlineMs: number,
+		fn: (ready: boolean) => Promise<T>,
+	): Promise<T> {
+		return this.holdModels(async () =>
+			fn(await this.waitFor("embedder", softDeadlineMs)),
+		);
+	}
+
 	async withReranker<T>(
 		softDeadlineMs: number,
 		fn: (ready: boolean) => Promise<T>,
 	): Promise<T> {
-		this.activeUses++;
-		this.cancelIdleDispose();
-		try {
-			const ready = await this.waitFor("reranker", softDeadlineMs);
-			return await fn(ready);
-		} finally {
-			this.activeUses--;
-			this.scheduleIdleDispose();
-		}
+		return this.holdModels(async () =>
+			fn(await this.waitFor("reranker", softDeadlineMs)),
+		);
 	}
 
 	beginToolCall(): void {
@@ -102,7 +102,14 @@ export class LocalModelManager {
 		}
 	}
 
-	private async disposeIdleModels(): Promise<void> {
+	private disposeIdleModels(): Promise<void> {
+		this.disposal ??= this.releaseModels().finally(() => {
+			this.disposal = null;
+		});
+		return this.disposal;
+	}
+
+	private async releaseModels(): Promise<void> {
 		if (this.isShutdown) {
 			return;
 		}
@@ -140,6 +147,7 @@ export class LocalModelManager {
 		resource: "embedder" | "reranker",
 		softDeadlineMs: number,
 	): Promise<boolean> {
+		await this.disposal;
 		if (this.isShutdown) {
 			return false;
 		}

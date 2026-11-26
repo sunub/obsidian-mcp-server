@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync } from "node:fs";
+import { existsSync, lstatSync, statSync } from "node:fs";
 import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import {
 	basename,
@@ -26,6 +26,7 @@ import {
 import type { SearchStatus } from "@shared/searchStatus.js";
 import matter from "gray-matter";
 import { lowConfidenceDenseThreshold } from "@/config.js";
+import { CoalescingQueue } from "./CoalescingQueue.js";
 import type { EnrichedDocument } from "./types.js";
 import { VaultPathError } from "./VaultPathError.js";
 
@@ -49,6 +50,9 @@ export class VaultManager {
 	private ioSemaphore: Semaphore;
 	private dbSemaphore: Semaphore;
 	private searchBackend: EmbeddedSearchBackend;
+	private ragQueue = new CoalescingQueue((filePath) =>
+		localModelManager.holdModels(() => this.updateRagIndex(filePath)),
+	);
 
 	constructor(vaultPath: string, maxConcurrentIO: number = 10) {
 		this.vaultPath = resolve(vaultPath);
@@ -216,6 +220,10 @@ export class VaultManager {
 			return;
 		}
 
+		this.ragQueue.enqueue(filePath);
+	}
+
+	private async updateRagIndex(filePath: string): Promise<void> {
 		await this.dbSemaphore.acquire();
 		try {
 			await ragIndexer.processFile(filePath);
@@ -230,10 +238,12 @@ export class VaultManager {
 	}
 
 	public async shutdown(): Promise<void> {
+		this.ragQueue.clear();
 		await ragIndexer.shutdown();
 	}
 
 	public async removeDocument(filePath: string): Promise<void> {
+		this.ragQueue.cancel(filePath);
 		this.indexer.removeFileEntries(filePath);
 		await this.dbSemaphore.acquire();
 		try {
@@ -325,12 +335,14 @@ export class VaultManager {
 		fullPath: string,
 		frontmatter: Record<string, unknown>,
 	): Promise<void> {
-		const resolvedPath = await this.resolvePathForWrite(fullPath);
+		const resolvedPath = await this.resolvePathForWrite(
+			this.completeNoteExtension(fullPath),
+		);
 
 		await this.ioSemaphore.acquire();
 		try {
-			const content = (await this.readDocumentContent(resolvedPath)) || "";
-			const newDocument = matter.stringify(content, frontmatter);
+			const content = await readFile(resolvedPath, "utf-8");
+			const newDocument = matter.stringify(content, frontmatter, {});
 			await writeFile(resolvedPath, newDocument, "utf8");
 		} finally {
 			this.ioSemaphore.release();
@@ -429,6 +441,17 @@ export class VaultManager {
 		return "";
 	}
 
+	private completeNoteExtension(inputPath: string): string {
+		const isFile = (candidate: string) => {
+			const target = resolve(this.vaultPath, candidate);
+			return existsSync(target) && statSync(target).isFile();
+		};
+		if (/\.mdx?$/.test(inputPath) || isFile(inputPath)) {
+			return inputPath;
+		}
+		return [`${inputPath}.md`, `${inputPath}.mdx`].find(isFile) ?? inputPath;
+	}
+
 	private async resolvePathForWrite(inputPath: string): Promise<string> {
 		const resolvedPath = isAbsolute(inputPath)
 			? resolve(inputPath)
@@ -472,15 +495,6 @@ export class VaultManager {
 
 	private isPathInsideVault(candidatePath: string): boolean {
 		return isPathInside(this.vaultPath, candidatePath);
-	}
-
-	private async readDocumentContent(filePath: string): Promise<string | null> {
-		try {
-			return await readFile(filePath, "utf-8");
-		} catch (error) {
-			console.error(`파일 내용을 읽는 중 오류 발생: ${filePath}`, error);
-			return null;
-		}
 	}
 
 	private async getDocumentContent(filePath: string): Promise<string | null> {
