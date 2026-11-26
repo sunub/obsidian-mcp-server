@@ -15,15 +15,17 @@ import { Semaphore } from "@shared/async/semaphore.js";
 import { DirectoryWalker } from "@shared/indexing/DirectoryWalker.js";
 import { Indexer } from "@shared/indexing/Indexer.js";
 import { ragIndexer } from "@shared/indexing/RAGIndexer.js";
-import { type ChunkMetadata, vectorDB } from "@shared/indexing/VectorDB.js";
+import { vectorDB } from "@shared/indexing/VectorDB.js";
 import { localEmbedder } from "@shared/local-ai/Embedder.js";
 import { localModelManager } from "@shared/local-ai/LocalModelManager.js";
 import type { DocumentIndex } from "@shared/markdown/types.js";
 import {
-	SEARCH_SETUP_COMMAND,
-	type SearchStatus,
-} from "@shared/searchStatus.js";
+	EmbeddedSearchBackend,
+	type HybridSearchResult,
+} from "@shared/search-backend/index.js";
+import type { SearchStatus } from "@shared/searchStatus.js";
 import matter from "gray-matter";
+import { lowConfidenceDenseThreshold } from "@/config.js";
 import type { EnrichedDocument } from "./types.js";
 import { VaultPathError } from "./VaultPathError.js";
 
@@ -35,47 +37,7 @@ function isPathInside(basePath: string, candidatePath: string): boolean {
 	);
 }
 
-const KEYWORD_FUSION_MIN_RELATIVE_SCORE = 0.7;
-
-function toKeywordChunk(
-	document: DocumentIndex,
-	content: string,
-): ChunkMetadata {
-	const { frontmatter, filePath } = document;
-	return {
-		id: `${filePath}_keyword_chunk`,
-		filePath,
-		fileName: basename(filePath),
-		chunkIndex: -1,
-		content,
-		metadata: {
-			title: frontmatter.title,
-			date:
-				frontmatter.date instanceof Date
-					? frontmatter.date.toISOString()
-					: (frontmatter.date ?? ""),
-			tags: frontmatter.tags?.join(", ") ?? "",
-			summary: frontmatter.summary ?? "",
-			slug: frontmatter.slug ?? "",
-			category: frontmatter.category ?? "any",
-			completed: frontmatter.completed ?? false,
-		},
-	};
-}
-
-function keywordChunksOf(
-	document: DocumentIndex,
-	chunk: string | null,
-): ChunkMetadata[] {
-	return chunk ? [toKeywordChunk(document, chunk)] : [];
-}
-
-export interface HybridSearchResult {
-	score: number;
-	document: DocumentIndex;
-	matchedChunks: ChunkMetadata[];
-	finalScore: number;
-}
+export type { HybridSearchResult };
 
 export class VaultManager {
 	private vaultPath: string;
@@ -86,6 +48,7 @@ export class VaultManager {
 	private indexer: Indexer;
 	private ioSemaphore: Semaphore;
 	private dbSemaphore: Semaphore;
+	private searchBackend: EmbeddedSearchBackend;
 
 	constructor(vaultPath: string, maxConcurrentIO: number = 10) {
 		this.vaultPath = resolve(vaultPath);
@@ -93,6 +56,12 @@ export class VaultManager {
 		this.indexer = new Indexer();
 		this.ioSemaphore = new Semaphore(maxConcurrentIO);
 		this.dbSemaphore = new Semaphore(1);
+		this.searchBackend = new EmbeddedSearchBackend({
+			indexer: this.indexer,
+			isLocalAIReady: () => this.isLocalAIReady,
+			semanticSearch: (query, limit) => this.safeSemanticSearch(query, limit),
+			lowConfidenceThreshold: lowConfidenceDenseThreshold,
+		});
 	}
 
 	async initialize(): Promise<void> {
@@ -133,96 +102,11 @@ export class VaultManager {
 	): Promise<{ results: HybridSearchResult[]; search_status: SearchStatus }> {
 		await this.initialize();
 
-		if (!this.isLocalAIReady) {
-			const keywordResults = this.indexer.searchWithChunks(query);
-			return {
-				results: keywordResults.slice(0, limit).map((hit) => ({
-					score: 1.0,
-					document: hit.document,
-					matchedChunks: keywordChunksOf(hit.document, hit.chunk),
-					finalScore: 1.0,
-				})),
-				search_status: this.withIndexing({
-					mode: "keyword",
-					reason: "models_missing",
-					setup_command: SEARCH_SETUP_COMMAND,
-				}),
-			};
-		}
-
-		const semanticResults = await this.safeSemanticSearch(query, limit * 3);
-		const keywordResults = this.indexer.searchWithChunks(
+		const { results, searchStatus } = await this.searchBackend.search(
 			query,
-			semanticResults.length > 0 ? KEYWORD_FUSION_MIN_RELATIVE_SCORE : 0,
+			limit,
 		);
-		const rrfScores = new Map<
-			string,
-			{
-				score: number;
-				document: DocumentIndex;
-				matchedChunks: ChunkMetadata[];
-				keywordChunks: ChunkMetadata[];
-			}
-		>();
-		const RRF_K = 60;
-
-		keywordResults.forEach((hit, index) => {
-			rrfScores.set(hit.document.filePath, {
-				score: 1 / (RRF_K + index + 1),
-				document: hit.document,
-				matchedChunks: [],
-				keywordChunks: keywordChunksOf(hit.document, hit.chunk),
-			});
-		});
-
-		const seenPaths = new Set<string>();
-		let vectorRank = 0;
-		for (const chunk of semanticResults) {
-			if (!seenPaths.has(chunk.filePath)) {
-				seenPaths.add(chunk.filePath);
-				const vectorScore = 1 / (RRF_K + vectorRank + 1);
-
-				const existing = rrfScores.get(chunk.filePath);
-				if (existing) {
-					existing.score += vectorScore;
-					existing.matchedChunks.push(chunk);
-				} else {
-					const doc = this.indexer.getDocument(chunk.filePath);
-					if (doc) {
-						rrfScores.set(chunk.filePath, {
-							score: vectorScore,
-							document: doc,
-							matchedChunks: [chunk],
-							keywordChunks: [],
-						});
-					}
-				}
-				vectorRank++;
-			} else {
-				rrfScores.get(chunk.filePath)?.matchedChunks.push(chunk);
-			}
-		}
-
-		const fusedResults = Array.from(rrfScores.values())
-			.sort((a, b) => b.score - a.score)
-			.slice(0, limit * 2);
-
-		const finalResults: HybridSearchResult[] = fusedResults.map((f) => ({
-			score: f.score,
-			document: f.document,
-			matchedChunks:
-				f.matchedChunks.length > 0 ? f.matchedChunks : f.keywordChunks,
-			finalScore: f.score,
-		}));
-
-		return {
-			results: finalResults.slice(0, limit),
-			search_status: this.withIndexing(
-				semanticResults.length === 0
-					? { mode: "keyword", reason: "semantic_unavailable" }
-					: { mode: "hybrid" },
-			),
-		};
+		return { results, search_status: this.withIndexing(searchStatus) };
 	}
 
 	private withIndexing(status: SearchStatus): SearchStatus {
@@ -236,7 +120,7 @@ export class VaultManager {
 	private async safeSemanticSearch(
 		query: string,
 		limit: number,
-	): Promise<ChunkMetadata[]> {
+	): ReturnType<typeof vectorDB.search> {
 		if (!this.isLocalAIReady) {
 			return [];
 		}
@@ -256,9 +140,6 @@ export class VaultManager {
 						queryVector,
 						recallLimit,
 					);
-
-					// 청크 단계 리랭킹도 하지 않는다(위와 같은 평가 결과). 후보를 넉넉히 가져온 뒤
-					// 벡터 순위 그대로 자른다.
 					return initialResults.slice(0, limit);
 				},
 			);

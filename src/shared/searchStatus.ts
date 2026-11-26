@@ -7,7 +7,9 @@ export const searchStatusSchema = z
 		mode: z
 			.enum(["hybrid", "keyword"])
 			.describe("keyword means semantic search did not contribute"),
-		reason: z.enum(["models_missing", "semantic_unavailable"]).optional(),
+		reason: z
+			.enum(["models_missing", "semantic_unavailable", "low_confidence"])
+			.optional(),
 		setup_command: z
 			.string()
 			.optional()

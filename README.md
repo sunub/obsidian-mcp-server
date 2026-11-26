@@ -93,8 +93,11 @@ Claude Desktop, Cursor, Copilot 등 MCP 클라이언트에는 다음처럼 등�
 | --- | --- | --- | --- |
 | `VAULT_DIR_PATH` | 없음 | Obsidian Vault 절대 경로 | 예 |
 | `LOGGING_LEVEL` | `info` | `debug`, `info`, `warn`, `error` | 아니오 |
+| `LOW_CONFIDENCE_DENSE_THRESHOLD` | `0.88` | 검색 결과의 낮은 신뢰도 표시 기준 (`0`~`1`) | 아니오 |
 
 MCP 서버의 Vault 검색/읽기 도구에는 `VAULT_DIR_PATH`가 핵심 설정입니다.
+
+키워드가 일치하는 문서가 없고 의미 검색의 최고 유사도가 `LOW_CONFIDENCE_DENSE_THRESHOLD`보다 낮으면 `search_status.reason`이 `low_confidence`가 됩니다. 검색 결과는 그대로 반환합니다. `0`이면 표시를 끄고, 범위를 벗어나거나 숫자가 아닌 값은 경고를 남긴 뒤 `0.88`을 씁니다. 기본값은 `multilingual-e5-small` 모델과 Vault 하나에서 고른 값입니다.
 
 ## 주의 사항
 
