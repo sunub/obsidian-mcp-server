@@ -3,7 +3,9 @@
 ## 1. Execution and Approval Protocol
 
 * **Mandatory Discussion:** If a prompt requests a discussion (e.g., "tell me how to," "what is the best way"), DO NOT proceed with code modifications.
-* **Approval Workflow:** You must first explain the proposed solution. Execute code modifications ONLY after receiving explicit user acceptance.
+* **Direct Execution:** When the user requests implementation, refactoring, or bug fixes with clear intent, proceed directly with code modifications without asking for prior approval.
+* **Selective Confirmation:** Ask clarifying questions or request confirmation ONLY when requirements are genuinely ambiguous, major architectural trade-offs require a user decision, or the action is destructive/irreversible.
+* **Skill Override:** Do not trigger brainstorming or pre-implementation Q&A/design-approval gates from external skills unless the user explicitly asks to brainstorm or plan first.
 
 ## 2. Coding Guidelines
 
