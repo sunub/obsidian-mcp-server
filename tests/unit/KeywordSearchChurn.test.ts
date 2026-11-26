@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { ChunkBM25Index } from "../../src/keyword-search/index";
+import { ChunkBM25Index } from "../../src/shared/indexing/keyword-search/index";
 
 const VOCABULARY = Array.from({ length: 60 }, (_, i) => `word${i}`).concat([
 	"서버가",

@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import {
 	VaultManager,
 	VaultPathError,
-} from "../../src/utils/VaultManger/index.js";
+} from "../../src/shared/vault-manager/index.js";
 
 const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault-write-boundary");
 const OUTSIDE_FILE_PATH = path.join(process.cwd(), "outside-write-boundary.md");

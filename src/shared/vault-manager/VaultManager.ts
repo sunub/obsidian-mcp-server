@@ -10,21 +10,21 @@ import {
 	relative,
 	resolve,
 } from "node:path";
+import { throwIfAborted } from "@shared/async/abort.js";
+import { Semaphore } from "@shared/async/semaphore.js";
+import { DirectoryWalker } from "@shared/indexing/DirectoryWalker.js";
+import { Indexer } from "@shared/indexing/Indexer.js";
+import { ragIndexer } from "@shared/indexing/RAGIndexer.js";
+import { type ChunkMetadata, vectorDB } from "@shared/indexing/VectorDB.js";
+import { localEmbedder } from "@shared/local-ai/Embedder.js";
+import { localModelManager } from "@shared/local-ai/LocalModelManager.js";
+import { localReranker } from "@shared/local-ai/LocalReranker.js";
+import type { DocumentIndex } from "@shared/markdown/types.js";
 import {
 	SEARCH_SETUP_COMMAND,
 	type SearchStatus,
 } from "@shared/searchStatus.js";
 import matter from "gray-matter";
-import { throwIfAborted } from "../abort.js";
-import { DirectoryWalker } from "../DirectoryWalker.js";
-import { localEmbedder } from "../Embedder.js";
-import { Indexer } from "../Indexer.js";
-import { localModelManager } from "../LocalModelManager.js";
-import { localReranker } from "../LocalReranker.js";
-import type { DocumentIndex } from "../processor/types.js";
-import { ragIndexer } from "../RAGIndexer.js";
-import { Semaphore } from "../semaphore.js";
-import { type ChunkMetadata, vectorDB } from "../VectorDB.js";
 import type { EnrichedDocument } from "./types.js";
 import { VaultPathError } from "./VaultPathError.js";
 

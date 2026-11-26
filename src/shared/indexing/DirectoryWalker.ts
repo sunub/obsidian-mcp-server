@@ -1,7 +1,7 @@
 import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { extname, join } from "node:path";
-import type { Semaphore } from "./semaphore.js";
+import type { Semaphore } from "@shared/async/semaphore.js";
 
 export class DirectoryWalker {
 	private readonly allowedExtensions: string[];

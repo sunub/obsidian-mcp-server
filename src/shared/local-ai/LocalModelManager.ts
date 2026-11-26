@@ -1,4 +1,4 @@
-import { isAbortError, withTimeout } from "./abort.js";
+import { isAbortError, withTimeout } from "@shared/async/abort.js";
 import { localEmbedder } from "./Embedder.js";
 import { localReranker } from "./LocalReranker.js";
 

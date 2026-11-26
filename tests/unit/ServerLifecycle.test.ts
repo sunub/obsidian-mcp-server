@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
-import { waitForAbortable } from "../../src/utils/abort";
-import { ServerLifecycle } from "../../src/utils/ServerLifecycle";
+import { waitForAbortable } from "../../src/shared/async/abort";
+import { ServerLifecycle } from "../../src/shared/lifecycle/ServerLifecycle";
 
 describe("ServerLifecycle", () => {
 	test("shutdown is idempotent and runs cleanup once", async () => {

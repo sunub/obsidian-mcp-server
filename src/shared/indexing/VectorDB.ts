@@ -2,10 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { Connection } from "@lancedb/lancedb";
 import { connect, Index } from "@lancedb/lancedb";
+import { Semaphore } from "@shared/async/semaphore.js";
+import { debugLogger } from "@shared/logger/debugLogger.js";
 import * as arrow from "apache-arrow";
-import { debugLogger } from "@/shared/index.js";
-import state from "../config.js";
-import { Semaphore } from "./semaphore.js";
+import state from "@/config.js";
 
 export const INDEX_VERSION = 11;
 

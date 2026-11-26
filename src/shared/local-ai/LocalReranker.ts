@@ -9,8 +9,8 @@ import {
 	AutoTokenizer,
 	env,
 } from "@huggingface/transformers";
+import { MODELS_DIR } from "@shared/paths/appData.js";
 import z from "zod";
-import { MODELS_DIR } from "./constants.js";
 
 const rerankedResultsSchema = z.array(
 	z.object({

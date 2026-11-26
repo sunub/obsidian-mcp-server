@@ -30,8 +30,8 @@
 
 | 규칙 | 위치 | 동작 |
 |---|---|---|
-| 벡터 거리 기준 리랭커 건너뛰기 | `src/utils/VaultManger/VaultManager.ts:285` | 1위 결과의 코사인 거리가 `0.2` 미만이면 리랭킹 없이 벡터 검색 순위를 그대로 반환한다 |
-| 벡터 거리 기준 리랭커 건너뛰기 (결합 단계) | `src/utils/VaultManger/VaultManager.ts:192` | 결합한 후보 중 하나라도 청크 거리가 `0.2` 미만이면 결합 결과의 리랭킹을 건너뛴다 |
+| 벡터 거리 기준 리랭커 건너뛰기 | `src/shared/vault-manager/VaultManager.ts:285` | 1위 결과의 코사인 거리가 `0.2` 미만이면 리랭킹 없이 벡터 검색 순위를 그대로 반환한다 |
+| 벡터 거리 기준 리랭커 건너뛰기 (결합 단계) | `src/shared/vault-manager/VaultManager.ts:192` | 결합한 후보 중 하나라도 청크 거리가 `0.2` 미만이면 결합 결과의 리랭킹을 건너뛴다 |
 
 `scripts/benchmark_rerank.ts:68`의 "제목 일치 Fast-Path"는 벤치마크에만 있고 실제 검색 경로에는 없다.
 
@@ -41,7 +41,7 @@
 
 | 인용해 온 수치 | 스크립트가 실제로 하는 일 | 문제 |
 |---|---|---|
-| 초당 약 2.6만 건 인덱싱 | `FILE_COUNT = 50000`(10행)으로 경로를 만들지만, 실제 파일은 1,000개만 생성한다(36행, 내용은 `"# Test\nContent"` 15바이트). 인덱싱에는 경로 5,000개를 넘긴다(42행). | 존재하지 않는 경로 4,000개에서 `readFile`이 실패하고, `Indexer.processFile`의 catch 블록(`src/utils/Indexer.ts:190`)은 로그만 남기고 넘어간다. **실패한 80%도 처리량에 포함된다.** 외부에 인용한 "10만 건"은 코드 어디에도 없다. |
+| 초당 약 2.6만 건 인덱싱 | `FILE_COUNT = 50000`(10행)으로 경로를 만들지만, 실제 파일은 1,000개만 생성한다(36행, 내용은 `"# Test\nContent"` 15바이트). 인덱싱에는 경로 5,000개를 넘긴다(42행). | 존재하지 않는 경로 4,000개에서 `readFile`이 실패하고, `Indexer.processFile`의 catch 블록(`src/shared/indexing/Indexer.ts:190`)은 로그만 남기고 넘어간다. **실패한 80%도 처리량에 포함된다.** 외부에 인용한 "10만 건"은 코드 어디에도 없다. |
 | 하이브리드 검색 15ms 이내 | `indexer.search("Test")`를 1회 호출한다(51행). | 키워드 역색인만 쓴다. 임베딩, 벡터 검색, RRF 결합, 리랭커가 모두 빠져 있어 **하이브리드 검색이 아니다.** 측정도 한 번뿐이라 분포(p50, p95)가 없다. |
 | 경로 탈출 차단 100% | 스크립트 안에서 `path.resolve` + `startsWith`로 검사를 새로 구현하고(71행) 3가지 경로만 확인한다. | 실제 코드(`VaultManager.ts:633`, `relative` 기반 검사)를 호출하지 않는다. 스크립트 쪽 `startsWith` 방식은 `/Users/user/vault-evil` 같은 형제 경로를 통과시킨다. **실제 코드가 아니라 더 약한 복사본을 검증하고 있다.** 실제 코드는 `tests/unit/VaultManagerWriteBoundary.test.ts`가 따로 검증하고 있었다(4절 참고). |
 
@@ -238,7 +238,7 @@ npx tsx scripts/eval/report.ts eval/search/results/search-<시각>.json eval/ind
 
 **문제:** `경험정리/포트폴리오.md`에 base64 PNG 3개(약 107만 자, Vault 전체 텍스트의 33%)가 본문에 직접 들어 있었다. 이미지를 빼면 본문은 9,296자인데 청크가 2,404개 만들어져 전체 청크의 40%를 차지했다. 이미지 두 개는 `### ![](data:...)`처럼 제목 줄에 있어 섹션 제목도 base64 문자열이 됐다.
 
-**수정:** 청킹 워커가 본문을 나누기 전에 `data:<mime>;base64,<payload>`를 지운다(`src/utils/processor/stripEmbeddedData.ts`). `![alt]()` 문법과 대체 텍스트는 남긴다. 기존 인덱스를 다시 만들도록 `INDEX_VERSION`을 8로 올렸다. 키워드 역색인은 바꾸지 않았다.
+**수정:** 청킹 워커가 본문을 나누기 전에 `data:<mime>;base64,<payload>`를 지운다(`src/shared/markdown/stripEmbeddedData.ts`). `![alt]()` 문법과 대체 텍스트는 남긴다. 기존 인덱스를 다시 만들도록 `INDEX_VERSION`을 8로 올렸다. 키워드 역색인은 바꾸지 않았다.
 
 **측정:** 현재 Vault(문서 402개, 9월보다 11개 많음)를 복사한 같은 사본에서 수정 전 빌드와 수정 후 빌드로 각각 빈 캐시부터 색인하고, 같은 질의 42개로 평가했다. 원자료는 `eval/search/results/chunk-filter/`에 있다.
 
@@ -311,7 +311,7 @@ npx tsx scripts/eval/search-quality.ts --vault <복사본> --strip-prefix --only
 
 **반영 (INDEX_VERSION 9):**
 
-- 청킹 로직을 `src/utils/worker/chunkDocument.ts`로 분리하고(길이 함수를 주입받아 테스트 가능), 워커가 임베딩 모델 토크나이저로 길이를 잰다. 모델 파일이 없으면 GPT 토크나이저로 대신 잰다.
+- 청킹 로직을 `src/shared/indexing/worker/chunkDocument.ts`로 분리하고(길이 함수를 주입받아 테스트 가능), 워커가 임베딩 모델 토크나이저로 길이를 잰다. 모델 파일이 없으면 GPT 토크나이저로 대신 잰다.
 - 임베딩 모델 토크나이저는 워커당 약 357MB를 쓴다(GPT 토크나이저는 약 111MB). 워커 4개를 그대로 두면 색인 중 메모리가 크게 늘어나므로 청킹 워커를 1개로 줄였다. 색인 시간은 임베딩이 대부분이라 영향이 없었다.
 
 실제 워커 경로(`--chunker` 없이)로 같은 사본을 다시 색인해 확인했다. 원자료는 `eval/search/results/chunking/production-v9/`, `previous-v8/`에 있다.
@@ -411,7 +411,7 @@ npx tsx scripts/eval/search-quality.ts --vault <복사본> --strip-prefix --only
 - 한국어 조사가 붙은 단어를 못 찾는다. 한글 토큰의 36%가 조사로 끝난다(이 Vault의 402개 문서, 169,638개 토큰 중 60,240개).
 - 키워드로만 찾은 문서에는 어느 청크가 맞았는지가 없어 `best_match_chunk`가 비었다.
 
-**변경 (`src/keyword-search/`, `Indexer`, `VaultManager.hybridSearch`):**
+**변경 (`src/shared/indexing/keyword-search/`, `Indexer`, `VaultManager.hybridSearch`):**
 
 - 청크 단위 BM25(k1=1.2, b=0.75). 문서 점수는 가장 잘 맞은 청크 하나의 점수이고, 제목·태그·파일명은 별도 메타 청크로 색인한다. 4.9의 질의 토큰화 규칙(앞뒤 문장부호 제거, `Next.js`처럼 나뉘는 조각의 동시 일치, 한 글자 조각 제외)은 새 구현이 그대로 이어받았고, 4.9의 `Indexer.search` 구현은 이 구현으로 대체되었다.
 - 조사 처리: 원형과 어간을 별도 용어로 색인한다. 질의는 원형(가중치 1)과 어간 일치(0.7)를 함께 쓴다. 가장 긴 접미사 하나만 판정하고, 어간이 2자 미만이면 자르지 않는다.

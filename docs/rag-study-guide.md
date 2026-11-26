@@ -62,7 +62,7 @@
 **2분 답변으로 늘릴 때 덧붙일 내용**
 
 1. **"전략" = 경계 + 크기 + 겹침 + 문맥 보강.** 면접관이 묻는 것은 보통 이 네 가지다. 하나씩 답한다.
-   - 경계: `RecursiveCharacterTextSplitter`가 문단(`\n\n`) → 줄(`\n`) → 공백 → 글자 순으로 자르기를 시도한다. [코드 `src/utils/worker/chunkDocument.ts:52`]
+   - 경계: `RecursiveCharacterTextSplitter`가 문단(`\n\n`) → 줄(`\n`) → 공백 → 글자 순으로 자르기를 시도한다. [코드 `src/shared/indexing/worker/chunkDocument.ts:52`]
    - 크기/겹침: 256/32, 임베딩 모델 토큰 기준. [코드 `chunkDocument.ts:17-18`]
    - 문맥 보강: `Section: <섹션 제목>`, `Outline: <H1/H2 3개>`를 본문 앞에 붙여 임베딩한다. [코드 `chunkDocument.ts:84`, `RAGIndexer.ts:95-100`]
    - 전처리: base64 이미지(data URI)를 청킹 전에 제거한다. [코드 `chunkDocument.ts:69`]
@@ -149,7 +149,7 @@ Gao et al.의 서베이는 RAG를 세 단계로 나눈다. [논문 R3]
 "청킹"    → {b.md, c.md}
 ```
 
-이 프로젝트의 `Indexer`가 이 구조다. [코드 `src/utils/Indexer.ts:16`]
+이 프로젝트의 `Indexer`가 이 구조다. [코드 `src/shared/indexing/Indexer.ts:16`]
 
 ### 3.3 TF-IDF에서 BM25로
 
@@ -183,7 +183,7 @@ Lucene(Elasticsearch, OpenSearch의 기반)의 기본값은 $k_1 = 1.2$, $b = 0.
 
 ### 3.4 이 프로젝트의 키워드 검색은 BM25인가?
 
-**아니다.** 정확히 말하면 **IDF 가중 불리언 매칭**이다. [코드 `src/utils/Indexer.ts:77-164`]
+**아니다.** 정확히 말하면 **IDF 가중 불리언 매칭**이다. [코드 `src/shared/indexing/Indexer.ts:77-164`]
 
 | 항목 | BM25 | 이 프로젝트 `Indexer.search` |
 |---|---|---|
@@ -209,7 +209,7 @@ Lucene(Elasticsearch, OpenSearch의 기반)의 기본값은 $k_1 = 1.2$, $b = 0.
 
 **bi-encoder**: 질의와 문서를 **따로** 같은 모델에 넣어 벡터로 만들고, 두 벡터의 코사인 유사도로 비교한다. 문서 벡터를 미리 계산해 둘 수 있어 빠르다. DPR이 질의응답용 dense 검색에서 BM25를 이긴 대표 사례다. [논문 R9] 문장 단위 임베딩 학습은 Sentence-BERT가 대표적이다. [논문 R10]
 
-**이 프로젝트의 임베딩 모델** [코드 `src/utils/Embedder.ts:13`, `:74-75`]
+**이 프로젝트의 임베딩 모델** [코드 `src/shared/local-ai/Embedder.ts:13`, `:74-75`]
 
 | 항목 | 값 | 근거 |
 |---|---|---|
@@ -261,7 +261,7 @@ $$
 
 ### 4.2 이 프로젝트의 하이브리드 검색
 
-[코드 `src/utils/VaultManger/VaultManager.ts:97-215`]
+[코드 `src/shared/vault-manager/VaultManager.ts:97-215`]
 
 ```
 질의
@@ -333,7 +333,7 @@ $$
 
 ### 5.4 이 프로젝트의 청킹
 
-**현재 구현** [코드 `src/utils/worker/chunkDocument.ts`]
+**현재 구현** [코드 `src/shared/indexing/worker/chunkDocument.ts`]
 
 1. `MatterParser`로 frontmatter와 본문을 분리한다.
 2. 본문에서 base64 data URI를 지운다(`stripEmbeddedData`). 이미지 대체 텍스트는 남긴다.
@@ -401,12 +401,12 @@ $$
 
 | 단계 | 파일 | 핵심 |
 |---|---|---|
-| 파일 탐색·감시 | `src/utils/DirectoryWalker.ts`, `VaultWatcher.ts` | |
-| 키워드 색인 | `src/utils/Indexer.ts` | 문서 단위 역색인, IDF 가중 불리언 매칭, 백링크 색인 |
-| 청킹 | `src/utils/worker/chunkDocument.ts`, `chunkingWorker.ts` | 워커 스레드에서 실행 |
-| 전처리 | `src/utils/processor/MatterParser.ts`, `stripEmbeddedData.ts` | frontmatter 분리, base64 제거 |
-| 임베딩·저장 | `src/utils/RAGIndexer.ts`, `Embedder.ts`, `VectorDB.ts` | 로컬 ONNX 모델, LanceDB, IVF-PQ |
-| 하이브리드 검색 | `src/utils/VaultManger/VaultManager.ts:97` | RRF k=60, 리랭커 없음, 모델 없으면 키워드만 |
+| 파일 탐색·감시 | `src/shared/indexing/DirectoryWalker.ts`, `VaultWatcher.ts` | |
+| 키워드 색인 | `src/shared/indexing/Indexer.ts` | 문서 단위 역색인, IDF 가중 불리언 매칭, 백링크 색인 |
+| 청킹 | `src/shared/indexing/worker/chunkDocument.ts`, `chunkingWorker.ts` | 워커 스레드에서 실행 |
+| 전처리 | `src/shared/markdown/MatterParser.ts`, `stripEmbeddedData.ts` | frontmatter 분리, base64 제거 |
+| 임베딩·저장 | `src/shared/indexing/RAGIndexer.ts`, `Embedder.ts`, `VectorDB.ts` | 로컬 ONNX 모델, LanceDB, IVF-PQ |
+| 하이브리드 검색 | `src/shared/vault-manager/VaultManager.ts:97` | RRF k=60, 리랭커 없음, 모델 없으면 키워드만 |
 | 평가 | `scripts/eval/search-quality.ts`, `indexing-benchmark.ts`, `lib/metrics.ts`, `lib/chunking-variants.ts` | |
 
 ### 7.2 개선 이야기 (STAR 형식으로 말하기)

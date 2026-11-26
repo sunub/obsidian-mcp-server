@@ -22,7 +22,7 @@
 
 데드락 방지(Hard Timeout): 특정 모듈의 해제 로직이 버그로 인해 무한 대기(Pending) 상태에 빠지는 것을 방지하기 위해 Promise.race를 사용합니다. 지정된 시간(기본 3초) 내에 모든 작업이 완료되지 않으면 남아있는 작업을 무시하고 프로세스 종료 권한을 OS로 반환합니다.
 
-### 1.2. VectorDB (위치: src/utils/VectorDB.ts)
+### 1.2. VectorDB (위치: src/shared/indexing/VectorDB.ts)
 
 LanceDB와 같은 Memory-Mapped 기반 로컬 데이터베이스의 커넥션을 관리합니다.
 

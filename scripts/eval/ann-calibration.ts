@@ -78,8 +78,10 @@ const USED_N = 30;
 const MAX_SHORTFALL = 0.005; // 선택값에서 평가셋 겹침이 목표보다 이만큼까지만 낮아도 통과
 const MAX_SPREAD = 10; // 선택된 nprobes 가 중앙값 ±5 안(범위 10 이내)에 있어야 함
 
-const { localEmbedder } = await import("../../build/utils/Embedder.js");
-const { vectorDB } = await import("../../build/utils/VectorDB.js");
+const { localEmbedder } = await import(
+	"../../build/shared/local-ai/Embedder.js"
+);
+const { vectorDB } = await import("../../build/shared/indexing/VectorDB.js");
 
 type Row = {
 	id: string;

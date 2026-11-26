@@ -1,4 +1,4 @@
-import { debugLogger } from "./src/shared/utils/debugLogger.ts";
+import { debugLogger } from "./src/shared/logger/debugLogger.ts";
 
 console.log("Starting test...");
 debugLogger.writeInfo(`Test log entry at ${new Date().toISOString()}`);

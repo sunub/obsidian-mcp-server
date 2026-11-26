@@ -22,7 +22,7 @@ import alias는 `@/*`(src), `@shared/*`이다.
 
 한 기능의 코드, 타입, 파라미터 스키마, 보조 함수는 그 기능의 폴더 안에 둔다. `src/tools/<tool>/`이 기준 형태다. 기능을 지우려면 폴더 하나만 지우면 되는 상태를 유지한다. 테스트는 `tests/unit/`에 둔다.
 
-여러 기능이 쓰는 코드는 기능 폴더에 두지 않고 아래 `shared`로 옮긴다. `src/utils/`는 기능 분리 이전부터 있던 평면 구조다. 새 코드를 여기에 추가하지 않는다.
+여러 기능이 쓰는 코드는 기능 폴더에 두지 않고 아래 `shared`로 옮긴다. shared는 `src/shared/<역할>/` 폴더로 나눈다. 역할이 드러나지 않는 `utils` 같은 폴더를 만들지 않는다.
 
 ### import 금지 규칙은 엄격하게 지킨다
 
@@ -34,11 +34,11 @@ import alias는 `@/*`(src), `@shared/*`이다.
 
 다른 기능 폴더를 import하지 않는다. 그럴 필요가 생기면 필요한 코드를 `src/shared/`로 옮겨 양쪽이 `@shared/*`로 쓰게 한다. 기능 사이를 직접 잇는 편이 짧아 보여도, 그렇게 쌓인 의존이 순환과 삭제 불가능한 코드를 만든다.
 
-- `src/shared/`는 기능 폴더나 `src/utils/`를 import하지 않는다. 의존 방향은 기능, 그다음 shared 한 방향이다.
+- `src/shared/`는 기능 폴더를 import하지 않는다. 의존 방향은 기능, 그다음 shared 한 방향이다.
 - 옮길 때는 두 번째 사용처가 실제로 생긴 시점에 옮긴다. 쓸 일이 생길지 모르는 코드를 미리 shared에 넣지 않는다.
 - shared에 추가한 코드는 순환이 생기지 않았는지 `npm run build`로 확인한다.
 
-기존 코드의 `@/utils` import(`src/tools/*`에 20곳 이상)와 도구 간 직접 import는 이 규칙 이전에 만들어졌다. 건드리는 파일에서만 규칙에 맞게 고치고, 규칙 때문에 관련 없는 파일을 대규모로 바꾸지 않는다.
+기존 코드의 도구 간 직접 import는 이 규칙 이전에 만들어졌다. 건드리는 파일에서만 규칙에 맞게 고치고, 규칙 때문에 관련 없는 파일을 대규모로 바꾸지 않는다.
 
 <teaching_guidelines>
 <rule>The user is constantly learning new systems and domains. Whenever introducing a core term that the user is likely unfamiliar with, briefly explain it in 1-2 sentences and move on.</rule>

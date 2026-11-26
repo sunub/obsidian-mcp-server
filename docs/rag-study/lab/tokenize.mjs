@@ -1,5 +1,5 @@
 // 토큰화: 색인과 질의가 같은 규칙으로 잘려야 일치한다.
-// 이 프로젝트 src/utils/Indexer.ts의 규칙을 그대로 옮겼다.
+// 이 프로젝트 src/shared/indexing/Indexer.ts의 규칙을 그대로 옮겼다.
 
 /** 본문 색인 토큰: 소문자 영숫자와 완성형 한글의 연속 */
 export const INDEX_TOKEN = /[a-z0-9가-힣]+/g;

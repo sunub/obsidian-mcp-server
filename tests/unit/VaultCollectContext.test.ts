@@ -1,12 +1,12 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test, vi } from "vitest";
+import type { DocumentIndex } from "../../src/shared/markdown/types.js";
 import type { SearchStatus } from "../../src/shared/searchStatus.js";
+import type { EnrichedDocument } from "../../src/shared/vault-manager/types.js";
+import type { VaultManager } from "../../src/shared/vault-manager/VaultManager.js";
 import { obsidianContentQueryParamsZod } from "../../src/tools/vault/params.js";
 import { collectContextResponseDataSchema } from "../../src/tools/vault/types/collect_context.js";
 import { collectContext } from "../../src/tools/vault/utils.js";
-import type { DocumentIndex } from "../../src/utils/processor/types.js";
-import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
-import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
 
 function firstText(result: CallToolResult): string {
 	const first = result.content?.[0];

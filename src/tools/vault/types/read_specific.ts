@@ -1,5 +1,5 @@
+import { FrontMatterSchema } from "@shared/markdown/types.js";
 import { z } from "zod";
-import { FrontMatterSchema } from "@/utils/processor/types.js";
 import { responseTypeSchema } from "../params.js";
 
 const statsSchema = z

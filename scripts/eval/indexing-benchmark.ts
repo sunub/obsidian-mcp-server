@@ -48,16 +48,16 @@ process.env["VAULT_DIR_PATH"] = vaultPath;
 const runs = Number(args.runs);
 
 const { DirectoryWalker } = await import(
-	"../../build/utils/DirectoryWalker.js"
+	"../../build/shared/indexing/DirectoryWalker.js"
 );
-const { Indexer } = await import("../../build/utils/Indexer.js");
-const { Semaphore } = await import("../../build/utils/semaphore.js");
+const { Indexer } = await import("../../build/shared/indexing/Indexer.js");
+const { Semaphore } = await import("../../build/shared/async/semaphore.js");
 // --strip-prefix: nomic 계열 규칙인 "search_query: " / "search_document: " 접두사를 떼고 임베딩한다.
 // 현재 임베딩 모델(paraphrase-multilingual-MiniLM)은 이 접두사를 학습하지 않았으므로 효과를 비교하기 위한 실험 옵션이다.
 // 소스 코드를 바꾸지 않고, 같은 프로세스의 localEmbedder.embed만 감싼다.
 if (args["strip-prefix"]) {
 	const { localEmbedder: embedder } = await import(
-		"../../build/utils/Embedder.js"
+		"../../build/shared/local-ai/Embedder.js"
 	);
 	const rawEmbed = embedder.embed.bind(embedder);
 	embedder.embed = (text: string) =>
@@ -66,7 +66,7 @@ if (args["strip-prefix"]) {
 
 if (args["strip-context"]) {
 	const { localEmbedder: embedder } = await import(
-		"../../build/utils/Embedder.js"
+		"../../build/shared/local-ai/Embedder.js"
 	);
 	const rawEmbed = embedder.embed.bind(embedder);
 	embedder.embed = (text: string) =>
@@ -75,7 +75,7 @@ if (args["strip-context"]) {
 
 if (args["embed-model"] || args["embed-models-dir"] || args["embed-prefix"]) {
 	const { localEmbedder: overridden } = await import(
-		"../../build/utils/Embedder.js"
+		"../../build/shared/local-ai/Embedder.js"
 	);
 	const { applyEmbedderOverride } = await import("./lib/embedder-override.js");
 	applyEmbedderOverride(overridden, {
@@ -175,12 +175,16 @@ async function applyVariantChunker(spec: string) {
 	const { parseVariant, createVariantChunker } = await import(
 		"./lib/chunking-variants.js"
 	);
-	const { ragIndexer } = await import("../../build/utils/RAGIndexer.js");
-	const { parse } = await import("../../build/utils/processor/MatterParser.js");
-	const { stripEmbeddedData } = await import(
-		"../../build/utils/processor/stripEmbeddedData.js"
+	const { ragIndexer } = await import(
+		"../../build/shared/indexing/RAGIndexer.js"
 	);
-	const { localEmbedder } = await import("../../build/utils/Embedder.js");
+	const { parse } = await import("../../build/shared/markdown/MatterParser.js");
+	const { stripEmbeddedData } = await import(
+		"../../build/shared/markdown/stripEmbeddedData.js"
+	);
+	const { localEmbedder } = await import(
+		"../../build/shared/local-ai/Embedder.js"
+	);
 	const { AutoTokenizer } = await import("@huggingface/transformers");
 	const tokenizer = await AutoTokenizer.from_pretrained(
 		localEmbedder.modelName,
@@ -208,11 +212,11 @@ async function benchmarkRag() {
 	await rm(cacheDir, { recursive: true, force: true });
 
 	const { VaultManager } = await import(
-		"../../build/utils/VaultManger/VaultManager.js"
+		"../../build/shared/vault-manager/VaultManager.js"
 	);
-	const { vectorDB } = await import("../../build/utils/VectorDB.js");
+	const { vectorDB } = await import("../../build/shared/indexing/VectorDB.js");
 	const { localModelManager } = await import(
-		"../../build/utils/LocalModelManager.js"
+		"../../build/shared/local-ai/LocalModelManager.js"
 	);
 
 	if (args.chunker) {
@@ -287,7 +291,8 @@ const environment = {
 	memoryGB: Math.round(totalmem() / 1024 ** 3),
 	vault: relative(process.cwd(), vaultPath),
 	stripPrefix: Boolean(args["strip-prefix"]),
-	chunker: args.chunker ?? "worker (src/utils/worker/chunkingWorker.ts)",
+	chunker:
+		args.chunker ?? "worker (src/shared/indexing/worker/chunkingWorker.ts)",
 };
 
 const result: Record<string, unknown> = { environment };

@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import type { ServerLifecycle } from "../../src/utils/ServerLifecycle.js";
+import type { ServerLifecycle } from "../../src/shared/lifecycle/ServerLifecycle.js";
 
 type RawToolCallback = (...args: unknown[]) => unknown;
 type RegisterToolReceiver = {

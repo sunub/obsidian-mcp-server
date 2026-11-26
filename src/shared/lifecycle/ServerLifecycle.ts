@@ -1,6 +1,6 @@
-import { createAbortError, withTimeout } from "./abort.js";
+import { createAbortError, withTimeout } from "@shared/async/abort.js";
+import { localModelManager } from "@shared/local-ai/LocalModelManager.js";
 import { BackgroundTaskRegistry } from "./BackgroundTaskRegistry.js";
-import { localModelManager } from "./LocalModelManager.js";
 
 type CleanupTask = () => Promise<void> | void;
 type ToolCallModelManager = {

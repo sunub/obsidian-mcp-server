@@ -1,8 +1,8 @@
 import path from "node:path";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { parse as parseMatter } from "../processor/MatterParser.js";
-import { stripEmbeddedData } from "../processor/stripEmbeddedData.js";
-import type { HeadingEntry } from "../RAGIndexer.js";
+import { parse as parseMatter } from "@shared/markdown/MatterParser.js";
+import { stripEmbeddedData } from "@shared/markdown/stripEmbeddedData.js";
+import type { HeadingEntry } from "../types.js";
 import type { ChunkMetadata } from "../VectorDB.js";
 
 export interface ChunkingWorkerInput {

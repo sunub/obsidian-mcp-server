@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import { dirname, resolve } from "node:path";
 import * as util from "node:util";
+import { APP_DATA_DIR } from "@shared/paths/appData.js";
 import chalk from "chalk";
-import { APP_DATA_DIR } from "../../utils/constants.js";
 
 class DebugLogger {
 	private logStream: fs.WriteStream | undefined;

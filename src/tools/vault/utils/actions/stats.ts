@@ -1,5 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js";
+import type { VaultManager } from "@shared/vault-manager/VaultManager.js";
 
 export async function statsAllDocuments(
 	vaultManager: VaultManager,

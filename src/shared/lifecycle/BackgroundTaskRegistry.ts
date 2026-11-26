@@ -1,4 +1,8 @@
-import { createAbortError, isAbortError, withTimeout } from "./abort.js";
+import {
+	createAbortError,
+	isAbortError,
+	withTimeout,
+} from "@shared/async/abort.js";
 
 type BackgroundTask = {
 	controller: AbortController;

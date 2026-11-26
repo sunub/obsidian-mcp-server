@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { createToolError } from "@shared/mcp/createToolError.js";
 import type { SearchStatus } from "@shared/searchStatus.js";
-import { createToolError } from "@/utils/createToolError.js";
-import type { EnrichedDocument } from "../../../../utils/VaultManger/types.js";
+import type { EnrichedDocument } from "@shared/vault-manager/types.js";
 import type {
 	HybridSearchResult,
 	VaultManager,
-} from "../../../../utils/VaultManger/VaultManager.js";
+} from "@shared/vault-manager/VaultManager.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
 import {
 	type CollectContextDocument,

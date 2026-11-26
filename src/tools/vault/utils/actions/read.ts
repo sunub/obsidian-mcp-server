@@ -1,8 +1,8 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { createToolError } from "@/utils/createToolError.js";
-import { localModelManager } from "@/utils/LocalModelManager.js";
-import { localReranker } from "@/utils/LocalReranker.js";
-import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js";
+import { localModelManager } from "@shared/local-ai/LocalModelManager.js";
+import { localReranker } from "@shared/local-ai/LocalReranker.js";
+import { createToolError } from "@shared/mcp/createToolError.js";
+import type { VaultManager } from "@shared/vault-manager/VaultManager.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
 import {
 	ACTION_DEFAULT_MAX_OUTPUT_CHARS,

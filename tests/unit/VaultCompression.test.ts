@@ -1,6 +1,9 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test, vi } from "vitest";
 import { z } from "zod";
+import type { DocumentIndex } from "../../src/shared/markdown/types.js";
+import type { EnrichedDocument } from "../../src/shared/vault-manager/types.js";
+import type { VaultManager } from "../../src/shared/vault-manager/VaultManager.js";
 import {
 	READ_DEFAULT_BACKLINK_LIMIT,
 	SEARCH_DEFAULT_EXCERPT,
@@ -9,9 +12,6 @@ import {
 	readSpecificFile,
 	searchDocuments,
 } from "../../src/tools/vault/utils.js";
-import type { DocumentIndex } from "../../src/utils/processor/types.js";
-import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
-import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
 
 function firstText(result: CallToolResult): string {
 	const first = result.content?.[0];

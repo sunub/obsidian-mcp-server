@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { stripEmbeddedData } from "../../src/utils/processor/stripEmbeddedData";
+import { stripEmbeddedData } from "../../src/shared/markdown/stripEmbeddedData";
 
 const PAYLOAD = "iVBORw0KGgoAAAANSUhEUgAA".repeat(200);
 
