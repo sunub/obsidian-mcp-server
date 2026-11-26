@@ -126,7 +126,7 @@ Vault 문서 목록을 반환합니다.
 
 주요 응답 필드:
 - `action`, `scope`, `topic`, `matched_total`, `total_in_vault`
-- `documents`, `memory_packet`
+- `documents` (`rank`, `score`, `matched_snippets`, `excerpt` 포함), `search_status`
 - `batch` (`has_more`, `continuation_token` 포함)
 - `compression`
 

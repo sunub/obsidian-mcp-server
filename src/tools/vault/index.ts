@@ -42,8 +42,10 @@ export const description = `
 
   Requirements: The user's Obsidian Vault path must be correctly configured in an environment variable or a similar setting. For searches, use the exact filename or include core keywords for content-based queries.
 
-  IMPORTANT INSTRUCTION FOR AI:
-  If the tool response includes a 'diagnostic_message' (usually found at the beginning of the text or in a <system_directive> tag), you MUST relay this information to the user exactly once. It contains essential advice on how to improve search quality by running a local setup script via 'npx @sunub/obsidian-mcp-server setup'. Do not ignore it.
+  Search results include search_status. mode "keyword" means semantic search did
+  not contribute, so results may miss related notes; reason says why. When
+  search quality matters to the user, you can mention setup_command. indexing is
+  present while the semantic index is still being built.
 `;
 
 export const register = (mcpServer: McpServer) => {
@@ -64,7 +66,6 @@ export const execute = async (
 ): Promise<CallToolResult> => {
 	const vaultDirPath = state.vaultPath;
 
-	// Vault 경로 검증
 	if (!vaultDirPath) {
 		return createToolError(
 			"VAULT_DIR_PATH environment variable is not set",

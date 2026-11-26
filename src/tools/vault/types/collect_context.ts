@@ -1,8 +1,8 @@
+import { searchStatusSchema } from "@shared/searchStatus.js";
 import { z } from "zod";
 import { compressionModeSchema, responseTypeSchema } from "../params.js";
 
 export const collectContextScopeSchema = z.enum(["topic", "all"]);
-export const collectContextRelevanceSchema = z.enum(["high", "medium", "low"]);
 
 export const collectContextTokenV1Schema = z.object({
 	v: z.literal(1),
@@ -19,10 +19,17 @@ export const collectContextDocumentSchema = z.object({
 	title: z.string(),
 	tags: z.array(z.string()),
 	doc_hash: z.string(),
-	summary: z.string(),
+	rank: z
+		.number()
+		.int()
+		.positive()
+		.nullable()
+		.describe("Position in the search ranking, null if the search missed it"),
+	score: z.number().nullable().describe("Score computed by the search"),
+	matched_snippets: z
+		.array(z.string())
+		.describe("Note passages the search matched"),
 	excerpt: z.string(),
-	evidence_snippets: z.array(z.string()),
-	relevance: collectContextRelevanceSchema,
 	stats: z.object({
 		contentLength: z.number().int().nonnegative(),
 		wordCount: z.number().int().nonnegative(),
@@ -32,22 +39,6 @@ export const collectContextDocumentSchema = z.object({
 	truncated: z.boolean(),
 });
 
-export const collectContextMemoryPacketSchema = z.object({
-	topicSummary: z.string(),
-	keyFacts: z.array(z.string()),
-	experienceBullets: z.array(z.string()),
-	sourceRefs: z.array(
-		z.object({
-			filePath: z.string(),
-			title: z.string(),
-			relevance: collectContextRelevanceSchema,
-			evidenceSnippets: z.array(z.string()),
-		}),
-	),
-	openQuestions: z.array(z.string()),
-	confidence: z.number().min(0).max(1),
-});
-
 export const collectContextPayloadSchema = z.object({
 	action: z.literal("collect_context"),
 	scope: collectContextScopeSchema,
@@ -55,7 +46,6 @@ export const collectContextPayloadSchema = z.object({
 	matched_total: z.number().int().nonnegative(),
 	total_in_vault: z.number().int().nonnegative(),
 	documents: z.array(collectContextDocumentSchema),
-	memory_packet: collectContextMemoryPacketSchema,
 	cache: z
 		.object({
 			key: z.string(),
@@ -89,6 +79,7 @@ export const collectContextCompressionSchema = z.object({
 export const collectContextResponseDataSchema =
 	collectContextPayloadSchema.extend({
 		compression: collectContextCompressionSchema,
+		search_status: searchStatusSchema.optional(),
 	});
 
 export const collectContextResponseSchema = z.object({
@@ -97,15 +88,9 @@ export const collectContextResponseSchema = z.object({
 });
 
 export type CollectContextScope = z.infer<typeof collectContextScopeSchema>;
-export type CollectContextRelevance = z.infer<
-	typeof collectContextRelevanceSchema
->;
 export type CollectContextTokenV1 = z.infer<typeof collectContextTokenV1Schema>;
 export type CollectContextDocument = z.infer<
 	typeof collectContextDocumentSchema
->;
-export type CollectContextMemoryPacket = z.infer<
-	typeof collectContextMemoryPacketSchema
 >;
 export type CollectContextPayload = z.infer<typeof collectContextPayloadSchema>;
 export type CollectContextResponseData = z.infer<

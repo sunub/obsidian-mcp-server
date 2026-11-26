@@ -1,5 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test, vi } from "vitest";
+import type { SearchStatus } from "../../src/shared/searchStatus.js";
 import { obsidianContentQueryParamsZod } from "../../src/tools/vault/params.js";
 import { collectContextResponseDataSchema } from "../../src/tools/vault/types/collect_context.js";
 import { collectContext } from "../../src/tools/vault/utils.js";
@@ -15,7 +16,10 @@ function firstText(result: CallToolResult): string {
 	return first.text;
 }
 
-function createMockVaultManager(variant = "v1", diagnosticMessage?: string) {
+function createMockVaultManager(
+	variant = "v1",
+	searchStatus: SearchStatus = { mode: "hybrid" },
+) {
 	const docs: DocumentIndex[] = [
 		{
 			filePath: "/vault/nextjs-project.md",
@@ -71,20 +75,19 @@ function createMockVaultManager(variant = "v1", diagnosticMessage?: string) {
 	const manager = {
 		initialize: vi.fn(async () => {}),
 		getAllDocuments: vi.fn(async () => docs),
-		// 실제 경로처럼 관련도 순서로 반환한다. 경로 사전순과 다르게 project가 먼저 온다.
 		hybridSearch: vi.fn(async (query: string, limit = 5) => ({
 			results: docs
 				.filter((doc) =>
 					doc.frontmatter.title?.toLowerCase().includes(query.toLowerCase()),
 				)
 				.slice(0, limit)
-				.map((document) => ({
-					score: 1,
-					finalScore: 1,
+				.map((document, index) => ({
+					score: 1 / (index + 1),
+					finalScore: 1 / (index + 1),
 					document,
-					matchedChunks: [],
+					matchedChunks: [{ content: `matched in ${document.filePath}` }],
 				})),
-			diagnostic_message: diagnosticMessage,
+			search_status: searchStatus,
 		})),
 		getDocumentInfo: vi.fn(
 			async (
@@ -158,24 +161,79 @@ describe("Vault collect_context orchestration", () => {
 		expect(payload.matched_total).toBe(2);
 	});
 
-	test("reports search diagnostics without breaking the JSON payload", async () => {
-		const { vaultManager } = createMockVaultManager(
-			"diagnostic-v1",
-			"keyword fallback",
-		);
-
-		const result = await collectContext(vaultManager, {
+	test("reports the current search status inside the JSON payload", async () => {
+		const request = {
 			action: "collect_context",
 			topic: "next.js",
 			scope: "topic",
 			maxDocs: 1,
 			maxCharsPerDoc: 300,
-		});
+		} as const;
+		const degraded: SearchStatus = {
+			mode: "keyword",
+			reason: "semantic_unavailable",
+		};
 
-		expect(() => JSON.parse(firstText(result))).not.toThrow();
-		expect(result.content?.[1]).toEqual({
-			type: "text",
-			text: "<system_directive>\nkeyword fallback\n</system_directive>",
+		const first = await collectContext(
+			createMockVaultManager("status-v1", degraded).vaultManager,
+			request,
+		);
+		const second = await collectContext(
+			createMockVaultManager("status-v1").vaultManager,
+			request,
+		);
+
+		expect(first.content).toHaveLength(1);
+		expect(JSON.parse(firstText(first)).search_status).toEqual(degraded);
+		expect(JSON.parse(firstText(second)).search_status).toEqual({
+			mode: "hybrid",
+		});
+	});
+
+	test("returns what the search found without judging it", async () => {
+		const { vaultManager } = createMockVaultManager("facts-v1");
+
+		const result = await collectContext(vaultManager, {
+			action: "collect_context",
+			topic: "next.js",
+			scope: "topic",
+			maxDocs: 2,
+			maxCharsPerDoc: 300,
+			compressionMode: "none",
+		});
+		const raw = JSON.parse(firstText(result));
+
+		expect(raw).not.toHaveProperty("memory_packet");
+		for (const field of ["summary", "relevance", "evidence_snippets"]) {
+			expect(raw.documents[0]).not.toHaveProperty(field);
+		}
+		expect(raw.documents[0]).toMatchObject({
+			rank: 1,
+			score: 1,
+			matched_snippets: ["matched in /vault/nextjs-project.md"],
+		});
+		expect(raw.documents[1]).toMatchObject({ rank: 2, score: 0.5 });
+	});
+
+	test("marks documents the search did not match for all scope", async () => {
+		const { vaultManager } = createMockVaultManager("unmatched-v1");
+
+		const result = await collectContext(vaultManager, {
+			action: "collect_context",
+			topic: "project",
+			scope: "all",
+			maxDocs: 2,
+			maxCharsPerDoc: 300,
+			compressionMode: "none",
+		});
+		const payload = collectContextResponseDataSchema.parse(
+			JSON.parse(firstText(result)),
+		);
+
+		expect(payload.documents[1]).toMatchObject({
+			rank: null,
+			score: null,
+			matched_snippets: [],
 		});
 	});
 
@@ -199,7 +257,6 @@ describe("Vault collect_context orchestration", () => {
 		expect(payload.documents).toHaveLength(1);
 		expect(payload.batch.has_more).toBe(true);
 		expect(typeof payload.batch.continuation_token).toBe("string");
-		expect(payload.memory_packet.keyFacts.length).toBeGreaterThan(0);
 		expect(payload.compression.estimated_tokens).toBeGreaterThan(0);
 		expect(payload.cache?.hit).toBe(false);
 	});
@@ -344,7 +401,7 @@ describe("Vault collect_context orchestration", () => {
 		);
 	});
 
-	test("returns empty packet and caches no-match collect_context results", async () => {
+	test("returns no documents and caches no-match collect_context results", async () => {
 		const { vaultManager } = createMockVaultManager("no-match-v1");
 
 		const first = await collectContext(vaultManager, {
@@ -374,9 +431,6 @@ describe("Vault collect_context orchestration", () => {
 		expect(firstPayload.matched_total).toBe(0);
 		expect(firstPayload.batch.has_more).toBe(false);
 		expect(firstPayload.batch.continuation_token).toBeNull();
-		expect(firstPayload.memory_packet.topicSummary).toContain(
-			'No evidence was collected for topic "rust".',
-		);
 		expect(firstPayload.cache?.hit).toBe(false);
 		expect(secondPayload.cache?.hit).toBe(true);
 	});
@@ -402,7 +456,7 @@ describe("Vault collect_context orchestration", () => {
 		expect(payload.documents.length).toBeLessThanOrEqual(1);
 		expect(payload.batch.has_more).toBe(true);
 		expect(typeof payload.batch.continuation_token).toBe("string");
-		expect(payload.documents[0].backlinks_count).toBeLessThanOrEqual(3);
+		expect(payload.documents[0].backlinks_count).toBeLessThan(8);
 		expect(payload.documents[0].truncated).toBe(true);
 	});
 });

@@ -675,12 +675,10 @@ if (!args["skip-parity"] && perConfig["E_production"]) {
 		await localModelManager.endToolCall();
 		const q = queries[i % queries.length] as Query;
 		const t0 = performance.now();
-		const { diagnostic_message } = await vm.hybridSearch(q.query, LIMIT);
+		const { search_status } = await vm.hybridSearch(q.query, LIMIT);
 		cold.push({
 			ms: performance.now() - t0,
-			semanticFallback: (diagnostic_message ?? "").includes(
-				"키워드 중심으로 반환",
-			),
+			semanticFallback: search_status.reason === "semantic_unavailable",
 		});
 		for (let w = 0; w < 60 && !localModelManager.isEmbedderReady; w++) {
 			await new Promise((r) => setTimeout(r, 500));

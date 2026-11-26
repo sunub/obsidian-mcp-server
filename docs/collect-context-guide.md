@@ -10,8 +10,8 @@
 
 `collect_context`는 다음 목적을 가집니다.
 
-- 여러 문서를 배치 단위로 수집해 요약 구조로 축약
-- 증거 조각과 핵심 문장을 뽑아 AI가 바로 사용할 수 있는 컨텍스트 구성
+- 여러 문서를 배치 단위로 수집해 발췌 형태로 축약
+- 검색이 일치시킨 본문 조각과 발췌를 반환. 핵심 선정과 요약은 AI가 수행
 - 출력 크기 제약을 넘어갈 때 `continuationToken`으로 이어서 수집
 
 `search`/`read`/`list_all`이 단발 조회라면, `collect_context`는 “문맥 축적” 액션입니다.
@@ -125,7 +125,7 @@
 }
 ```
 
-4) 마지막 배치까지 받은 뒤, 각 응답의 `memory_packet`을 컨텍스트로 주입
+4) 마지막 배치까지 받은 뒤, 각 응답의 `documents`를 읽고 요약
 
 ---
 
@@ -138,17 +138,15 @@
 - `scope=topic`인데 `topic`이 비어 있으면 에러
 
 2. 후보군 구성
-- `scope=all`이면 전체 문서 인덱스 조회
-- `scope=topic`이면 키워드 검색 결과를 후보군으로 사용
-- 후보 정렬 기준: `filePath` 오름차순 (재현성/일관성)
+- `topic`이 있으면 `search`와 같은 검색을 실행하고 그 순위를 유지
+- `scope=all`이면 검색에 걸리지 않은 나머지 문서를 `filePath` 오름차순으로 뒤에 붙임
 
 3. 후보 순회 및 문서 정규화
 - `startCursor` 위치부터 `maxDocs`까지 순회
 - 각 문서에 대해:
   - 통계 추출, backlinks, 해시, content preview
-  - frontmatter 제거 후 `summary`/`excerpt` 생성
-  - 증거 스니펫 추출
-  - topic 연관도 추정(`high|medium|low`)
+  - frontmatter 제거 후 `excerpt` 생성
+  - 검색 결과의 `rank`, `score`, `matched_snippets` 연결
 
 4. 배치 메타 계산
 - `matched_total`, `total_in_vault`, `start_cursor`, `consumed_candidates`, `has_more` 계산
@@ -160,25 +158,23 @@
   - 문서 내 텍스트 길이 축소
   - 마지막으로 문서 수 감소(필요 시)
 
-6. 메모리 패킷 구축
-- `memory_packet` 생성:
-  - 핵심 사실, 경험 불릿, 소스 레퍼런스, 오픈 질문, 신뢰도
+6. 최종 반환
+- `compression`, `search_status` 메타와 함께 JSON 반환
 - 결과는 응답으로만 반환하며 Vault에 노트를 쓰지 않음
-
-7. 최종 반환
-- `compression` 메타와 함께 JSON 반환
 
 ---
 
 ## 7) 응답 필드 해석
 
-- `documents[]`: 현재 배치의 요약된 문서 목록
+- `documents[]`: 현재 배치의 문서 목록
+- `documents[].rank`, `score`: 검색 순위와 점수. 검색에 걸리지 않으면 `null`
+- `documents[].matched_snippets`: 검색이 일치시킨 본문 조각
+- `search_status`: 검색 실행 방식. `topic` 없이 호출하면 없음
 - `batch.start_cursor`: 현재 배치 시작 위치
 - `batch.processed_docs`: 현재 배치에서 반환된 문서 수
 - `batch.consumed_candidates`: 후보군 중 소비한 개수
 - `batch.has_more`: 다음 배치 존재 여부
 - `batch.continuation_token`: 이어서 호출할 토큰 (`has_more=true`일 때 유효)
-- `memory_packet`: 모델이 바로 참고할 핵심 요약
 - `cache.hit`: 동일한 문서셋/파라미터 반복 요청 시 캐시 재사용 여부
 - `compression.truncated`: 출력이 줄였는지 플래그
 - `compression.estimated_tokens`: 토큰 비용 추정치

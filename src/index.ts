@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import chalk from "chalk";
-import { getOptions, setLocalLLMEnvSetting } from "./config.js";
+import {
+	getOptions,
+	type ObsidianMcpConfig,
+	setLocalLLMEnvSetting,
+} from "./config.js";
 import createMcpServer from "./server.js";
 import { ensureAppDataDirs } from "./utils/constants.js";
 import { localEmbedder } from "./utils/Embedder.js";
@@ -10,30 +14,11 @@ import { localReranker } from "./utils/LocalReranker.js";
 import { ServerLifecycle } from "./utils/ServerLifecycle.js";
 import { vaultWatcher } from "./utils/VaultWatcher.js";
 
-async function main() {
-	ensureAppDataDirs();
-	if (process.argv.slice(2).some((arg) => arg === "setup")) {
-		const { setup } = await import("./setup.js");
-		const success = await setup({ force: true });
-		process.exit(success ? 0 : 1);
-	}
-
-	const options = getOptions();
-	if (!options) {
-		console.error(
-			chalk.red("올바르지 않은 설정으로 인해 서버를 시작할 수 없습니다."),
-		);
-		process.exit(1);
-	}
-
-	setLocalLLMEnvSetting();
-
-	// 로컬 모델 상태 확인 및 출력
-	const [embedderReady, rerankerReady] = await Promise.all([
-		localEmbedder.checkModelPresence(),
-		localReranker.checkModelPresence(),
-	]);
-
+function alertEmbedderState(
+	options: ObsidianMcpConfig,
+	embedderReady: boolean,
+	rerankerReady: boolean,
+) {
 	console.error(chalk.cyan.bold("\n🚀 Obsidian MCP Server Startup"));
 	console.error(chalk.dim("----------------------------------"));
 	console.error(
@@ -57,6 +42,32 @@ async function main() {
 			),
 		);
 	}
+}
+
+async function main() {
+	ensureAppDataDirs();
+	if (process.argv.slice(2).some((arg) => arg === "setup")) {
+		const { setup } = await import("./setup.js");
+		const success = await setup({ force: true });
+		process.exit(success ? 0 : 1);
+	}
+
+	const options = getOptions();
+	if (!options) {
+		console.error(
+			chalk.red("올바르지 않은 설정으로 인해 서버를 시작할 수 없습니다."),
+		);
+		process.exit(1);
+	}
+
+	setLocalLLMEnvSetting();
+
+	const [embedderReady, rerankerReady] = await Promise.all([
+		localEmbedder.checkModelPresence(),
+		localReranker.checkModelPresence(),
+	]);
+
+	alertEmbedderState(options, embedderReady, rerankerReady);
 
 	const lifecycle = new ServerLifecycle();
 	const server = createMcpServer(lifecycle);

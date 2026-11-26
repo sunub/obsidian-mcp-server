@@ -22,7 +22,7 @@ description: Use when the user asks to tidy or clean up an Obsidian vault - Vaul
    - 같은 폴더의 기존 파일명과 겹치지 않게
    - 날짜만으로 짓지 않는다
 
-4. **승인한 것만 실행한다.** 사용자가 승인한 id와 제목만 `plan_apply`에 넘긴다. 제목은 `renames`(`{ path, title }`)로 넘긴다. 승인하지 않은 항목은 절대 넘기지 않는다.
+4. **승인한 것만 실행한다.** 사용자가 승인한 id와 제목만 `plan_apply`에 넘긴다. 제목은 `renames`(`{ path, title }`)로 넘긴다. 승인하지 않은 항목은 절대 넘기지 않는다. 서버가 확인 대화창으로 한 번 더 묻는다. 결과에 `cancelled`가 있으면 아무것도 바뀌지 않은 것이다. 사용자가 다시 요청하기 전에는 재시도하지 않는다.
 
 5. **결과를 알린다.** `rejected`가 있으면 사유와 함께 보여준다. 마지막에 `runId`를 알리고 "되돌리려면 말씀하세요"라고 말한다.
 

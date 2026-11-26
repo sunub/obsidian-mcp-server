@@ -100,7 +100,7 @@
 
 ### 2.5 `collect_context`
 
-목적: 주제/전체 문맥을 배치 단위로 모아 Agent가 사용할 수 있는 `memory_packet` 형태로 선별/압축.
+목적: 주제로 검색한 문서의 순위, 점수, 일치 조각, 발췌를 배치 단위로 반환. 해석과 요약은 Agent가 한다.
 
 요청 예시:
 
@@ -156,7 +156,7 @@
 
 ### 패턴 B: 컨텍스트 정리
 1) `vault/collect_context`
-2) 이후 대화 context에 `memory_packet` 우선 투입
+2) 반환된 `documents`를 읽고 Agent가 필요한 내용을 정리
 
 ### 패턴 C: 메타데이터 자동화
 1) `vault/read`로 문서를 읽고 속성을 작성
