@@ -41,6 +41,23 @@ describe("VaultManager keyword fallback", () => {
 		const result = await manager.hybridSearch("serverless", 10);
 
 		expect(result.results).toHaveLength(5);
-		expect(result.diagnostic_message).toContain("semantic 모델");
+		expect(result.search_status.reason).toBe("semantic_unavailable");
+	});
+
+	test("로컬 모델이 없으면 검색할 때마다 같은 상태를 알려준다", async () => {
+		tempDir = await writeVault();
+		vi.spyOn(localEmbedder, "checkModelPresence").mockResolvedValue(false);
+		vi.spyOn(localReranker, "checkModelPresence").mockResolvedValue(false);
+
+		const manager = new VaultManager(tempDir);
+		const first = await manager.hybridSearch("serverless", 10);
+		const second = await manager.hybridSearch("serverless", 10);
+
+		expect(first.search_status).toEqual({
+			mode: "keyword",
+			reason: "models_missing",
+			setup_command: "npx @sunub/obsidian-mcp-server setup",
+		});
+		expect(second.search_status).toEqual(first.search_status);
 	});
 });

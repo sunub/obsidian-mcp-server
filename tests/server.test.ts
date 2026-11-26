@@ -47,15 +47,7 @@ async function parseAndValidateResponse<T extends ZodSchema>(
 ): Promise<z.infer<T>> {
 	expect(response.isError).toBe(false);
 	const responseContent = response.content as { type: string; text: string }[];
-	let text = responseContent[0].text;
-
-	if (text.includes("<system_directive>")) {
-		text = text
-			.replace(/<system_directive>[\s\S]*?<\/system_directive>/, "")
-			.trim();
-	}
-
-	const responseText = JSON.parse(text);
+	const responseText = JSON.parse(responseContent[0].text);
 	const parsed = schema.safeParse(responseText);
 
 	if (!parsed.success) {
@@ -194,7 +186,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 			);
 
 			expect(data.documents.length).toBeGreaterThan(0);
-			expect(data.memory_packet.keyFacts.length).toBeGreaterThan(0);
+			expect(data.documents[0]?.rank).toBeNull();
 		});
 
 		test("vault: search - 키워드 기반 검색이 작동한다", async () => {

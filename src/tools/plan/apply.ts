@@ -9,6 +9,7 @@ import {
 	applyPlan,
 	type VaultToolDeps,
 } from "@shared/vault-ops/index.js";
+import { approvalMessage, type Confirmer, elicitConfirmer } from "./confirm.js";
 import { type PlanApplyParams, planApplyParamsSchema } from "./params.js";
 import { errorText, resolveVaultRoot } from "./vaultRoot.js";
 
@@ -30,6 +31,10 @@ export const description = `
 
   renames: titles the user accepted for needsTitle notes, as { path, title }.
 
+  When the client supports it, the user is asked to confirm the changes before
+  anything runs. A result with cancelled: true means nothing changed: do not
+  retry unless the user asks.
+
   The result lists applied and rejected op ids (with reasons). Use its runId
   with plan_undo to revert the whole run.
 `;
@@ -45,6 +50,7 @@ const EMPTY_RESULT: ApplyResult = {
 export const executeApply = async (
 	params: PlanApplyParams,
 	deps: VaultToolDeps,
+	confirm?: Confirmer,
 ): Promise<CallToolResult> => {
 	const resolved = await resolveVaultRoot(deps);
 	if ("error" in resolved) return resolved.error;
@@ -55,6 +61,14 @@ export const executeApply = async (
 	}
 
 	try {
+		const message = confirm && (await approvalMessage(resolved.root, params));
+		if (message && (await confirm(message)) === "declined") {
+			return toolJson({
+				...EMPTY_RESULT,
+				cancelled: true,
+				reason: "사용자가 확인하지 않아 아무것도 바꾸지 않았습니다.",
+			});
+		}
 		const result = await applyPlan(resolved.root, {
 			planId: params.planId,
 			approvedOpIds: params.approvedOpIds,
@@ -67,6 +81,7 @@ export const executeApply = async (
 };
 
 export const registerApply = (server: McpServer, deps: VaultToolDeps) => {
+	const confirm = elicitConfirmer(() => server.server);
 	server.registerTool(
 		name,
 		{
@@ -75,6 +90,6 @@ export const registerApply = (server: McpServer, deps: VaultToolDeps) => {
 			inputSchema: planApplyParamsSchema.shape,
 			annotations,
 		},
-		(params) => executeApply(params, deps),
+		(params) => executeApply(params, deps, confirm),
 	);
 };

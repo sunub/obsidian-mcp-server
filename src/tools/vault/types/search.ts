@@ -1,3 +1,4 @@
+import { searchStatusSchema } from "@shared/searchStatus.js";
 import { z } from "zod";
 import { FrontMatterSchema } from "@/utils/processor/types.js";
 
@@ -8,19 +9,16 @@ const DocumentStatsSchema = z.object({
 	wordCount: z.number(),
 });
 
-// Schema for content when includeContent is true
 const FullContentSchema = z.object({
 	full: z.string(),
 	excerpt: z.string(),
 });
 
-// Schema for content when includeContent is false
 const PreviewContentSchema = z.object({
 	preview: z.string(),
 	note: z.string(),
 });
 
-// Schema for a single document
 export const DocumentSchema = z.object({
 	filename: z.string(),
 	fullPath: z.string(),
@@ -29,7 +27,6 @@ export const DocumentSchema = z.object({
 	content: z.union([FullContentSchema, PreviewContentSchema]),
 });
 
-// Schema for the main successful search result
 export const SearchSuccessSchema = z
 	.object({
 		query: z
@@ -38,6 +35,7 @@ export const SearchSuccessSchema = z
 				"The search query used for vector DB and inverted index search",
 			),
 		found: z.number().describe("The number of matching documents found"),
+		search_status: searchStatusSchema,
 		total_in_vault: z
 			.number()
 			.describe("The total number of documents in the vault"),
@@ -49,7 +47,6 @@ export const SearchSuccessSchema = z
 		"Schema for successful search results. The search process first attempts a semantic vector DB lookup, and falls back to/merges with inverted index search if needed.",
 	);
 
-// Schema for when no documents are found
 export const SearchNotFoundSchema = z
 	.object({
 		query: z.string().describe("The search query"),
@@ -61,20 +58,18 @@ export const SearchNotFoundSchema = z
 		"Schema for search result when no documents are found. Indicates that both vector DB and inverted index searches returned no results.",
 	);
 
-// Schema for the quiet mode response
 export const SearchQuietSchema = z.object({
 	found: z.number(),
+	search_status: searchStatusSchema,
 	filenames: z.array(z.string()),
 });
 
-// Schema for an error response
 export const SearchErrorSchema = z.object({
 	error: z.string(),
 	action: z.string(),
 	parameters: z.any(),
 });
 
-// Union schema for all possible search results
 export const SearchResultSchema = z
 	.union([
 		SearchSuccessSchema,
@@ -86,7 +81,6 @@ export const SearchResultSchema = z
 		"Search result schema. The search process prioritizes vector DB semantic search, falling back to/complementing with the inverted index search when no exact match is found or key details are missing.",
 	);
 
-// Exporting TypeScript types inferred from schemas
 export type DocumentMetadata = z.infer<typeof DocumentMetadataSchema>;
 export type DocumentStats = z.infer<typeof DocumentStatsSchema>;
 export type FullContent = z.infer<typeof FullContentSchema>;

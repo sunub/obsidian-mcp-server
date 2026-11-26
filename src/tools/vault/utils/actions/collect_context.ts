@@ -1,17 +1,18 @@
 import { createHash } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { SearchStatus } from "@shared/searchStatus.js";
 import { createToolError } from "@/utils/createToolError.js";
 import type { EnrichedDocument } from "../../../../utils/VaultManger/types.js";
-import type { VaultManager } from "../../../../utils/VaultManger/VaultManager.js";
+import type {
+	HybridSearchResult,
+	VaultManager,
+} from "../../../../utils/VaultManger/VaultManager.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
 import {
 	type CollectContextDocument,
-	type CollectContextMemoryPacket,
 	type CollectContextPayload,
-	type CollectContextRelevance,
 	type CollectContextScope,
 	type CollectContextTokenV1,
-	collectContextMemoryPacketSchema,
 	collectContextPayloadSchema,
 	collectContextResponseDataSchema,
 	collectContextTokenV1Schema,
@@ -28,11 +29,11 @@ import {
 } from "../shared.js";
 
 const COLLECT_CONTEXT_CACHE_MAX_ENTRIES = 200;
-// 이어 호출 사이에 순위가 유지되도록 후보 수를 고정한다.
 const COLLECT_CONTEXT_CANDIDATE_LIMIT = 100;
 const COLLECT_CONTEXT_MIN_EXCERPT_CHARS = 220;
-const COLLECT_CONTEXT_MIN_SUMMARY_CHARS = 120;
-const COLLECT_CONTEXT_MIN_EVIDENCE_CHARS = 80;
+const COLLECT_CONTEXT_MIN_SNIPPET_CHARS = 80;
+const COLLECT_CONTEXT_MAX_SNIPPETS = 2;
+const COLLECT_CONTEXT_SNIPPET_CHARS = 220;
 
 type CollectContextCacheEntry = {
 	key: string;
@@ -42,53 +43,39 @@ type CollectContextCacheEntry = {
 
 const collectContextCache = new Map<string, CollectContextCacheEntry>();
 
-function pickEvidenceSnippets(content: string, maxSnippets: number): string[] {
-	const lines = stripFrontmatterBlock(content)
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => line.length >= 24);
+type SearchEvidence = Pick<
+	CollectContextDocument,
+	"rank" | "score" | "matched_snippets"
+>;
 
-	const prioritized = [
-		...lines.filter((line) => /^([-*]|\d+[.)])\s+/.test(line)),
-		...lines.filter((line) => /^#{1,6}\s+/.test(line)),
-		...lines.filter(
-			(line) => !/^([-*]|\d+[.)])\s+/.test(line) && !/^#{1,6}\s+/.test(line),
-		),
-	];
+const NOT_MATCHED: SearchEvidence = {
+	rank: null,
+	score: null,
+	matched_snippets: [],
+};
 
-	const unique = [...new Set(prioritized)].map((line) =>
-		normalizeWhitespace(line.replace(/^#{1,6}\s+/, "").replace(/^[-*]\s+/, "")),
-	);
-
-	return unique
-		.slice(0, maxSnippets)
-		.map((line) => trimWithEllipsis(line, 220));
-}
-
-function inferCollectContextRelevance(
-	doc: Pick<CollectContextDocument, "title" | "tags" | "excerpt">,
-	topic: string | null,
-): CollectContextRelevance {
-	if (!topic) {
-		return "medium";
-	}
-	const normalizedTopic = topic.toLowerCase();
-	if (
-		doc.title.toLowerCase().includes(normalizedTopic) ||
-		doc.tags.some((tag) => tag.toLowerCase().includes(normalizedTopic))
-	) {
-		return "high";
-	}
-	if (doc.excerpt.toLowerCase().includes(normalizedTopic)) {
-		return "medium";
-	}
-	return "low";
+function toSearchEvidence(
+	result: HybridSearchResult,
+	index: number,
+): SearchEvidence {
+	return {
+		rank: index + 1,
+		score: result.finalScore,
+		matched_snippets: result.matchedChunks
+			.slice(0, COLLECT_CONTEXT_MAX_SNIPPETS)
+			.map((chunk) =>
+				trimWithEllipsis(
+					normalizeWhitespace(chunk.content),
+					COLLECT_CONTEXT_SNIPPET_CHARS,
+				),
+			),
+	};
 }
 
 function buildCollectContextDocument(
 	doc: EnrichedDocument,
 	maxCharsPerDoc: number,
-	topic: string | null,
+	evidence: SearchEvidence,
 ): CollectContextDocument {
 	const filename = doc.filePath.split("/").pop() || doc.filePath;
 	const title = doc.frontmatter.title || filename.replace(/\.mdx?$/i, "");
@@ -102,11 +89,6 @@ function buildCollectContextDocument(
 		normalizeWhitespace(sourceContent),
 		maxCharsPerDoc,
 	);
-	const evidenceSnippets = pickEvidenceSnippets(sourceContent, 2);
-	const summary =
-		evidenceSnippets.join(" ").trim() ||
-		trimWithEllipsis(excerpt, 220) ||
-		title;
 	const sourceContentLength = doc.stats?.contentLength ?? sourceContent.length;
 	const stats = {
 		contentLength: sourceContentLength,
@@ -117,107 +99,18 @@ function buildCollectContextDocument(
 		doc.contentHash ??
 		createHash("sha256").update(sourceContent, "utf8").digest("hex");
 
-	const relevance = inferCollectContextRelevance(
-		{
-			title,
-			tags,
-			excerpt,
-		},
-		topic,
-	);
-
 	return {
 		filename,
 		fullPath: doc.filePath,
 		title,
 		tags,
 		doc_hash: docHash,
-		summary,
+		...evidence,
 		excerpt,
-		evidence_snippets: evidenceSnippets,
-		relevance,
 		stats,
 		backlinks_count: doc.backlinks?.length ?? 0,
 		truncated: sourceContentLength > excerpt.length,
 	};
-}
-
-function buildCollectContextMemoryPacket(
-	topic: string | null,
-	documents: CollectContextDocument[],
-): CollectContextMemoryPacket {
-	const keyFacts = documents
-		.flatMap((doc) =>
-			doc.evidence_snippets.map((snippet) => `${doc.title}: ${snippet}`),
-		)
-		.slice(0, 10);
-
-	const experienceBullets = documents
-		.map((doc) => `${doc.title}: ${trimWithEllipsis(doc.summary, 180)}`)
-		.slice(0, 8);
-
-	const sourceRefs = documents.slice(0, 10).map((doc) => ({
-		filePath: doc.fullPath,
-		title: doc.title,
-		relevance: doc.relevance,
-		evidenceSnippets: doc.evidence_snippets.slice(0, 2),
-	}));
-
-	const topicSummary =
-		documents.length === 0
-			? topic
-				? `No evidence was collected for topic "${topic}".`
-				: "No documents were collected."
-			: trimWithEllipsis(
-					documents
-						.slice(0, 3)
-						.map((doc) => `${doc.title}: ${doc.summary}`)
-						.join(" "),
-					550,
-				);
-
-	const openQuestions: string[] = [];
-	if (documents.length === 0) {
-		openQuestions.push(
-			topic
-				? `Should we widen the query beyond "${topic}"?`
-				: "Should we provide a narrower topic for better precision?",
-		);
-	}
-	if (documents.some((doc) => doc.truncated)) {
-		openQuestions.push(
-			"Some excerpts were truncated. Do we need full reads for high-priority notes?",
-		);
-	}
-	if (documents.length > 0 && documents.length < 3) {
-		openQuestions.push(
-			"Do we need additional sources before using this as final memory context?",
-		);
-	}
-
-	const truncationRatio =
-		documents.length === 0
-			? 1
-			: documents.filter((doc) => doc.truncated).length / documents.length;
-	const baseConfidence =
-		documents.length === 0
-			? 0.25
-			: Math.min(0.9, 0.45 + documents.length * 0.08);
-	const confidence = Number(
-		Math.max(
-			0.1,
-			Math.min(0.95, baseConfidence - truncationRatio * 0.2),
-		).toFixed(2),
-	);
-
-	return collectContextMemoryPacketSchema.parse({
-		topicSummary,
-		keyFacts,
-		experienceBullets,
-		sourceRefs,
-		openQuestions,
-		confidence,
-	});
 }
 
 function buildCollectContextPayload(params: {
@@ -248,10 +141,6 @@ function buildCollectContextPayload(params: {
 		matched_total: params.matchedTotal,
 		total_in_vault: params.totalInVault,
 		documents: params.documents,
-		memory_packet: buildCollectContextMemoryPacket(
-			params.topic,
-			params.documents,
-		),
 		cache: params.cache,
 		batch: {
 			start_cursor: params.startCursor,
@@ -314,34 +203,19 @@ function reduceCollectContextPerDocCharsForBudget(
 			}
 		}
 
-		if (doc.summary.length > COLLECT_CONTEXT_MIN_SUMMARY_CHARS) {
-			const nextLength = Math.max(
-				COLLECT_CONTEXT_MIN_SUMMARY_CHARS,
-				Math.floor(doc.summary.length * 0.85),
-			);
-			const nextSummary = trimWithEllipsis(doc.summary, nextLength);
-			if (nextSummary !== doc.summary) {
-				doc.summary = nextSummary;
-				doc.truncated = true;
-				changed = true;
-			}
-		}
-
-		const nextEvidence = doc.evidence_snippets.map((snippet) => {
-			if (snippet.length <= COLLECT_CONTEXT_MIN_EVIDENCE_CHARS) {
+		const nextSnippets = doc.matched_snippets.map((snippet) => {
+			if (snippet.length <= COLLECT_CONTEXT_MIN_SNIPPET_CHARS) {
 				return snippet;
 			}
 			const nextLength = Math.max(
-				COLLECT_CONTEXT_MIN_EVIDENCE_CHARS,
+				COLLECT_CONTEXT_MIN_SNIPPET_CHARS,
 				Math.floor(snippet.length * 0.8),
 			);
 			return trimWithEllipsis(snippet, nextLength);
 		});
 
-		if (
-			JSON.stringify(nextEvidence) !== JSON.stringify(doc.evidence_snippets)
-		) {
-			doc.evidence_snippets = nextEvidence;
+		if (JSON.stringify(nextSnippets) !== JSON.stringify(doc.matched_snippets)) {
+			doc.matched_snippets = nextSnippets;
 			doc.truncated = true;
 			changed = true;
 		}
@@ -359,6 +233,9 @@ function buildCollectContextDocHash(
 				documents.map((doc) => ({
 					fullPath: doc.fullPath,
 					doc_hash: doc.doc_hash,
+					rank: doc.rank,
+					score: doc.score,
+					matched_snippets: doc.matched_snippets,
 				})),
 			),
 			"utf8",
@@ -465,49 +342,6 @@ function trimCollectContextPayloadToOutputLimit(
 		});
 	}
 
-	while (
-		jsonCharLength(next) > maxOutputChars &&
-		next.memory_packet.keyFacts.length > 3
-	) {
-		next.memory_packet.keyFacts.pop();
-		clamped = true;
-	}
-
-	while (
-		jsonCharLength(next) > maxOutputChars &&
-		next.memory_packet.experienceBullets.length > 3
-	) {
-		next.memory_packet.experienceBullets.pop();
-		clamped = true;
-	}
-
-	while (
-		jsonCharLength(next) > maxOutputChars &&
-		next.memory_packet.sourceRefs.length > 2
-	) {
-		next.memory_packet.sourceRefs.pop();
-		clamped = true;
-	}
-
-	while (
-		jsonCharLength(next) > maxOutputChars &&
-		next.memory_packet.openQuestions.length > 1
-	) {
-		next.memory_packet.openQuestions.pop();
-		clamped = true;
-	}
-
-	if (
-		jsonCharLength(next) > maxOutputChars &&
-		next.memory_packet.topicSummary.length > 200
-	) {
-		next.memory_packet.topicSummary = trimWithEllipsis(
-			next.memory_packet.topicSummary,
-			200,
-		);
-		clamped = true;
-	}
-
 	return { payload: next, clamped };
 }
 
@@ -542,21 +376,18 @@ function decodeCollectContextContinuationToken(
 	}
 }
 
-// 호출자가 첫 번째 text 항목을 JSON으로 파싱하므로 진단 메시지는 별도 항목으로 둔다.
 function buildCollectContextToolResult(
 	payload: unknown,
-	diagnosticMessage?: string,
+	searchStatus: SearchStatus | undefined,
 ): CallToolResult {
-	const content: CallToolResult["content"] = [
-		{ type: "text", text: JSON.stringify(payload, null, 2) },
-	];
-	if (diagnosticMessage) {
-		content.push({
-			type: "text",
-			text: `<system_directive>\n${diagnosticMessage}\n</system_directive>`,
-		});
-	}
-	return { isError: false, content };
+	const data = collectContextResponseDataSchema.parse({
+		...(payload as object),
+		search_status: searchStatus,
+	});
+	return {
+		isError: false,
+		content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+	};
 }
 
 export async function collectContext(
@@ -593,19 +424,22 @@ export async function collectContext(
 	}
 
 	const allDocuments = await vaultManager.getAllDocuments();
-	// search 액션과 같은 평가된 경로를 쓴다. 순위를 유지해야 하므로 다시 정렬하지 않는다.
-	const { results: rankedResults, diagnostic_message: diagnosticMessage } =
-		topic
-			? await vaultManager.hybridSearch(topic, COLLECT_CONTEXT_CANDIDATE_LIMIT)
-			: { results: [], diagnostic_message: undefined };
+	const { results: rankedResults, search_status: searchStatus } = topic
+		? await vaultManager.hybridSearch(topic, COLLECT_CONTEXT_CANDIDATE_LIMIT)
+		: { results: [], search_status: undefined };
 	const rankedCandidates = rankedResults.map((result) => result.document);
-	const rankedPaths = new Set(rankedCandidates.map((doc) => doc.filePath));
+	const evidenceByPath = new Map(
+		rankedResults.map((result, index) => [
+			result.document.filePath,
+			toSearchEvidence(result, index),
+		]),
+	);
 	const orderedCandidates =
 		scope === "all"
 			? [
 					...rankedCandidates,
 					...allDocuments
-						.filter((doc) => !rankedPaths.has(doc.filePath))
+						.filter((doc) => !evidenceByPath.has(doc.filePath))
 						.sort((a, b) => a.filePath.localeCompare(b.filePath)),
 				]
 			: rankedCandidates;
@@ -678,7 +512,7 @@ export async function collectContext(
 			}),
 		);
 
-		return buildCollectContextToolResult(finalizedPayload, diagnosticMessage);
+		return buildCollectContextToolResult(finalizedPayload, searchStatus);
 	}
 
 	const maxOutputChars =
@@ -715,7 +549,7 @@ export async function collectContext(
 		const nextDoc = buildCollectContextDocument(
 			enrichedDoc,
 			maxCharsPerDoc,
-			topic,
+			evidenceByPath.get(candidate.filePath) ?? NOT_MATCHED,
 		);
 		documents.push(nextDoc);
 		sourceChars += nextDoc.stats.contentLength;
@@ -842,7 +676,7 @@ export async function collectContext(
 	if (typeof maxOutputChars === "number") {
 		const trimmed = trimCollectContextPayloadToOutputLimit(
 			payloadForCompression,
-			maxOutputChars,
+			maxOutputChars - jsonCharLength({ search_status: searchStatus }),
 		);
 		payloadForCompression = trimmed.payload;
 		outputCapClamped = outputCapClamped || trimmed.clamped;
@@ -860,5 +694,5 @@ export async function collectContext(
 		}),
 	);
 
-	return buildCollectContextToolResult(finalizedPayload, diagnosticMessage);
+	return buildCollectContextToolResult(finalizedPayload, searchStatus);
 }

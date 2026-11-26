@@ -39,7 +39,10 @@ describe("VaultManager semantic fallback", () => {
 		expect(result.results[0]?.document.filePath.endsWith("alpha.md")).toBe(
 			true,
 		);
-		expect(result.diagnostic_message).toContain("semantic 모델");
+		expect(result.search_status).toEqual({
+			mode: "keyword",
+			reason: "semantic_unavailable",
+		});
 		expect(embedSpy).not.toHaveBeenCalled();
 	});
 });

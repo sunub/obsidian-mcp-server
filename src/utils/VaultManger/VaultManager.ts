@@ -10,6 +10,10 @@ import {
 	relative,
 	resolve,
 } from "node:path";
+import {
+	SEARCH_SETUP_COMMAND,
+	type SearchStatus,
+} from "@shared/searchStatus.js";
 import matter from "gray-matter";
 import { throwIfAborted } from "../abort.js";
 import { DirectoryWalker } from "../DirectoryWalker.js";
@@ -83,7 +87,6 @@ export class VaultManager {
 	private indexer: Indexer;
 	private ioSemaphore: Semaphore;
 	private dbSemaphore: Semaphore;
-	private hasNotifiedMissingModels = false;
 
 	constructor(vaultPath: string, maxConcurrentIO: number = 10) {
 		this.vaultPath = resolve(vaultPath);
@@ -132,27 +135,11 @@ export class VaultManager {
 	public async hybridSearch(
 		query: string,
 		limit: number = 5,
-	): Promise<{ results: HybridSearchResult[]; diagnostic_message?: string }> {
+	): Promise<{ results: HybridSearchResult[]; search_status: SearchStatus }> {
 		await this.initialize();
 
 		if (!this.isLocalAIReady) {
 			const keywordResults = this.indexer.searchWithChunks(query);
-			let diagnostic_message: string | undefined;
-
-			if (!this.hasNotifiedMissingModels) {
-				diagnostic_message =
-					"💡 [검색 품질 안내] 현재 로컬 모델이 설치되어 있지 않아 기본 키워드 검색으로 동작했습니다. 터미널에서 `npx @sunub/obsidian-mcp-server setup`을 실행하시면 고성능 하이브리드 검색을 사용할 수 있습니다.";
-				this.hasNotifiedMissingModels = true;
-			}
-
-			const ragStatus = this.getRagIndexingStatus();
-			if (ragStatus.isIndexing) {
-				const indexingMsg = `⏳ [인덱싱 진행 중] 백그라운드에서 의미 기반 검색 인덱싱이 진행 중입니다 (${ragStatus.progress}% - ${ragStatus.processed}/${ragStatus.total}). 검색 결과가 일부 누락될 수 있습니다.`;
-				diagnostic_message = diagnostic_message
-					? `${diagnostic_message}\n\n${indexingMsg}`
-					: indexingMsg;
-			}
-
 			return {
 				results: keywordResults.slice(0, limit).map((hit) => ({
 					score: 1.0,
@@ -160,7 +147,11 @@ export class VaultManager {
 					matchedChunks: keywordChunksOf(hit.document, hit.chunk),
 					finalScore: 1.0,
 				})),
-				diagnostic_message,
+				search_status: this.withIndexing({
+					mode: "keyword",
+					reason: "models_missing",
+					setup_command: SEARCH_SETUP_COMMAND,
+				}),
 			};
 		}
 
@@ -169,11 +160,6 @@ export class VaultManager {
 			query,
 			semanticResults.length > 0 ? KEYWORD_FUSION_MIN_RELATIVE_SCORE : 0,
 		);
-		const semanticFallbackMessage =
-			semanticResults.length === 0
-				? "💡 [검색 품질 안내] 로컬 semantic 모델이 아직 준비 중이거나 사용할 수 없어 이번 검색은 키워드 중심으로 반환했습니다. 잠시 후 다시 검색하면 하이브리드 검색이 적용될 수 있습니다."
-				: undefined;
-
 		const rrfScores = new Map<
 			string,
 			{
@@ -234,21 +220,22 @@ export class VaultManager {
 			finalScore: f.score,
 		}));
 
-		let diagnostic_message: string | undefined;
-		const ragStatus = this.getRagIndexingStatus();
-		if (ragStatus.isIndexing) {
-			diagnostic_message = `⏳ [인덱싱 진행 중] 백그라운드에서 의미 기반 검색 인덱싱이 진행 중입니다 (${ragStatus.progress}% - ${ragStatus.processed}/${ragStatus.total}). 최근 변경된 파일은 검색 결과에 즉시 반영되지 않을 수 있습니다.`;
-		}
-		if (semanticFallbackMessage) {
-			diagnostic_message = diagnostic_message
-				? `${diagnostic_message}\n\n${semanticFallbackMessage}`
-				: semanticFallbackMessage;
-		}
-
 		return {
 			results: finalResults.slice(0, limit),
-			diagnostic_message,
+			search_status: this.withIndexing(
+				semanticResults.length === 0
+					? { mode: "keyword", reason: "semantic_unavailable" }
+					: { mode: "hybrid" },
+			),
 		};
+	}
+
+	private withIndexing(status: SearchStatus): SearchStatus {
+		const { isIndexing, progress, processed, total } =
+			this.getRagIndexingStatus();
+		return isIndexing
+			? { ...status, indexing: { progress, processed, total } }
+			: status;
 	}
 
 	private async safeSemanticSearch(

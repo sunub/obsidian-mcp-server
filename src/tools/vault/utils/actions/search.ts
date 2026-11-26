@@ -56,7 +56,7 @@ export async function searchDocuments(
 	await vaultManager.initialize();
 	const mode = resolveCompressionMode(params);
 
-	const { results: searchResults, diagnostic_message } =
+	const { results: searchResults, search_status } =
 		await vaultManager.hybridSearch(params.keyword || "", params.limit ?? 10);
 
 	if (params.quiet) {
@@ -67,6 +67,7 @@ export async function searchDocuments(
 					type: "text",
 					text: JSON.stringify({
 						found: searchResults.length,
+						search_status,
 						filenames: searchResults.map(
 							(res) =>
 								res.document.filePath.split("/").pop() || res.document.filePath,
@@ -103,7 +104,6 @@ export async function searchDocuments(
 				formatted = formatDocument(doc, false);
 			}
 
-			// 하이브리드 검색 정보 추가
 			return {
 				...formatted,
 				relevance_score: res.finalScore ?? res.score,
@@ -126,6 +126,7 @@ export async function searchDocuments(
 
 	const basePayload = {
 		query: params.keyword,
+		search_status,
 		found: documentsData.length,
 		matched_total: searchResults.length,
 		total_in_vault: (await vaultManager.getAllDocuments()).length,
@@ -155,18 +156,12 @@ export async function searchDocuments(
 			"If you need full raw text, call vault action='read' with compressionMode='none'.",
 	});
 
-	// 진단 메시지가 있으면 최상단에 추가
-	let finalOutput = JSON.stringify(payload, null, 2);
-	if (diagnostic_message) {
-		finalOutput = `<system_directive>\n${diagnostic_message}\n</system_directive>\n\n${finalOutput}`;
-	}
-
 	return {
 		isError: false,
 		content: [
 			{
 				type: "text",
-				text: finalOutput,
+				text: JSON.stringify(payload, null, 2),
 			},
 		],
 	};

@@ -11,7 +11,7 @@
 - **로컬 우선 동작**: 외부 서비스나 별도로 운영해야 하는 검색 엔진 없이 사용자 머신에서 Vault 검색과 컨텍스트 준비를 수행합니다.
 - **컨텍스트 선별**: 키워드 검색과 시맨틱 검색을 결합해 Agent에게 제공할 근거 후보를 찾습니다.
 - **명시적 RAG 통합**: 모든 프롬프트에 백그라운드 검색을 붙이지 않고, Vault 관련 명령이나 도구 참조가 있을 때 문맥 수집 경로를 엽니다.
-- **토큰 절약**: 원문 전체를 밀어넣기보다 excerpt, evidence snippet, `memory_packet` 형태로 압축합니다.
+- **토큰 절약**: 원문 전체를 밀어넣기보다 excerpt와 검색이 일치시킨 본문 조각 형태로 압축합니다.
 - **로컬 모델 기반 검색**: `@huggingface/transformers`, LanceDB, local reranker를 사용해 semantic retrieval을 로컬에서 수행합니다.
 
 Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 대안입니다. 다만 이 프로젝트의 기본 목표는 외부 서비스나 별도 검색 엔진에 의존하지 않는 로컬 단독 작업이므로, embedded retrieval stack을 기본값으로 선택합니다.
@@ -25,7 +25,7 @@ Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 
   - `read`: 특정 노트 본문과 메타데이터 조회
   - `list_all`: Vault 문서 목록 조회
   - `stats`: Vault 및 인덱스 상태 조회
-  - `collect_context`: 주제와 연관된 문서를 선별해 `memory_packet` 생성
+  - `collect_context`: 주제로 검색한 문서의 순위, 점수, 일치 조각, 발췌를 배치로 반환
 - `write_property`: frontmatter 쓰기
 - `tidy_plan`: 첨부 파일, 중복, 무제 노트, 빈 폴더를 정리하는 계획과 미리보기 생성(파일은 바꾸지 않음)
 - `plan_apply`: 사용자가 승인한 연산만 실행하고 링크가 같은 파일을 가리키도록 재작성

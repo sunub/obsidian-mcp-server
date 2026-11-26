@@ -7,33 +7,33 @@ import tools, { toolsWithDeps } from "./tools/index.js";
 import type { ServerLifecycle } from "./utils/ServerLifecycle.js";
 
 type ToolConfig = {
-	title?: string;
-	description?: string;
-	inputSchema?: unknown;
-	outputSchema?: unknown;
-	annotations?: unknown;
-	_meta?: Record<string, unknown>;
+  title?: string;
+  description?: string;
+  inputSchema?: unknown;
+  outputSchema?: unknown;
+  annotations?: unknown;
+  _meta?: Record<string, unknown>;
 };
 type RawToolCallback = (...args: unknown[]) => unknown;
 type RawRegisterTool = (
-	name: string,
-	config: ToolConfig,
-	callback: RawToolCallback,
+  name: string,
+  config: ToolConfig,
+  callback: RawToolCallback,
 ) => RegisteredTool;
 
 export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
-	const mcpServer = new McpServer(
-		{
-			version: pkg.version,
-			name: "obsidian-mcp-server",
-			title: "Obsidian MCP Server",
-		},
-		{
-			capabilities: {
-				logging: {},
-				tools: { listChanged: false },
-			},
-			instructions: `
+  const mcpServer = new McpServer(
+    {
+      version: pkg.version,
+      name: "obsidian-mcp-server",
+      title: "Obsidian MCP Server",
+    },
+    {
+      capabilities: {
+        logging: {},
+        tools: { listChanged: false },
+      },
+      instructions: `
 	        This server provides access to Obsidian vault documents and related tools.
 	        
 	        Available tools:
@@ -53,29 +53,29 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 	        Local Search Optimization:
 	        - To enable high-performance local hybrid search, run 'npx @sunub/obsidian-mcp-server setup' once.
 	      `,
-		},
-	);
+    },
+  );
 
-	const registerTool = mcpServer.registerTool.bind(
-		mcpServer,
-	) as unknown as RawRegisterTool;
+  const registerTool = mcpServer.registerTool.bind(
+    mcpServer,
+  ) as unknown as RawRegisterTool;
 
-	mcpServer.registerTool = ((name, config, callback) => {
-		const rawCallback = callback as RawToolCallback;
-		const wrappedCallback: RawToolCallback = (...args) =>
-			lifecycle.runToolCall(name, () => Promise.resolve(rawCallback(...args)));
+  mcpServer.registerTool = ((name, config, callback) => {
+    const rawCallback = callback as RawToolCallback;
+    const wrappedCallback: RawToolCallback = (...args) =>
+      lifecycle.runToolCall(name, () => Promise.resolve(rawCallback(...args)));
 
-		return registerTool(name, config, wrappedCallback);
-	}) as typeof mcpServer.registerTool;
+    return registerTool(name, config, wrappedCallback);
+  }) as typeof mcpServer.registerTool;
 
-	for (const tool of Object.values(tools)) {
-		tool.register(mcpServer);
-	}
+  for (const tool of Object.values(tools)) {
+    tool.register(mcpServer);
+  }
 
-	const deps: VaultToolDeps = { vaultRoot: () => state.vaultPath };
-	for (const tool of toolsWithDeps) {
-		tool.register(mcpServer, deps);
-	}
+  const deps: VaultToolDeps = { vaultRoot: () => state.vaultPath };
+  for (const tool of toolsWithDeps) {
+    tool.register(mcpServer, deps);
+  }
 
-	return mcpServer;
+  return mcpServer;
 }

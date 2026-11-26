@@ -35,7 +35,7 @@ export const obsidianContentActions = z
 		"index_vault_to_vectordb",
 	])
 	.describe(
-		"The action to perform: search documents, read specific file, list all content, get stats, collect contextual memory packets, or trigger indexing",
+		"The action to perform: search documents, read specific file, list all content, get stats, collect search results with excerpts in batches, or trigger indexing",
 	);
 export const obsidianContentKeyword = z
 	.string()
@@ -78,7 +78,7 @@ export const obsidianContentExcerptLength = z
 export const obsidianContentTopic = z
 	.string()
 	.min(1)
-	.describe("Topic to collect contextual memory for (collect_context action)");
+	.describe("Topic to search for (collect_context action)");
 export const obsidianContentScope = z
 	.enum(["topic", "all"])
 	.default("topic")
