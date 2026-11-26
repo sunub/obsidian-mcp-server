@@ -1,8 +1,8 @@
 import { performance } from "node:perf_hooks";
-import { localEmbedder } from "../src/utils/Embedder.js";
-import { getGlobalVaultManager } from "../src/utils/getVaultManager.js";
-import { localReranker } from "../src/utils/LocalReranker.js";
-import { vectorDB } from "../src/utils/VectorDB.js";
+import { vectorDB } from "../src/shared/indexing/VectorDB.js";
+import { localEmbedder } from "../src/shared/local-ai/Embedder.js";
+import { localReranker } from "../src/shared/local-ai/LocalReranker.js";
+import { getGlobalVaultManager } from "../src/shared/vault-manager/getVaultManager.js";
 
 async function runBenchmark() {
 	console.log("=== 로컬 RAG 쿼리 파이프라인 벤치마크 시작 ===");

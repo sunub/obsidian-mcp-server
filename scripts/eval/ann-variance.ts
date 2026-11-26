@@ -63,13 +63,15 @@ const RRF_K = 60;
 const DENSE_RECALL = LIMIT * 9;
 const DENSE_USED = LIMIT * 3;
 
-const { Indexer } = await import("../../build/utils/Indexer.js");
+const { Indexer } = await import("../../build/shared/indexing/Indexer.js");
 const { DirectoryWalker } = await import(
-	"../../build/utils/DirectoryWalker.js"
+	"../../build/shared/indexing/DirectoryWalker.js"
 );
-const { Semaphore } = await import("../../build/utils/semaphore.js");
-const { localEmbedder } = await import("../../build/utils/Embedder.js");
-const { vectorDB } = await import("../../build/utils/VectorDB.js");
+const { Semaphore } = await import("../../build/shared/async/semaphore.js");
+const { localEmbedder } = await import(
+	"../../build/shared/local-ai/Embedder.js"
+);
+const { vectorDB } = await import("../../build/shared/indexing/VectorDB.js");
 
 // ---------- 평가셋 ----------
 

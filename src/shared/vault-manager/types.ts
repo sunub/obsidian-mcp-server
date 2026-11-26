@@ -1,4 +1,4 @@
-import type { DocumentIndex } from "../processor/types.js";
+import type { DocumentIndex } from "@shared/markdown/types.js";
 
 export interface EnrichedDocument extends DocumentIndex {
 	content: string;

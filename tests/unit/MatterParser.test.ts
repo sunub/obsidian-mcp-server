@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parse } from "../../src/utils/processor/MatterParser";
+import { parse } from "../../src/shared/markdown/MatterParser";
 
 const DUMMY_FILE = "/vault/test-note.md";
 const DUMMY_BIRTH = "2025-01-01T00:00:00.000Z";

@@ -3,7 +3,7 @@ import {
 	CHUNK_OVERLAP,
 	CHUNK_SIZE,
 	createDocumentChunker,
-} from "../../src/utils/worker/chunkDocument";
+} from "../../src/shared/indexing/worker/chunkDocument";
 
 const BIRTH = "2025-01-01T00:00:00.000Z";
 // 테스트에서는 글자 수를 토큰 수로 본다

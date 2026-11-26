@@ -1,13 +1,13 @@
 import { fileURLToPath } from "node:url";
 import { env, type PipelineType, pipeline } from "@huggingface/transformers";
-import chalk from "chalk";
-import inquirer from "inquirer";
-import ora from "ora";
 import {
 	APP_DATA_DIR,
 	ensureAppDataDirs,
 	MODELS_DIR,
-} from "./utils/constants.js";
+} from "@shared/paths/appData.js";
+import chalk from "chalk";
+import inquirer from "inquirer";
+import ora from "ora";
 
 env.localModelPath = MODELS_DIR;
 env.cacheDir = MODELS_DIR;

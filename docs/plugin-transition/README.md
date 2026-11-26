@@ -32,4 +32,4 @@
 
 1. **1단계 플러그인 마감**: `plugin/.mcp.json` 복구 및 `${VAULT_DIR_PATH}` 검증, `plugin/commands/` 커맨드 4개 추가(`/vault-context`는 보류), Hook 사각지대 보강, 저장소 문서 정체성 통일
 2. **MCP/Skill 경계 정리**: `src/server.ts` 경량화, 도구 `description` 중복 절차 제거, `collect_context` 존폐 결정([검토 기록](../collect-context-review.md)), `vault` 모놀리스 분해
-3. **2·3단계 진입**: `vault-frontmatter` Skill + 속성 조회 도구 구현, 2단계(주제별 재구성)를 위한 `src/utils/` 임베딩·검색 계층의 `src/shared/` 승격
+3. **2·3단계 진입**: `vault-frontmatter` Skill + 속성 조회 도구 구현

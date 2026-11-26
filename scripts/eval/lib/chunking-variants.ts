@@ -1,7 +1,7 @@
 /**
  * 청킹 기준 비교 실험용 청커 (docs/search-quality-evaluation.md 4.8).
  *
- * src/utils/worker/chunkingWorker.ts 와 같은 레코드를 만들되, 아래 세 가지를 바꿔 볼 수 있다.
+ * src/shared/indexing/worker/chunkingWorker.ts 와 같은 레코드를 만들되, 아래 세 가지를 바꿔 볼 수 있다.
  *   tokenizer: 청크 길이를 셀 토크나이저. "cl100k"(현재, GPT 계열) | "model"(임베딩 모델)
  *   size / overlap: 청크 크기와 겹침(토큰)
  *   split: "recursive"(현재, 문단→줄→공백) | "heading"(Markdown 제목으로 먼저 나눈 뒤 긴 섹션만 재귀 분할)

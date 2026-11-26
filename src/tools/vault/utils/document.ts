@@ -1,6 +1,6 @@
-import type { DocumentIndex } from "../../../utils/processor/types.js";
-import type { EnrichedDocument } from "../../../utils/VaultManger/types.js";
-import type { VaultManager } from "../../../utils/VaultManger/VaultManager.js";
+import type { DocumentIndex } from "@shared/markdown/types.js";
+import type { EnrichedDocument } from "@shared/vault-manager/types.js";
+import type { VaultManager } from "@shared/vault-manager/VaultManager.js";
 
 export async function getDocumentContent(
 	vaultManager: VaultManager,

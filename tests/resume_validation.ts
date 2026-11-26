@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
-import { Indexer } from "../src/utils/Indexer.js";
-import { Semaphore } from "../src/utils/semaphore.js";
-import { VaultPathError } from "../src/utils/VaultManger/VaultPathError.js";
+import { Semaphore } from "../src/shared/async/semaphore.js";
+import { Indexer } from "../src/shared/indexing/Indexer.js";
+import { VaultPathError } from "../src/shared/vault-manager/VaultPathError.js";
 
 async function runResumeValidation() {
 	const TEST_DIR = path.join(process.cwd(), "tests/resume_validation_tmp");

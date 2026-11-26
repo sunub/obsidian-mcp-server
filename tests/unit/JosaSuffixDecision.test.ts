@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { stripJosa } from "../../src/keyword-search/josa";
+import { stripJosa } from "../../src/shared/indexing/keyword-search/josa";
 
 describe("stripJosa 접미사 결정", () => {
 	test.each([

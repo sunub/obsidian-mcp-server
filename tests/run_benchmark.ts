@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
-import { Indexer } from "../src/utils/Indexer.js";
-import { Semaphore } from "../src/utils/semaphore.js";
-import { vectorDB } from "../src/utils/VectorDB.js";
+import { Semaphore } from "../src/shared/async/semaphore.js";
+import { Indexer } from "../src/shared/indexing/Indexer.js";
+import { vectorDB } from "../src/shared/indexing/VectorDB.js";
 
 async function setupTestData(dir: string, count: number) {
 	await fs.mkdir(dir, { recursive: true });

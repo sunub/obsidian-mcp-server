@@ -14,7 +14,7 @@ vi.mock("chokidar", () => ({
 	},
 }));
 
-vi.mock("../../src/utils/getVaultManager.js", () => ({
+vi.mock("../../src/shared/vault-manager/getVaultManager.js", () => ({
 	getGlobalVaultManager: () => ({
 		initialize,
 		upsertDocument: vi.fn(async () => undefined),
@@ -25,7 +25,9 @@ vi.mock("../../src/utils/getVaultManager.js", () => ({
 
 describe("VaultWatcher lifecycle", () => {
 	test("does not build the full vault index when the server starts", async () => {
-		const { VaultWatcher } = await import("../../src/utils/VaultWatcher.js");
+		const { VaultWatcher } = await import(
+			"../../src/shared/vault-manager/VaultWatcher.js"
+		);
 		const watcher = new VaultWatcher();
 
 		await watcher.start("/tmp/test-vault");

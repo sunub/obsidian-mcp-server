@@ -50,7 +50,7 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 - **고쳐야 할 것**:
   - **오래된 `instructions` 축소(`src/server.ts` L36-55)**: 이미 제거된 `Reranking`이 남아 있고 `stats`·`collect_context`가 누락돼 있습니다. 도구별 사용 절차는 Skill/Command로 옮기고, 서버 `instructions`는 `VAULT_DIR_PATH` 범위와 최소 정체성만 남깁니다.
   - **도구 등록 DI 통일(`src/server.ts` L71-78)**: 전역 `state` 싱글턴을 쓰는 `tools`(`vault`, `write_property`)와 `VaultToolDeps`를 주입받는 `toolsWithDeps`(`tidy_plan`, `plan_apply`, `plan_undo`)의 이원화를 없애고 전부 `VaultToolDeps` 기반으로 통일합니다.
-- **기동·감시 비용 점검(`src/index.ts`, `src/utils/VaultWatcher.ts`)**:
+- **기동·감시 비용 점검(`src/index.ts`, `src/shared/vault-manager/VaultWatcher.ts`)**:
   - 현재 서버 시작 시 정리 기능만 쓰려 해도 로컬 모델 체크와 `chokidar` 기반 `VaultWatcher`를 무조건 기동합니다.
   - `plan_apply`로 대량 파일을 이동할 때 `chokidar`가 파일마다 `unlink`/`add` 이벤트를 쏟아내며 `RAGIndexer` 부하가 튈 수 있어, 일괄 변경 시 디바운스 또는 배치 동기화 검토가 필요합니다.
 
@@ -61,6 +61,5 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 1. **`src/tools/plan/confirm.ts` 연결 여부**:
    - MCP `elicitation`으로 클라이언트 네이티브 확인 팝업을 띄우는 `elicitConfirmer`가 구현돼 있지만 `apply.ts`에 연결되지 않았습니다.
    - Skill 대화 승인만으로 갈지, 클라이언트가 `elicitation.form`을 지원할 때 서버 레벨 이중 승인을 걸지 결정이 필요합니다.
-2. **2단계(주제별 재구성)를 위한 `shared` 승격 경계**:
-   - `CLAUDE.md`/`AGENTS.md` 규칙상 `src/tools/`는 `src/utils/`를 import할 수 없습니다.
-   - 2단계에서 임베딩 기반 노트 클러스터링을 하려면 `src/utils/`의 임베딩·벡터 검색 인터페이스를 `src/shared/`로 승격하는 작업이 선행돼야 합니다.
+2. **2단계(주제별 재구성)의 임베딩 의존 경로**:
+   - 임베딩·벡터 검색 코드는 `src/shared/local-ai/`와 `src/shared/indexing/`에 있어 `src/tools/`에서 `@shared/*`로 import할 수 있습니다.

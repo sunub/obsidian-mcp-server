@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { describe, expect, test } from "vitest";
-import { WorkerPool } from "../../src/utils/worker/WorkerPool";
+import { WorkerPool } from "../../src/shared/indexing/worker/WorkerPool";
 
 class FakeWorker extends EventEmitter {
 	terminated = false;

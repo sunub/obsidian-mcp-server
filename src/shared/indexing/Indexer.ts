@@ -1,10 +1,10 @@
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { ChunkBM25Index } from "@/keyword-search/index.js";
-import * as LinkExtractor from "./processor/LinkExtractor.js";
-import * as MatterParser from "./processor/MatterParser.js";
-import type { DocumentIndex } from "./processor/types.js";
-import type { Semaphore } from "./semaphore.js";
+import type { Semaphore } from "@shared/async/semaphore.js";
+import * as LinkExtractor from "@shared/markdown/LinkExtractor.js";
+import * as MatterParser from "@shared/markdown/MatterParser.js";
+import type { DocumentIndex } from "@shared/markdown/types.js";
+import { ChunkBM25Index } from "./keyword-search/index.js";
 
 export interface KeywordSearchHit {
 	document: DocumentIndex;

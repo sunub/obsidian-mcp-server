@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Semaphore } from "../../src/utils/semaphore";
+import { Semaphore } from "../../src/shared/async/semaphore";
 
 describe("Semaphore", () => {
 	test("permits 수만큼 동시 acquire가 가능하다", async () => {

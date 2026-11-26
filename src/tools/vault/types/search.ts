@@ -1,6 +1,6 @@
+import { FrontMatterSchema } from "@shared/markdown/types.js";
 import { searchStatusSchema } from "@shared/searchStatus.js";
 import { z } from "zod";
-import { FrontMatterSchema } from "@/utils/processor/types.js";
 
 const DocumentMetadataSchema = FrontMatterSchema;
 const DocumentStatsSchema = z.object({

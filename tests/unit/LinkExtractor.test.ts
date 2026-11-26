@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
 	extractDocumentLinks,
 	extractImageLinks,
-} from "../../src/utils/processor/LinkExtractor";
+} from "../../src/shared/markdown/LinkExtractor";
 
 describe("LinkExtractor", () => {
 	describe("extractImageLinks", () => {

@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { ServerLifecycle } from "@shared/lifecycle/ServerLifecycle.js";
+import { localEmbedder } from "@shared/local-ai/Embedder.js";
+import { localModelManager } from "@shared/local-ai/LocalModelManager.js";
+import { localReranker } from "@shared/local-ai/LocalReranker.js";
+import { ensureAppDataDirs } from "@shared/paths/appData.js";
+import { vaultWatcher } from "@shared/vault-manager/VaultWatcher.js";
 import chalk from "chalk";
 import {
 	getOptions,
@@ -7,12 +13,6 @@ import {
 	setLocalLLMEnvSetting,
 } from "./config.js";
 import createMcpServer from "./server.js";
-import { ensureAppDataDirs } from "./utils/constants.js";
-import { localEmbedder } from "./utils/Embedder.js";
-import { localModelManager } from "./utils/LocalModelManager.js";
-import { localReranker } from "./utils/LocalReranker.js";
-import { ServerLifecycle } from "./utils/ServerLifecycle.js";
-import { vaultWatcher } from "./utils/VaultWatcher.js";
 
 function alertEmbedderState(
 	options: ObsidianMcpConfig,

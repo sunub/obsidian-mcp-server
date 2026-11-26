@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
-import { Indexer } from "../../src/utils/Indexer";
-import { Semaphore } from "../../src/utils/semaphore";
+import { Semaphore } from "../../src/shared/async/semaphore";
+import { Indexer } from "../../src/shared/indexing/Indexer";
 
 const TEST_DIR = path.join(process.cwd(), "test-vault-indexer");
 const sem = new Semaphore(10);

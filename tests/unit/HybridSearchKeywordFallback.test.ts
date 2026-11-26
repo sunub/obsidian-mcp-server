@@ -2,10 +2,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { localEmbedder } from "../../src/utils/Embedder";
-import { localModelManager } from "../../src/utils/LocalModelManager";
-import { localReranker } from "../../src/utils/LocalReranker";
-import { VaultManager } from "../../src/utils/VaultManger/VaultManager";
+import { localEmbedder } from "../../src/shared/local-ai/Embedder";
+import { localModelManager } from "../../src/shared/local-ai/LocalModelManager";
+import { localReranker } from "../../src/shared/local-ai/LocalReranker";
+import { VaultManager } from "../../src/shared/vault-manager/VaultManager";
 
 let tempDir: string | null = null;
 

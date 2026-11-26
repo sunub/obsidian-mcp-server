@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { ChunkBM25Index } from "../../src/keyword-search/index";
-import { stripJosa } from "../../src/keyword-search/josa";
+import { ChunkBM25Index } from "../../src/shared/indexing/keyword-search/index";
+import { stripJosa } from "../../src/shared/indexing/keyword-search/josa";
 
 describe("stripJosa", () => {
 	test.each([

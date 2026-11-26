@@ -1,6 +1,6 @@
 import { parentPort } from "node:worker_threads";
 import { AutoTokenizer } from "@huggingface/transformers";
-import { localEmbedder } from "../Embedder.js";
+import { localEmbedder } from "@shared/local-ai/Embedder.js";
 import type { ChunkMetadata } from "../VectorDB.js";
 import {
 	type ChunkingWorkerInput,

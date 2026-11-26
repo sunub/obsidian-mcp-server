@@ -7,6 +7,10 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { type ZodSchema, z } from "zod";
 import state from "../src/config";
 import createMcpServer from "../src/server";
+import { ServerLifecycle } from "../src/shared/lifecycle/ServerLifecycle";
+import { localEmbedder } from "../src/shared/local-ai/Embedder";
+import { localReranker } from "../src/shared/local-ai/LocalReranker";
+import { FrontMatterSchema } from "../src/shared/markdown/types";
 import { collectContextResponseDataSchema } from "../src/tools/vault/types/collect_context";
 import {
 	type ListAllDocumentsData,
@@ -17,10 +21,6 @@ import {
 	DocumentSchema,
 	SearchSuccessSchema,
 } from "../src/tools/vault/types/search";
-import { localEmbedder } from "../src/utils/Embedder";
-import { localReranker } from "../src/utils/LocalReranker";
-import { FrontMatterSchema } from "../src/utils/processor/types";
-import { ServerLifecycle } from "../src/utils/ServerLifecycle";
 import demo_data from "./assets/demo_data";
 
 const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault");

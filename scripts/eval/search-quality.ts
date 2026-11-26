@@ -64,18 +64,20 @@ const RRF_K = 60;
 const PROD_THRESHOLD = 0.2;
 const SWEEP = (args.sweep as string).split(",").filter(Boolean).map(Number);
 
-const { Indexer } = await import("../../build/utils/Indexer.js");
+const { Indexer } = await import("../../build/shared/indexing/Indexer.js");
 const { DirectoryWalker } = await import(
-	"../../build/utils/DirectoryWalker.js"
+	"../../build/shared/indexing/DirectoryWalker.js"
 );
-const { Semaphore } = await import("../../build/utils/semaphore.js");
-const { localEmbedder } = await import("../../build/utils/Embedder.js");
+const { Semaphore } = await import("../../build/shared/async/semaphore.js");
+const { localEmbedder } = await import(
+	"../../build/shared/local-ai/Embedder.js"
+);
 // --strip-prefix: nomic 계열 규칙인 "search_query: " / "search_document: " 접두사를 떼고 임베딩한다.
 // 현재 임베딩 모델(paraphrase-multilingual-MiniLM)은 이 접두사를 학습하지 않았으므로 효과를 비교하기 위한 실험 옵션이다.
 // 소스 코드를 바꾸지 않고, 같은 프로세스의 localEmbedder.embed만 감싼다.
 if (args["strip-prefix"]) {
 	const { localEmbedder: embedder } = await import(
-		"../../build/utils/Embedder.js"
+		"../../build/shared/local-ai/Embedder.js"
 	);
 	const rawEmbed = embedder.embed.bind(embedder);
 	embedder.embed = (text: string) =>
@@ -84,7 +86,7 @@ if (args["strip-prefix"]) {
 
 if (args["embed-model"] || args["embed-models-dir"] || args["embed-prefix"]) {
 	const { localEmbedder: overridden } = await import(
-		"../../build/utils/Embedder.js"
+		"../../build/shared/local-ai/Embedder.js"
 	);
 	const { applyEmbedderOverride } = await import("./lib/embedder-override.js");
 	applyEmbedderOverride(overridden, {
@@ -94,13 +96,15 @@ if (args["embed-model"] || args["embed-models-dir"] || args["embed-prefix"]) {
 	});
 }
 
-const { localReranker } = await import("../../build/utils/LocalReranker.js");
-const { vectorDB } = await import("../../build/utils/VectorDB.js");
+const { localReranker } = await import(
+	"../../build/shared/local-ai/LocalReranker.js"
+);
+const { vectorDB } = await import("../../build/shared/indexing/VectorDB.js");
 const { VaultManager } = await import(
-	"../../build/utils/VaultManger/VaultManager.js"
+	"../../build/shared/vault-manager/VaultManager.js"
 );
 const { localModelManager } = await import(
-	"../../build/utils/LocalModelManager.js"
+	"../../build/shared/local-ai/LocalModelManager.js"
 );
 
 // ---------- 평가셋 ----------

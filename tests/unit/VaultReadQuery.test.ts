@@ -1,12 +1,12 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test, vi } from "vitest";
+import { localModelManager } from "../../src/shared/local-ai/LocalModelManager.js";
+import type { DocumentIndex } from "../../src/shared/markdown/types.js";
+import type { EnrichedDocument } from "../../src/shared/vault-manager/types.js";
+import type { VaultManager } from "../../src/shared/vault-manager/VaultManager.js";
 import { readSpecificFile } from "../../src/tools/vault/utils.js";
-import { localModelManager } from "../../src/utils/LocalModelManager.js";
-import type { DocumentIndex } from "../../src/utils/processor/types.js";
-import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
-import type { VaultManager } from "../../src/utils/VaultManger/VaultManager.js";
 
-vi.mock("../../src/utils/LocalReranker.js", () => {
+vi.mock("../../src/shared/local-ai/LocalReranker.js", () => {
 	return {
 		localReranker: {
 			rerank: vi.fn(async (query: string, documents: string[]) => {

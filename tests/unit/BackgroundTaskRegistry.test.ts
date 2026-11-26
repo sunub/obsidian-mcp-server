@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
-import { isAbortError, waitForAbortable } from "../../src/utils/abort";
-import { BackgroundTaskRegistry } from "../../src/utils/BackgroundTaskRegistry";
+import { isAbortError, waitForAbortable } from "../../src/shared/async/abort";
+import { BackgroundTaskRegistry } from "../../src/shared/lifecycle/BackgroundTaskRegistry";
 
 describe("abort helpers", () => {
 	test("waitForAbortable rejects when aborted", async () => {

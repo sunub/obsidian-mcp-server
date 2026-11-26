@@ -1,6 +1,6 @@
 # Obsidian Agent Product — New Project Handoff
 
-> 이 문서가 다루는 에이전트 CLI는 별도 프로젝트 `cli-agent`(`/Users/sunub/workspace/cli-agent`)로 분리되었다. 이 저장소에는 MCP 서버와 Claude Code 플러그인만 남는다.
+> 이 문서가 다루는 에이전트 CLI는 별도 프로젝트 `cli-agent`(`<vault-path>`)로 분리되었다. 이 저장소에는 MCP 서버와 Claude Code 플러그인만 남는다.
 
 ## 1. 이 문서의 목적
 
@@ -314,7 +314,7 @@ semantic embedding, vector database, local reranker는 MVP 이후에 추가한�
 - `src/tools/vault/utils/shared.ts`
 - `src/cli/hooks/useRagContext.ts`
 - `src/cli/hooks/useLlmStream/`
-- `src/utils/LocalModelManager.ts`
+- `src/shared/local-ai/LocalModelManager.ts`
 
 ## 13. 그대로 가져오지 않을 것
 

@@ -3,9 +3,9 @@ import type {
 	CallToolResult,
 	ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
+import { createToolError } from "@shared/mcp/createToolError.js";
+import { getGlobalVaultManager } from "@shared/vault-manager/getVaultManager.js";
 import state from "@/config.js";
-import { createToolError } from "@/utils/createToolError.js";
-import { getGlobalVaultManager } from "@/utils/getVaultManager.js";
 import { recordVaultResponseMetric } from "./metrics.js";
 import {
 	type ObsidianContentQueryParams,

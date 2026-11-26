@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { LocalModelManager } from "../../src/utils/LocalModelManager";
+import { LocalModelManager } from "../../src/shared/local-ai/LocalModelManager";
 
 const mocks = vi.hoisted(() => ({
 	pipeline: vi.fn(),
@@ -20,7 +20,9 @@ vi.mock("@huggingface/transformers", () => ({
 
 describe("local model presence checks", () => {
 	test("embedder checkModelPresence does not initialize transformer pipeline", async () => {
-		const { localEmbedder } = await import("../../src/utils/Embedder");
+		const { localEmbedder } = await import(
+			"../../src/shared/local-ai/Embedder"
+		);
 
 		await localEmbedder.checkModelPresence();
 
@@ -29,7 +31,9 @@ describe("local model presence checks", () => {
 	});
 
 	test("reranker checkModelPresence does not initialize transformer model", async () => {
-		const { localReranker } = await import("../../src/utils/LocalReranker");
+		const { localReranker } = await import(
+			"../../src/shared/local-ai/LocalReranker"
+		);
 
 		await localReranker.checkModelPresence();
 

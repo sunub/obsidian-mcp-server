@@ -114,7 +114,7 @@ case 'BACKSPACE': {
 
 의도: 5만 자의 코드를 붙여넣고 엔터를 쳤을 때, 이를 LLM에 그대로 보내면 컨텍스트가 초과되거나 비용이 폭증합니다. 이를 옵시디언 .obsidian/mcp-tmp/ 폴더에 임시 저장하고, LLM에는 "링크"만 전달합니다.
 
-관련 파일: src/cli/hooks/usePromptCompletion.ts (제출 직전 처리), src/utils/VaultManger/VaultManager.ts
+관련 파일: src/cli/hooks/usePromptCompletion.ts (제출 직전 처리), src/shared/vault-manager/VaultManager.ts
 
 구현 명세:
 

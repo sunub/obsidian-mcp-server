@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { ragIndexer } from "@shared/indexing/RAGIndexer.js";
 import state from "@/config.js";
-import { ragIndexer } from "@/utils/RAGIndexer.js";
 
 export const triggerIndexing = async (): Promise<CallToolResult> => {
 	const vaultPath = state.vaultPath;

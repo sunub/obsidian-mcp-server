@@ -42,7 +42,7 @@ projectSearch(idx, "LanceDB,");
 4. **청크 통계.** 내 노트 파일로 `recursiveChunks`를 크기 100/200/400으로 돌려 청크 수, 평균 길이, 50자 미만 청크 수를 출력하고 `headingChunks`와 비교한다.
 5. **작은 평가 루프.** 노트 8개, 질의 5개(정답 지정)로 `bm25Search`와 `projectSearch`의 MRR을 구하고 `pairedBootstrap`으로 구간을 낸다. 질의는 결과를 보기 전에 쓴다.
 6. **nprobes 곡선.** 시드 3개로 `buildIvf`를 만들고 nprobes 1~8의 평균 Recall@10과 `scanned`를 표로 출력한다.
-7. **설계.** 저장소의 `src/utils/Indexer.ts`를 진짜 BM25로 바꾸는 설계를 쓴다(역색인에 tf와 문서 길이, 증분 업데이트 시 평균 길이 갱신, 필드 처리, 비교할 평가).
+7. **설계.** 저장소의 `src/shared/indexing/Indexer.ts`를 진짜 BM25로 바꾸는 설계를 쓴다(역색인에 tf와 문서 길이, 증분 업데이트 시 평균 길이 갱신, 필드 처리, 비교할 평가).
 
 과제 5의 시작 코드:
 

@@ -34,7 +34,7 @@ const withEmbedder = vi.hoisted(() =>
 const embedderInit = vi.hoisted(() => vi.fn(async () => undefined));
 const embed = vi.hoisted(() => vi.fn(async () => [0.1, 0.2]));
 
-vi.mock("../../src/utils/worker/WorkerPool.js", () => ({
+vi.mock("../../src/shared/indexing/worker/WorkerPool.js", () => ({
 	WorkerPool: class {
 		init() {}
 		terminateAll = vi.fn(async () => undefined);
@@ -42,13 +42,13 @@ vi.mock("../../src/utils/worker/WorkerPool.js", () => ({
 	},
 }));
 
-vi.mock("../../src/utils/LocalModelManager.js", () => ({
+vi.mock("../../src/shared/local-ai/LocalModelManager.js", () => ({
 	localModelManager: {
 		withEmbedder,
 	},
 }));
 
-vi.mock("../../src/utils/Embedder.js", () => ({
+vi.mock("../../src/shared/local-ai/Embedder.js", () => ({
 	localEmbedder: {
 		init: embedderInit,
 		getTokenCount: (text: string) => text.length,
@@ -68,7 +68,9 @@ afterEach(async () => {
 
 describe("RAGIndexer local model lifecycle", () => {
 	test("uses LocalModelManager instead of directly initializing the embedder", async () => {
-		const { RAGIndexer } = await import("../../src/utils/RAGIndexer.js");
+		const { RAGIndexer } = await import(
+			"../../src/shared/indexing/RAGIndexer.js"
+		);
 		tempDir = await mkdtemp(join(tmpdir(), "rag-indexer-lifecycle-"));
 		const filePath = join(tempDir, "note.md");
 		await writeFile(filePath, "# Note\n\nhello world", "utf-8");

@@ -1,15 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { throwIfAborted } from "@shared/async/abort.js";
+import { Semaphore } from "@shared/async/semaphore.js";
+import { localEmbedder } from "@shared/local-ai/Embedder.js";
+import { localModelManager } from "@shared/local-ai/LocalModelManager.js";
 import ora, { type Ora } from "ora";
-import { throwIfAborted } from "./abort.js";
 import { DirectoryWalker } from "./DirectoryWalker.js";
-import { localEmbedder } from "./Embedder.js";
-import { localModelManager } from "./LocalModelManager.js";
-import { Semaphore } from "./semaphore.js";
 import { type VectorRecord, vectorDB } from "./VectorDB.js";
 import { WorkerPool } from "./worker/WorkerPool.js";
-
-export type HeadingEntry = { heading: string; pos: number; depth: number };
 
 export class RAGIndexer {
 	private embeddingSemaphore: Semaphore;

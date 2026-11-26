@@ -249,11 +249,11 @@ node --test lab.test.mjs   # 15개 테스트, 설치할 것 없음 (Node 18 이�
 		<div class="table-wrap">
 			<table>
 				<tr><th>단계</th><th>파일</th></tr>
-				<tr><td>파일 탐색·감시</td><td><code>src/utils/DirectoryWalker.ts</code>, <code>VaultWatcher.ts</code></td></tr>
-				<tr><td>키워드 색인</td><td><code>src/utils/Indexer.ts</code></td></tr>
+				<tr><td>파일 탐색·감시</td><td><code>src/shared/indexing/DirectoryWalker.ts</code>, <code>VaultWatcher.ts</code></td></tr>
+				<tr><td>키워드 색인</td><td><code>src/shared/indexing/Indexer.ts</code></td></tr>
 				<tr><td>전처리·청킹</td><td><code>processor/MatterParser.ts</code>, <code>stripEmbeddedData.ts</code>, <code>worker/chunkDocument.ts</code></td></tr>
 				<tr><td>임베딩·저장</td><td><code>RAGIndexer.ts</code>, <code>Embedder.ts</code>, <code>VectorDB.ts</code> (LanceDB)</td></tr>
-				<tr><td>하이브리드 검색</td><td><code>VaultManger/VaultManager.ts:97</code></td></tr>
+				<tr><td>하이브리드 검색</td><td><code>vault-manager/VaultManager.ts:97</code></td></tr>
 				<tr><td>평가</td><td><code>scripts/eval/search-quality.ts</code>, <code>lib/metrics.ts</code></td></tr>
 			</table>
 		</div>
@@ -1151,7 +1151,7 @@ node                         # REPL에서 직접 불러 보기
 	<details class="qa"><summary>과제 4. 내 노트로 청크 크기별 통계</summary><div class="a">노트 파일 하나를 읽어 <code>recursiveChunks</code>를 크기 100/200/400으로 돌리고 청크 수, 평균 길이, 50자 미만 청크 수를 출력한다. <code>headingChunks</code>와 비교한다.</div></details>
 	<details class="qa"><summary>과제 5. 작은 평가 루프 만들기</summary><div class="a">노트 8개와 질의 5개(정답 문서 지정)를 만든다. 질의마다 <code>bm25Search</code>와 <code>projectSearch</code>의 순위로 <code>reciprocalRank</code>를 구하고 평균 MRR과 <code>pairedBootstrap</code> 구간을 출력한다. 질의를 결과를 보기 전에 써야 하는 이유를 몸으로 느끼는 과제.</div></details>
 	<details class="qa"><summary>과제 6. nprobes별 재현율 곡선</summary><div class="a"><code>buildIvf</code>로 시드 3개를 만들고, nprobes 1~8에서 평균 Recall@10과 평균 <code>scanned</code>를 표로 출력한다. 시드 간 차이가 가장 큰 nprobes는 어디인가?</div></details>
-	<details class="qa"><summary>과제 7 (설계). 이 프로젝트 Indexer를 진짜 BM25로</summary><div class="a"><code>src/utils/Indexer.ts</code>의 역색인을 <code>Map&lt;token, Map&lt;filePath, tf&gt;&gt;</code>로 바꾸고 문서 길이를 저장하는 설계를 쓴다. <code>removeFileEntries</code>와 증분 업데이트에서 평균 길이를 어떻게 갱신할지, 태그·제목 같은 필드를 어떻게 다룰지, 평가셋으로 무엇을 비교할지까지 적는다.</div></details>
+	<details class="qa"><summary>과제 7 (설계). 이 프로젝트 Indexer를 진짜 BM25로</summary><div class="a"><code>src/shared/indexing/Indexer.ts</code>의 역색인을 <code>Map&lt;token, Map&lt;filePath, tf&gt;&gt;</code>로 바꾸고 문서 길이를 저장하는 설계를 쓴다. <code>removeFileEntries</code>와 증분 업데이트에서 평균 길이를 어떻게 갱신할지, 태그·제목 같은 필드를 어떻게 다룰지, 평가셋으로 무엇을 비교할지까지 적는다.</div></details>
 </section>
 
 <!-- ================================================================ Refs -->

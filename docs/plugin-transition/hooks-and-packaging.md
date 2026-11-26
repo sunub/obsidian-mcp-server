@@ -58,7 +58,6 @@
 
 ## 4. 워킹트리 및 코드 잔여물 정리 목록
 
-- **추적되지 않은 임시 파일**: `src/utils/tmp.ts`, `src/utils/tmp.md`, `src/utils/tmpChunking.ts`, `src/utils/RAG/app.ts`
 - **구버전 설정 파일**: 루트 `mcp-servers.json` (이미 제거된 `LLM_API_URL`, `LLM_CHAT_MODEL` 환경변수 포함)
 - **CLI 분리 후 코드 잔재**: `src/tools/vault/index.ts`, `src/tools/write_property/index.ts`의 `shorthandDescription`
 - **로컬 작업 잔여물**: `.claude/worktrees/sharp-cerf-0b7718/` (과거 worktree 잔존 여부 확인 후 정리)

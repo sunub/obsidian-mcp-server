@@ -1,10 +1,10 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { env } from "@huggingface/transformers";
+import { MODELS_DIR } from "@shared/paths/appData.js";
 import { Command } from "commander";
 import dotenv from "dotenv";
 import { z } from "zod";
-import { MODELS_DIR } from "./utils/constants.js";
 
 dotenv.config({ debug: false, quiet: true });
 
@@ -32,7 +32,6 @@ const vaultPathSchema = z
 export const configSchema = z.object({
 	vaultPath: vaultPathSchema,
 	loggingLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
-	llmRerankerApiUrl: z.string().url().default("http://127.0.0.1:8082"),
 });
 
 export type ObsidianMcpConfig = z.infer<typeof configSchema>;
@@ -40,8 +39,6 @@ export type ObsidianMcpConfig = z.infer<typeof configSchema>;
 const _rawConfig = {
 	vaultPath: process.env["VAULT_DIR_PATH"] || "",
 	loggingLevel: "info" as const,
-	llmRerankerApiUrl:
-		process.env["LLM_RERANKER_API_URL"] || "http://127.0.0.1:8082",
 };
 
 const _parseResult = configSchema.safeParse(_rawConfig);

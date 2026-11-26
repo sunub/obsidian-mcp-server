@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
-import { VaultManager } from "../../src/utils/VaultManger/index.js";
-import type { EnrichedDocument } from "../../src/utils/VaultManger/types.js";
+import { VaultManager } from "../../src/shared/vault-manager/index.js";
+import type { EnrichedDocument } from "../../src/shared/vault-manager/types.js";
 
 const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault-links");
 

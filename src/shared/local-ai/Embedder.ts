@@ -7,7 +7,7 @@ import {
 	type PreTrainedTokenizer,
 	pipeline,
 } from "@huggingface/transformers";
-import { MODELS_DIR } from "./constants.js";
+import { MODELS_DIR } from "@shared/paths/appData.js";
 
 export class EmbedderService {
 	public readonly modelName = "Xenova/multilingual-e5-small";
