@@ -45,7 +45,10 @@ export const description = `
   Search results include search_status. mode "keyword" means semantic search did
   not contribute, so results may miss related notes; reason says why. When
   search quality matters to the user, you can mention setup_command. indexing is
-  present while the semantic index is still being built.
+  present while the semantic index is still being built. reason "low_confidence"
+  means no keyword matched and semantic similarity was weak: check that the
+  results are relevant before answering from them, and do not treat them as proof
+  that the vault covers the topic.
 `;
 
 export const register = (mcpServer: McpServer) => {

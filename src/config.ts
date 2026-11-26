@@ -2,6 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { env } from "@huggingface/transformers";
 import { MODELS_DIR } from "@shared/paths/appData.js";
+import { DEFAULT_LOW_CONFIDENCE_DENSE_THRESHOLD } from "@shared/search-backend/lowConfidence.js";
 import { Command } from "commander";
 import dotenv from "dotenv";
 import { z } from "zod";
@@ -35,6 +36,32 @@ export const configSchema = z.object({
 });
 
 export type ObsidianMcpConfig = z.infer<typeof configSchema>;
+
+const lowConfidenceDenseThresholdSchema = z
+	.string()
+	.trim()
+	.min(1)
+	.pipe(z.coerce.number().min(0).max(1));
+
+export function parseLowConfidenceDenseThreshold(
+	raw: string | undefined,
+): number {
+	if (raw === undefined) {
+		return DEFAULT_LOW_CONFIDENCE_DENSE_THRESHOLD;
+	}
+	const parsed = lowConfidenceDenseThresholdSchema.safeParse(raw);
+	if (!parsed.success) {
+		console.error(
+			`[config] LOW_CONFIDENCE_DENSE_THRESHOLD must be a number between 0 and 1, got "${raw}". Using ${DEFAULT_LOW_CONFIDENCE_DENSE_THRESHOLD}.`,
+		);
+		return DEFAULT_LOW_CONFIDENCE_DENSE_THRESHOLD;
+	}
+	return parsed.data;
+}
+
+export const lowConfidenceDenseThreshold = parseLowConfidenceDenseThreshold(
+	process.env["LOW_CONFIDENCE_DENSE_THRESHOLD"],
+);
 
 const _rawConfig = {
 	vaultPath: process.env["VAULT_DIR_PATH"] || "",
