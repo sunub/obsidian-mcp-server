@@ -17,8 +17,8 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 ### 1.2 Frontmatter 안전 쓰기 (`write_property`) + 조회 도구 신설
 - 위치: `src/tools/write_property/`
 - 유지 이유: YAML frontmatter 파싱·병합 직렬화 실수 방지와 `VaultPathError` 기반 Vault 바깥 쓰기 차단.
+- 적용: 임의 key-value를 받아 병합·덮어쓰기합니다. 알려진 속성(`tags`, `title`, `completed` 등)은 타입을 검증합니다. 노트 유형별 스키마는 `vault-frontmatter` Skill이 관리합니다.
 - 개선할 점:
-  - `src/tools/write_property/params.ts`(L31-42)의 `obsidianPropertySchema`가 블로그 중심 고정 필드(`cssclasses`, `slug`, `category`, `completed` 등)로 하드코딩돼 있습니다. MCP 도구는 **임의 key-value frontmatter를 병합/덮어쓰는 범용 쓰기 도구**로 바꾸고, 노트 유형별 스키마는 `vault-frontmatter` Skill이 관리합니다.
   - 3단계 `vault-frontmatter` Skill이 기존 태그·속성을 일관되게 재사용할 수 있도록 **Vault 내 기존 태그·속성 목록을 읽는 읽기 전용 도구**(예: `vault_list_properties`) 추가가 필요합니다.
   - `src/tools/write_property/index.ts`(L142-145)의 `shorthandDescription`은 분리된 CLI 잔재이므로 제거합니다.
 
@@ -35,7 +35,7 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 | `collect_context` | **미결정 (제거 권장)** | 규칙 기반 요약은 제거했습니다. 검색과 발췌가 `search`, `read`와 겹쳐, 제거하고 `search`에 이어 받기를 추가하는 안을 권장합니다. 근거: [검토 기록](../collect-context-review.md) |
 | `list_all` | **재정의 또는 통합** | 단순 경로 나열은 호스트 `Glob`과 중복. frontmatter 메타데이터(`tags`, `category`, `completed`) 필터링 목록으로 특화하거나 `vault_scan` 계열로 통합 |
 | `stats` | **독립 MCP 도구 유지** (`vault_stats`) | Vault 문서 수, 인덱스 상태, 로컬 모델 준비 상태를 구조화된 JSON으로 반환 (`/vault-status` Command 백엔드) |
-| `index_vault_to_vectordb` | **MCP 동기 호출 제거 검토** | `index_rag.ts`(L16)가 전체 색인을 동기로 실행해 타임아웃 위험이 크고, AI가 임의 호출하면 안 되는 운영 작업. CLI 서브커맨드(`obsidian-mcp-server reindex`) 또는 비동기 작업으로 전환 |
+| `index_vault_to_vectordb` | **제거함** | 전체 색인은 타임아웃 위험이 크고 AI가 임의 호출하면 안 되는 운영 작업이라 CLI 서브커맨드(`obsidian-mcp-server reindex`)로 옮김 |
 
 ### `vault` 내부에서 제거할 레거시 패턴
 - **`<system_directive>` 텍스트 주입 제거 (적용, 미커밋)**: `search`와 `collect_context`는 `search_status` 필드(`src/shared/searchStatus.ts`)로 검색 상태를 반환합니다.
@@ -48,7 +48,7 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 - **유지할 것**:
   - `McpServer` 생성과 `ServerLifecycle.runToolCall` 래핑(`src/server.ts` L59-69).
 - **고쳐야 할 것**:
-  - **오래된 `instructions` 축소(`src/server.ts` L36-55)**: `stats`·`collect_context` 설명이 누락돼 있고, `search` 설명의 `Reranking` 표기가 실제 동작과 맞는지 확인이 필요합니다. 도구별 사용 절차는 Skill/Command로 옮기고, 서버 `instructions`는 `VAULT_DIR_PATH` 범위와 최소 정체성만 남깁니다.
+  - **오래된 `instructions` 축소(`src/server.ts` L36-55)**: `stats`·`collect_context` 설명이 누락돼 있고. 도구별 사용 절차는 Skill/Command로 옮기고, 서버 `instructions`는 `VAULT_DIR_PATH` 범위와 최소 정체성만 남깁니다.
   - **도구 등록 DI 통일(`src/server.ts` L71-78)**: 전역 `state` 싱글턴을 쓰는 `tools`(`vault`, `write_property`)와 `VaultToolDeps`를 주입받는 `toolsWithDeps`(`tidy_plan`, `plan_apply`, `plan_undo`)의 이원화를 없애고 전부 `VaultToolDeps` 기반으로 통일합니다.
 - **기동·감시 비용 점검(`src/index.ts`, `src/shared/vault-manager/VaultWatcher.ts`)**:
   - 현재 서버 시작 시 정리 기능만 쓰려 해도 로컬 모델 체크와 `chokidar` 기반 `VaultWatcher`를 무조건 기동합니다.

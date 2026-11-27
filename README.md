@@ -12,7 +12,7 @@
 - **컨텍스트 선별**: 키워드 검색과 시맨틱 검색을 결합해 Agent에게 제공할 근거 후보를 찾습니다.
 - **명시적 RAG 통합**: 모든 프롬프트에 백그라운드 검색을 붙이지 않고, Vault 관련 명령이나 도구 참조가 있을 때 문맥 수집 경로를 엽니다.
 - **토큰 절약**: 원문 전체를 밀어넣기보다 excerpt와 검색이 일치시킨 본문 조각 형태로 압축합니다.
-- **로컬 모델 기반 검색**: `@huggingface/transformers`, LanceDB, local reranker를 사용해 semantic retrieval을 로컬에서 수행합니다.
+- **로컬 모델 기반 검색**: `@huggingface/transformers`, LanceDB를 사용해 semantic retrieval을 로컬에서 수행합니다.
 
 Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 대안입니다. 다만 이 프로젝트의 기본 목표는 외부 서비스나 별도 검색 엔진에 의존하지 않는 로컬 단독 작업이므로, embedded retrieval stack을 기본값으로 선택합니다.
 
@@ -40,9 +40,7 @@ Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 
 3. **RRF Fusion**: 키워드 결과와 벡터 결과의 순위를 결합합니다.
 4. **Compression**: 필요한 excerpt, source ref, memory packet만 Agent context로 제공합니다.
 
-검색 결과 목록에는 reranker를 적용하지 않습니다. 질의 42개 평가셋에서 reranker가 품질을 높이지 못하고 검색당 수 초를 더 썼기 때문입니다.
-
-로컬 embedding/reranking 모델이 설치되지 않은 경우 서버는 키워드 검색으로 폴백합니다.
+로컬 embedding 모델이 설치되지 않은 경우 서버는 키워드 검색으로 폴백합니다.
 
 ## 설치
 
@@ -57,7 +55,7 @@ Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 
 npx @sunub/obsidian-mcp-server setup
 ```
 
-이 명령은 로컬 semantic search와 reranking에 필요한 모델을 캐시에 설치합니다.
+이 명령은 로컬 semantic search에 필요한 모델을 캐시에 설치합니다.
 
 이미 패키지를 설치한 환경에서는 다음처럼 실행할 수도 있습니다.
 
@@ -65,7 +63,26 @@ npx @sunub/obsidian-mcp-server setup
 obsidian-mcp-server setup
 ```
 
-모델 설치가 없으면 기본 키워드 검색은 동작하지만, semantic search와 reranking 품질은 사용할 수 없습니다.
+모델 설치가 없으면 기본 키워드 검색은 동작하지만, semantic search는 사용할 수 없습니다.
+
+## Claude Code 플러그인
+
+`plugin/` 폴더는 Vault 정리 플러그인 `vault-tidy`입니다. MCP 서버에 정리 절차 Skill, 슬래시 커맨드, 셸 명령으로 Vault 파일을 바꾸지 못하게 막는 Hook을 더합니다.
+
+1. Claude Code를 실행하는 셸에 Vault 절대 경로를 설정합니다. MCP 서버와 Hook이 이 값을 함께 씁니다.
+
+   ```bash
+   export VAULT_DIR_PATH="/Users/username/Documents/MyVault"
+   ```
+
+2. 저장소를 받아 플러그인 폴더를 지정해 실행합니다.
+
+   ```bash
+   git clone https://github.com/sunub/obsidian-mcp-server.git
+   claude --plugin-dir ./obsidian-mcp-server/plugin
+   ```
+
+`VAULT_DIR_PATH`가 없거나 존재하지 않는 폴더면 MCP 서버가 시작하지 않습니다. 커맨드와 Hook의 검사 범위는 [플러그인 문서](plugin/README.md)에 있습니다.
 
 ## MCP 클라이언트 설정
 
@@ -87,6 +104,14 @@ Claude Desktop, Cursor, Copilot 등 MCP 클라이언트에는 다음처럼 등�
 
 `VAULT_DIR_PATH`는 반드시 본인의 Vault 절대 경로로 바꿔야 합니다.
 
+## 검색 인덱스 재색인
+
+변경되었거나 누락된 문서만 색인합니다. `--force`를 붙이면 인덱스를 비우고 전체를 다시 색인합니다.
+
+```bash
+VAULT_DIR_PATH="/Users/username/Documents/MyVault" npx -y @sunub/obsidian-mcp-server@latest reindex
+```
+
 ## 환경 변수
 
 | 환경변수 | 기본값 | 용도 | 필수 |
@@ -102,7 +127,7 @@ MCP 서버의 Vault 검색/읽기 도구에는 `VAULT_DIR_PATH`가 핵심 설정
 ## 주의 사항
 
 - `VAULT_DIR_PATH`가 없거나 잘못되면 Vault 관련 도구가 동작하지 않습니다.
-- semantic search와 reranking을 쓰려면 `setup`으로 로컬 모델을 설치해야 합니다.
+- semantic search를 쓰려면 `setup`으로 로컬 모델을 설치해야 합니다.
 - `collect_context`는 긴 주제의 검색 결과를 배치로 이어 받을 때 쓰고, 단건 조회는 `search`나 `read`가 더 단순합니다.
 - 쓰기 계열 도구는 Vault 바깥 경로에 쓰지 않도록 차단합니다.
 
