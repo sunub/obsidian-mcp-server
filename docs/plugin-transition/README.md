@@ -2,7 +2,7 @@
 
 이 디렉터리는 `obsidian-mcp-server`를 단일 MCP 서버에서 **MCP + Skill + Command + Hook** 구조의 플러그인(`vault-tidy`)으로 전환하면서 도출한 현재 상태 진단과 기능 재배치 기준을 주제별로 분리해 정리한 문서 모음입니다.
 
-기준 시점: 2026-11-26 (`vitest` 48개 파일 / 371개 테스트 통과, 1단계 `tidy_plan`·`plan_apply`·`plan_undo` 구현 완료 직후)
+기준 시점: 2026-11-26 (1단계 `tidy_plan`·`plan_apply`·`plan_undo` 구현 완료 이후)
 
 ## 1. 왜 전환하는가
 
@@ -26,10 +26,10 @@
 - [mcp-core.md](./mcp-core.md): MCP로 남겨야 하는 기능, `src/tools/`·`src/server.ts` 리팩터링 대상, 미결 설계 포인트
 - [skills.md](./skills.md): Skill로 분리해야 하는 절차·판단 규칙(`vault-tidy`, `vault-frontmatter`)과 보류한 `vault-context`
 - [commands.md](./commands.md): `plugin/commands/`에 제공할 명시적 슬래시 커맨드 명세
-- [hooks-and-packaging.md](./hooks-and-packaging.md): Hook 사각지대 보강, 플러그인 배포·환경변수 설정, 문서 정체성 충돌 및 잔여물 정리
+- [hooks-and-packaging.md](./hooks-and-packaging.md): Hook 사각지대 보강, 플러그인 배포·환경변수 설정, 표기 통일 및 잔여물 정리
 
 ## 4. 권장 진행 순서
 
-1. **1단계 플러그인 마감**: `plugin/.mcp.json` 복구 및 `${VAULT_DIR_PATH}` 검증, `plugin/commands/` 커맨드 4개 추가(`/vault-context`는 보류), Hook 사각지대 보강, 저장소 문서 정체성 통일
+1. **1단계 플러그인 마감**: `plugin/.mcp.json` 복구 및 `${VAULT_DIR_PATH}` 검증, `plugin/commands/` 커맨드 4개 추가(`/vault-context`는 보류), Hook 사각지대 보강, 저장소 문서 표기 통일
 2. **MCP/Skill 경계 정리**: `src/server.ts` 경량화, 도구 `description` 중복 절차 제거, `collect_context` 존폐 결정([검토 기록](../collect-context-review.md)), `vault` 모놀리스 분해
 3. **2·3단계 진입**: `vault-frontmatter` Skill + 속성 조회 도구 구현

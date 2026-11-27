@@ -11,8 +11,8 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 ### 1.1 Vault 정리 및 복원 엔진 (`tidy_plan`, `plan_apply`, `plan_undo`)
 - 위치: `src/shared/vault-ops/`, `src/tools/tidy/`, `src/tools/plan/`
 - 유지 이유: 파일 해시 비교(stale plan 거부), 최상위 폴더 경계 강제(`boundary.ts`), Obsidian 링크 파싱/해석/재작성(`links.ts`, `rewritePlan.ts`), `.trash/` 이동, `.vault-tidy/runs/<runId>.json` 저널 기반 역순 복원(`apply.ts`, `journal.ts`)은 프롬프트로 대체할 수 없는 안전 코어입니다.
-- 개선할 점:
-  - `src/tools/tidy/index.ts`(L30-38), `src/tools/plan/apply.ts`, `src/tools/plan/undo.ts`의 `description`에 들어 있는 대화 절차 지시문은 `vault-tidy` Skill과 중복됩니다. MCP `description`에는 입출력 계약과 부작용만 남깁니다.
+- 정리 완료:
+  - `src/tools/tidy/index.ts`, `src/tools/plan/apply.ts`, `src/tools/plan/undo.ts`의 `description`에서 `vault-tidy` Skill과 중복되던 대화 절차 지시문을 제거하고 입출력 계약과 부작용만 남겼습니다.
 
 ### 1.2 Frontmatter 안전 쓰기 (`write_property`) + 조회 도구 신설
 - 위치: `src/tools/write_property/`
@@ -48,7 +48,7 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 - **유지할 것**:
   - `McpServer` 생성과 `ServerLifecycle.runToolCall` 래핑(`src/server.ts` L59-69).
 - **고쳐야 할 것**:
-  - **오래된 `instructions` 축소(`src/server.ts` L36-55)**: 이미 제거된 `Reranking`이 남아 있고 `stats`·`collect_context`가 누락돼 있습니다. 도구별 사용 절차는 Skill/Command로 옮기고, 서버 `instructions`는 `VAULT_DIR_PATH` 범위와 최소 정체성만 남깁니다.
+  - **오래된 `instructions` 축소(`src/server.ts` L36-55)**: `stats`·`collect_context` 설명이 누락돼 있고, `search` 설명의 `Reranking` 표기가 실제 동작과 맞는지 확인이 필요합니다. 도구별 사용 절차는 Skill/Command로 옮기고, 서버 `instructions`는 `VAULT_DIR_PATH` 범위와 최소 정체성만 남깁니다.
   - **도구 등록 DI 통일(`src/server.ts` L71-78)**: 전역 `state` 싱글턴을 쓰는 `tools`(`vault`, `write_property`)와 `VaultToolDeps`를 주입받는 `toolsWithDeps`(`tidy_plan`, `plan_apply`, `plan_undo`)의 이원화를 없애고 전부 `VaultToolDeps` 기반으로 통일합니다.
 - **기동·감시 비용 점검(`src/index.ts`, `src/shared/vault-manager/VaultWatcher.ts`)**:
   - 현재 서버 시작 시 정리 기능만 쓰려 해도 로컬 모델 체크와 `chokidar` 기반 `VaultWatcher`를 무조건 기동합니다.
@@ -58,8 +58,8 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 
 ## 4. 미결 설계 포인트 (구현 전 결정 필요)
 
-1. **`src/tools/plan/confirm.ts` 연결 여부**:
-   - MCP `elicitation`으로 클라이언트 네이티브 확인 팝업을 띄우는 `elicitConfirmer`가 구현돼 있지만 `apply.ts`에 연결되지 않았습니다.
-   - Skill 대화 승인만으로 갈지, 클라이언트가 `elicitation.form`을 지원할 때 서버 레벨 이중 승인을 걸지 결정이 필요합니다.
+1. **elicitation 미지원 클라이언트의 처리**:
+   - `plan_apply`는 `src/tools/plan/confirm.ts`로 실행 전 확인을 받습니다. `elicitation.form`을 지원하지 않는 클라이언트에서는 확인 없이 실행합니다.
+   - 거부하도록 바꿀지 결정이 필요합니다.
 2. **2단계(주제별 재구성)의 임베딩 의존 경로**:
    - 임베딩·벡터 검색 코드는 `src/shared/local-ai/`와 `src/shared/indexing/`에 있어 `src/tools/`에서 `@shared/*`로 import할 수 있습니다.

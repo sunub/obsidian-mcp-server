@@ -31,7 +31,7 @@
 ## 2. 플러그인 패키징 및 배포 설정 (`plugin/`, `package.json`)
 
 1. **`plugin/.mcp.json` 로컬 하드코딩 복구 (즉시 필요)**:
-   - 현재 워킹트리 diff에서 `plugin/.mcp.json`이 로컬 개발 경로(`node`, `${CLAUDE_PLUGIN_ROOT}/../build/index.js`, `VAULT_DIR_PATH: "<vault-path>"`)로 바뀌어 있습니다.
+   - 현재 워킹트리 diff에서 `plugin/.mcp.json`이 로컬 개발 경로(`node`, `${CLAUDE_PLUGIN_ROOT}/../build/index.js`, `VAULT_DIR_PATH: "/Users/sunub/workspace/tmp-obsidian-vault"`)로 바뀌어 있습니다.
    - 배포용 설정(`npx -y @sunub/obsidian-mcp-server@latest`, `${VAULT_DIR_PATH}`)으로 복구하고, 로컬 개발 테스트용 설정은 git에 커밋하지 않도록 분리해야 합니다.
 2. **`${VAULT_DIR_PATH}` 확장 실제 검증**:
    - `plugin/README.md`(L21-24)에 미확인으로 남아 있는 항목입니다. `claude --plugin-dir ./plugin` 환경에서 `.mcp.json`의 `${VAULT_DIR_PATH}`가 사용자 셸 환경변수로 정상 치환되는지 검증하고 결과를 `plugin/README.md`에 확정 기록합니다.
@@ -43,16 +43,14 @@
 
 ---
 
-## 3. 문서·규칙 간 정체성 충돌 해소
+## 3. 문서 표기 통일
 
-현재 저장소 안에 **세 가지 서로 다른 제품 정의**가 공존합니다. AI 에이전트나 기여자가 문서를 읽을 때 상충된 지시를 받게 되므로 정리가 필요합니다.
+이 저장소의 제품 정의는 **Claude Code 플러그인(MCP + Skill + Hook)** 입니다(`plugin/`, `CLAUDE.md`).
 
-| 파일 | 현재 적힌 정체성 | 정리 방향 |
+| 파일 | 현재 표기 | 정리 방향 |
 |---|---|---|
-| `plugin/`, `CLAUDE.md`, `docs/superpowers/specs/2026-11-20-vault-tidy-plugin-design.md` | **Claude Code 플러그인** (MCP + Skill + Hook) | **현재 저장소의 정식 정체성으로 기준 통일** |
-| `docs/adr/0002-obsidian-native-product-boundary.md`, `docs/obsidian-agent-product-handoff.md`, `CONTEXT.md` | **Obsidian 네이티브 데스크톱 플러그인** (MCP 폐기) | 별도 제품/과거 방향 전환 기록(Superseded 또는 별도 프로젝트 이관)으로 상태 명시 |
-| `AGENTS.md` (L3) | **Codex 플러그인** | 실제 `plugin/`이 Claude Code 전용인지, Codex도 별도 어댑터로 지원할지 결정 후 표기 통일 |
-| `README.md` | 기존 **Obsidian MCP Server** 중심 설명 | 4단계 시점에 플러그인 설치(`plugin/`) + MCP 단독 사용을 함께 안내하도록 개편 |
+| `AGENTS.md` (L3) | Codex 플러그인 | 실제 `plugin/`이 Claude Code 전용인지, Codex도 별도 어댑터로 지원할지 결정 후 표기 통일 |
+| `README.md` | Obsidian MCP Server 중심 설명 | 플러그인 설치(`plugin/`)와 MCP 단독 사용을 함께 안내하도록 개편 |
 
 ---
 
