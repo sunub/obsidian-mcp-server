@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
+	auroc,
+	bpref,
 	hitAtK,
+	judgedAtK,
+	ndcgAtK,
 	pairedBootstrap,
 	percentile,
 	recallAtK,
@@ -41,5 +45,39 @@ describe("검색 평가 지표", () => {
 		expect(first.meanDiff).toBeCloseTo(0.5);
 		expect(first.ciLow).toBeGreaterThanOrEqual(0);
 		expect(first.ciHigh).toBeLessThanOrEqual(1);
+	});
+
+	test("bpref ignores unjudged documents and penalizes confirmed non-relevant documents above relevant ones", () => {
+		const grades = { "rel1.md": 2, "rel2.md": 2, "neg1.md": 0, "neg2.md": 0 };
+
+		expect(bpref(["unjudged.md", "rel1.md", "rel2.md"], grades, 2)).toBe(1);
+		expect(bpref(["neg1.md", "rel1.md", "rel2.md"], grades, 2)).toBeCloseTo(
+			0.5,
+		);
+		expect(bpref(["neg1.md", "neg2.md", "rel1.md"], grades, 2)).toBe(0);
+	});
+
+	test("ndcgAtK rewards grade 2 above grade 1 and normalizes by ideal ranking", () => {
+		const grades = { "best.md": 2, "ok.md": 1, "bad.md": 0 };
+
+		expect(ndcgAtK(["best.md", "ok.md", "bad.md"], grades, 3)).toBeCloseTo(1);
+		expect(ndcgAtK(["ok.md", "best.md", "bad.md"], grades, 3)).toBeLessThan(1);
+		expect(ndcgAtK(["ok.md", "best.md", "bad.md"], grades, 3)).toBeGreaterThan(
+			0.7,
+		);
+	});
+
+	test("judgedAtK reports fraction of top-k documents present in grades", () => {
+		const grades = { "a.md": 2, "b.md": 0 };
+
+		expect(
+			judgedAtK(["a.md", "b.md", "unknown.md", "unknown2.md"], grades, 4),
+		).toBe(0.5);
+	});
+
+	test("auroc computes exact pairwise separation between positive and negative scores", () => {
+		expect(auroc([0.9, 0.8], [0.5, 0.4])).toBe(1);
+		expect(auroc([0.5, 0.4], [0.9, 0.8])).toBe(0);
+		expect(auroc([0.8, 0.6], [0.7, 0.5])).toBeCloseTo(0.75);
 	});
 });

@@ -582,6 +582,166 @@ npx tsx scripts/eval/search-quality.ts --vault <복사본> --strip-prefix --only
 
 **변경:** `Embedder.modelName`을 e5-small로 바꾸고 `setup.ts`의 모델 목록을 갱신했다. `INDEX_VERSION`은 11이며 접두사는 붙이지 않는다. 기존 설치는 `setup`으로 모델(약 470MB)을 받아야 한다. 평가 스크립트에는 `--embed-model`, `--embed-models-dir`, `--embed-prefix`, `--strip-context` 옵션을 추가했다.
 
+### 4.14 운영 검색 결함 5건 수정 (2026-11-26)
+
+알고리즘 비교에 앞서 실제 운영 경로를 점검해 검색 품질을 떨어뜨리는 결함 5건을 수정하고 회귀 테스트(`tests/unit/SearchDefectRegressions.test.ts`)를 추가했다.
+
+| 결함 | 위치 | 원인 및 영향 | 수정 내용 |
+|---|---|---|---|
+| 불필요한 리랭커 강제 의존 | `VaultManager.ts`, `src/index.ts` | `hybridSearch`는 리랭커를 쓰지 않는데 `embedderReady && rerankerReady`를 요구해 리랭커 미설치 시 하이브리드 전체가 키워드 전용으로 강등됨 | `localEmbedder.checkModelPresence()`만으로 하이브리드 활성화 |
+| 실시간 편집 시 벡터 갱신 누락 | `VaultManager.ts`, `RAGIndexer.ts` | `endToolCall()`이 매 호출 종료마다 모델을 내리는데 `upsertDocument`가 `!isEmbedderReady`면 조기 반환해 파일 편집이 벡터 DB에 반영되지 않음. `RAGIndexer`의 3초 데드라인도 cold 시작 시 파일을 조용히 건너뜀 | `upsertDocument`의 `isEmbedderReady` 차단 제거, 색인 소프트 데드라인 `3000ms → 10000ms` 상향 |
+| 벡터 버전 불일치 무방비 검색 & 재색인 누락 | `VectorDB.ts`, `index_rag.ts` | 구버전(v10 MiniLM) 캐시에 v11(e5) 쿼리를 그대로 실행하면 무작위 결과(MRR 0.025)로 하이브리드가 오염됨. `index_vault_to_vectordb`는 `checkAndMigrateIfNeeded`와 `createVectorIndex`를 호출하지 않음 | `VectorDB.search`에 `isIndexVersionCurrent()` 가드 추가(불일치 시 `[]` 반환 후 키워드 폴백), `triggerIndexing`이 마이그레이션 → 전체 색인 → 인덱스 생성 순으로 실행 |
+| macOS NFD 한글·파일명 미분리·Windows 경로 | `tokenize.ts`, `ChunkBM25Index.ts` | `NFC` 정규화가 없어 macOS NFD 한글 파일명이 매칭되지 않고, `회의록-2024.md`를 `회의록`으로 못 찾으며 `/`로만 경로를 분리함 | 색인·질의·파일명 전체 `.normalize("NFC")` 적용, `/[/\\]/` 분리 및 파일명 단어 토큰화 추가 |
+| 평가 스크립트 드리프트 | `scripts/eval/search-quality.ts` | 구 `search_query:` 접두사와 70% 상대 하한이 빠진 `indexer.search`가 남아 운영 코드와 어긋남 | 접두사 제거 및 `indexer.searchWithChunks(query, semantic.length > 0 ? 0.7 : 0)` 반영 |
+
+- 결함 4(NFC·파일명 단어 분리) 반영 후 `tmp-obsidian-vault`(v11, 400문서)에서 `golden167` 기준선 MRR@10이 `0.859 → 0.862`, `keyword_only`가 `0.804 → 0.808`로 소폭 상승했다.
+- 전체 단위 테스트 52개 파일(410건 이상)과 `npm run build`, Biome 검사를 모두 통과했다.
+
+### 4.15 검색 알고리즘 비교: 평가 기준·동작/장단점·실측 결과 (2026-11-26)
+
+#### 평가 기준
+
+**데이터셋** (동일 복사본 Vault `tmp-obsidian-vault`, 문서 400개, 4.78MB, `INDEX_VERSION 11`, `Xenova/multilingual-e5-small`, 청크 5,958개, IVF-PQ 77파티션):
+- `golden167 (lenient, n=167)`: `queries.jsonl`(52) + `queries-holdout.jsonl`(15) + `queries-final.jsonl`(100). 문서를 보고 만든 질의 위주로 원문 어휘 겹침률이 높다(`queries.jsonl` 74.3%, `final` 67.0%).
+- `blind59 (strict n=43→44 / lenient n=57→58)`: `queries-blind-labeled.jsonl`. 문서를 보지 않고 영역 설명만으로 만든 자연어 질의. `strict`는 핵심 정답(2등급), `lenient`는 부분 관련 포함(1~2등급).
+- `no_answer (n=20)`: `queries-no-answer.jsonl`. Vault 전체 grep 검증으로 관련 내용이 0건인 질의. 답이 없을 때 억지 결과를 거절할 수 있는지 검증한다.
+
+**지표:**
+- **Recall@5 / Recall@10:** 정답 문서 중 상위 k개 안에 포함된 비율. 여러 문서에 답이 흩어진 질의(`multi_doc`)의 회수력을 본다.
+- **MRR@10:** 첫 번째 정답 순위의 역수 평균. 에이전트가 1~2위 문서만 읽을 때의 체감 정확도를 본다.
+- **Hit@1:** 1위 문서가 정답인 질의 비율.
+- **SemMRR:** `type === "semantic"` 질의만 따로 집계한 MRR@10.
+- **nDCG@10:** 등급(2점→이득 3, 1점→이득 1, 0점→이득 0)과 순위 할인을 함께 반영한 통합 순위 지표.
+- **bpref:** 확정 정답과 확정 오답(0점) 사이의 상대 순서만 채점하고 미채점 문서는 제외하는 지표. 불완전 풀링 환경에서 새 시스템을 공정 비교할 때 쓴다.
+- **J@5 (`judgedAtK(5)`):** 상위 5개 결과 중 `grades`에 채점 기록이 있는 문서 비율. 낮을수록 풀링 편향 위험이 크다.
+- **AUROC:** `answerable` 질의 점수가 `no_answer` 질의 점수보다 높을 확률(0.5 무작위, 1.0 완벽 분리).
+- **짝지은 부트스트랩 95% CI:** 기준선(`baseline_rrf`) 대비 MRR 차이의 신뢰구간. 0을 포함하지 않을 때(`*`)만 통계적으로 유의하다고 판정한다.
+
+#### 비교한 알고리즘 4개 군(17개 구성, `scripts/eval/algorithms/`)
+
+1. **기준선 (`baseline.ts`):**
+   - `baseline_rrf`: 현재 운영 로직. 청크 BM25(`requiredUnitMatches` 최소 일치 조건 + 1위 대비 70% 상대 하한)와 LanceDB 상위 30개 청크(문서당 첫 등장 순위)를 `RRF(k=60)`으로 1:1 결합한다.
+   - 장점: 스케일이 다른 두 검색기 점수를 정규화 없이 안정적으로 결합하며, 모든 데이터셋에서 단일 검색기(`keyword_only`, `dense_only`)를 일관되게 앞선다.
+   - 단점: 순위만 합산하고 점수 크기를 버려, `blind59` 의미 질의에서는 약한 키워드 일치가 강한 Dense 상위를 밀어내는 역전(SemMRR `0.469` < `dense_only` `0.538`)이 생긴다.
+
+2. **점수 기반 융합 Convex Combination (`convexCombination.ts`, `hybridWinners.ts`):**
+   - 동작: Dense 상위 30개 청크의 문서별 최고 코사인 유사도와 BM25 점수를 각각 `0~1`로 정규화한 뒤 `alpha * dense + (1 - alpha) * bm25`로 합산한다.
+   - 변형: 순수 Min-Max(`cc_a0.5`, `cc_a0.7`), BM25 절대 하한(`cc_a0.7_bm3`, `cc_a0.8_bm3`), 70% 상대 하한 + Min-Max(`cc_a0.5_rel70`), 70% 상대 하한 + BM25 Max 정규화 `score/max`(`cc_a0.5_rel70_max`), 질의 길이 분기(`adaptive_rrf_cc`, 4단어 이상 CC / 3단어 이하 RRF), RRF+CC 블렌드(`rrf_cc_blend`).
+   - 장점: 한쪽 검색기의 점수 격차가 클 때 그 신호를 보존해 자연어 의미 질의(`blind59`)에서 R@5·R@10·SemMRR이 크게 오른다.
+   - 단점: 70% 하한에 Min-Max를 쓰면 후보가 2개뿐일 때 2위 문서를 `0.0`으로 지워버려(`cc_a0.5_rel70` strict MRR `0.623`) 오히려 깨진다. BM25에 `score/max` 정규화를 쓴 `cc_a0.5_rel70_max`로 이 결함을 해결했다(`0.676`). `alpha ≥ 0.7`은 키워드 정밀도를 과도하게 깎아 하락했다.
+
+3. **Obsidian 링크 그래프 부스팅 (`linkGraphBoost.ts`):**
+   - `link_1hop`: `baseline_rrf` 상위 5개 시드의 위키링크(`outLinks`/`inLinks`) 이웃에 `seedScore * weight / √(이웃 수)`만큼 가산한다.
+   - `link_ppr`: 상위 10개 시드를 텔레포트 벡터로 두고 그래프 위에서 `damping=0.3`, 10회 거듭제곱 반복(Personalized PageRank)을 돌려 RRF와 `85:15`로 섞는다.
+   - 장점: 지연이 `0.01~0.04ms`로 극히 작고, `link_ppr`은 악화 없이 `blind59 (strict)` MRR을 `+0.012` 소폭 올렸다.
+   - 단점: 이 Vault는 400문서 중 위키링크가 있는 문서가 **6개(1.5%, 총 16링크)**뿐이라 그래프가 희소해 효과가 미미했다. 링크가 촘촘한 Zettelkasten/MOC Vault에서 효과가 나는 구조다.
+
+4. **BM25F + 한글 2-gram (`bm25fBigram.ts`):**
+   - 동작: 문서를 `title`(제목+파일명, 가중치 `3.0`, `b=0.5`), `tags`(`2.0`, `b=0.3`), `body`(`1.0`, `b=0.75`)로 나눠 Pseudo-TF를 합산하고, 한글 2글자 이상 어간에서 2-gram(`bg:상태`, `bg:관리`)을 보조 색인해 합성어를 잡는다.
+   - 장점: 정확 키워드·합성어가 많은 `golden167`에서 `bm25f_bg_rrf`가 **R@5 `0.875`, R@10 `0.908`, MRR@10 `0.867`로 전체 1위**를 기록했다.
+   - 단점: 문서 전체 단위 + OR 매칭(최소 일치 조건 없음) 구조라 긴 자연어 질의(`blind59`)에서 긴 문서에 2-gram·단어 몇 개가 흩어져 걸리며 `blind59 (lenient)`가 **`0.783`(-0.066`*`)으로 유의하게 하락**했다. 청크 단위와 `requiredUnitMatches`가 긴 질의 정밀도에 필수임을 역으로 입증했다.
+
+#### 실측 결과 (`scripts/eval/compare-algorithms.ts`, 결함 수정 후 `tmp-obsidian-vault` v11)
+
+| 알고리즘 | `golden167` R@5 / MRR (SemMRR) | `blind59 strict` R@5 / MRR (SemMRR) | `blind59 lenient` R@5 / MRR (SemMRR) | `golden167` ΔMRR [95% CI] |
+|---|---:|---:|---:|---|
+| `baseline_rrf` | 0.846 / **0.862** (0.718) | 0.698 / 0.669 (0.469) | 0.622 / 0.849 (0.809) | - |
+| `keyword_only` | 0.808 / 0.808 (0.626) | 0.594 / 0.579 (0.441) | 0.512 / 0.798 (0.704) | -0.054 [-0.084, -0.026] `*` |
+| `dense_only` | 0.781 / 0.760 (0.540) | 0.666 / 0.656 (0.538) | 0.505 / 0.836 (0.841) | -0.102 [-0.152, -0.056] `*` |
+| `cc_a0.5` | 0.859 / 0.836 (0.663) | **0.756** / **0.689** (**0.575**) | 0.618 / **0.881** (**0.882**) | -0.026 [-0.054, -0.001] `*` |
+| `cc_a0.5_rel70` | 0.839 / 0.851 (0.669) | 0.683 / 0.623 (0.470) | 0.583 / 0.856 (0.838) | -0.012 [-0.030, +0.006] |
+| `cc_a0.5_rel70_max` | 0.853 / 0.846 (0.658) | 0.687 / 0.676 (0.516) | 0.618 / 0.862 (0.836) | -0.016 [-0.039, +0.005] |
+| `adaptive_rrf_cc` | 0.857 / 0.840 (0.638) | 0.734 / 0.664 (0.568) | **0.632** / 0.851 (0.849) | -0.022 [-0.049, +0.002] |
+| `rrf_cc_blend` | 0.850 / 0.847 (0.661) | 0.692 / 0.664 (0.491) | 0.617 / 0.859 (0.833) | -0.015 [-0.038, +0.006] |
+| `link_ppr` | 0.846 / 0.862 (0.718) | 0.698 / 0.681 (0.469) | 0.627 / 0.849 (0.809) | +0.000 [0.000, +0.000] |
+| `bm25f_bg_rrf` | **0.875** / **0.867** (0.718) | 0.650 / 0.651 (0.539) | 0.545 / 0.783 (0.681) | +0.004 [-0.024, +0.033] |
+
+**판정:** 융합 공식만 바꿔서는 세 데이터셋 모두를 통계적으로 유의하게 이기는 지배적 승자가 없다. 키워드·기지 노트 검색은 `baseline_rrf`가, 자연어 블라인드 검색은 `cc_a0.5`가, 균형 절충안은 `cc_a0.5_rel70_max`가 가장 낫다.
+
+### 4.16 후보 생성기 비교: `multilingual-e5-base` & 로컬 Docker Elasticsearch (`analysis-nori` + HNSW) (2026-11-26)
+
+융합 공식의 파레토 한계(±0.01~0.03)를 넘기 위해 1단계 후보 생성기 자체(벡터 모델과 키워드·검색 엔진)를 각각 비교했다.
+
+#### A. `multilingual-e5-base` (`q8` / `fp32` / `fp32 + query:/passage: prefix`, `scripts/eval/benchmark-e5-base.ts`)
+
+- **동작과 비교 조건:** 현재 `e5-small`(118M, 384d, fp32) 대비 `e5-base`(278M, 768d)의 `q8` 양자화, `fp32` 접두사 없음, `fp32` 공식 접두사(`query: `/`passage: `) 3종을 동일 청킹(256/32)·배치 16·정확 코사인 유사도로 측정했다.
+
+| 모델 | 차원 | 디스크 | 로컬 Cold 로드 | 색인(배치16) | 질의 p50 / p95 | 색인 피크 RSS | 벡터 크기 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `small-fp32` | 384 | 465MB | 382ms (+4ms) | 95~100s | 2.4 / 2.7~3.0ms | 1.9~3.0GB | 8.7MB |
+| `base-q8` | 768 | ~280MB | 320ms (+10ms) | 190.6s | 3.3 / 4.8ms | 2.6GB | 17.4MB |
+| `base-fp32` | 768 | ~1.1GB | 442ms (+5ms) | 247~251s | 4.8~6.8 / 5.5~7.5ms | 2.7~3.7GB | 17.4MB |
+
+| 모델 / 융합 | `golden167` MRR (SemMRR) | `blind59 strict` MRR (Hit@1 / SemMRR) | `blind59 lenient` MRR | `blind59 strict` ΔMRR [95% CI] |
+|---|---:|---:|---:|---|
+| `small-fp32` / `dense_only` | 0.760 (0.540) | 0.656 (0.535 / 0.538) | **0.836** | - |
+| `base-q8` / `dense_only` | 0.749 (0.515) | 0.674 (0.605 / 0.675) | 0.751 | +0.018 [-0.115, +0.152] |
+| `base-fp32` / `dense_only` | 0.771 (0.579) | 0.683 (0.605 / 0.723) | 0.722 `*` | +0.027 [-0.103, +0.155] |
+| **`base-fp32-prefix` / `dense_only`** | **0.772** (**0.622**) | **0.694** (0.581 / **0.765**) | 0.744 | +0.038 [-0.096, +0.174] |
+| `small-fp32` / `baseline_rrf` | **0.862** (0.718) | 0.673 (0.512 / 0.481) | **0.852** | - |
+| `base-q8` / `baseline_rrf` | 0.847 (0.663) | 0.657 (0.535 / 0.482) | 0.788 `*` | -0.016 [-0.080, +0.049] |
+| `base-fp32` / `baseline_rrf` | 0.852 (0.709) | 0.681 (0.581 / 0.569) | 0.817 | +0.008 [-0.073, +0.089] |
+| **`base-fp32-prefix` / `baseline_rrf`** | 0.860 (**0.724**) | **0.717** (**0.605** / **0.650**) | 0.833 | +0.044 [-0.033, +0.129] |
+| `small-fp32` / `cc_a0.5` | 0.837 (0.659) | 0.689 (0.535 / 0.574) | **0.872** | - |
+| **`base-fp32-prefix` / `cc_a0.5`** | 0.852 (0.703) | **0.768** (**0.651** / **0.782**) | 0.837 | +0.079 [-0.034, +0.194] |
+
+- **장점:** `e5-base (fp32)`는 공식 `query: `/`passage: ` 접두사를 붙였을 때 모든 구간에서 접두사 없는 `base-fp32`를 이겼고, 특히 `blind59 (strict)` 의미 질의에서 `dense_only SemMRR 0.538 → 0.765 (+0.227)`, `cc_a0.5 MRR 0.689 → 0.768 / SemMRR 0.782`로 큰 잠재력을 보였다.
+- **단점:** `base-q8`은 양자화 손실로 `small-fp32`보다 일관되게 낮았고, `base-fp32`는 다운로드 ~1.1GB·색인 2.5배(251초)·피크 메모리 최대 3.7GB·벡터 저장 2배 부담이 크며 `golden167`에서는 사실상 동률이다.
+- **판정:** 기본 모델 교체는 보류(No-Go). 로컬 단독 기본값은 `e5-small (fp32)`을 유지한다.
+
+#### B. 로컬 Docker Elasticsearch 8.17 (`analysis-nori` + HNSW, `scripts/eval/benchmark-es.ts`)
+
+- **동작과 구성:** 단일 노드 Docker ES 8.17.4에 `analysis-nori`(`decompound_mode: mixed`, `nori_part_of_speech`, `nori_readingform`, `lowercase`)를 설치하고, 동일 5,958청크(384d `e5-small` `dense_vector` HNSW cosine)와 400개 전체 문서를 벌크 색인(3.4초)해 임베디드 스택과 1:1 비교했다.
+- **지연과 메모리:** `embedded_hybrid`(임베딩+LanceDB+BM25) p50 **12.3ms / p95 16.9ms** 대 ES HTTP 단독(`nori_chunk` 9.5ms + `knn HNSW` 5.7ms) p50 **15.3ms / p95 24.0ms**(임베딩 ~3ms 추가 시 약 18~27ms). ES 컨테이너 상시 메모리는 **`1.189 GiB`**(유휴 CPU 0.57%).
+
+| 시스템 | `golden167` MRR (R@5 / R@10) | `blind59 strict` MRR (Hit@1 / SemMRR) | `blind59 lenient` MRR | `blind59 strict` ΔMRR [95% CI] |
+|---|---:|---:|---:|---|
+| `embedded_baseline_rrf` | **0.854** (0.843 / 0.887) | 0.673 (0.512 / 0.480) | **0.846** | - |
+| `embedded_keyword_only` | 0.808 (0.808 / 0.867) | 0.579 (0.442 / 0.441) | 0.798 | -0.094 [-0.176, -0.016] `*` |
+| `es_nori_chunk_only` | 0.760 (0.828 / 0.874) | 0.596 (0.488 / 0.479) | 0.609 `*` | -0.076 [-0.183, +0.027] |
+| `es_nori_doc_only` | 0.731 (0.789 / 0.876) | 0.587 (0.488 / 0.460) | 0.571 `*` | -0.086 [-0.201, +0.028] |
+| `es_nori_fuzzy_only` | 0.751 (0.825 / 0.869) | 0.596 (0.488 / 0.485) | 0.620 `*` | -0.076 [-0.184, +0.028] |
+| `es_dense_hnsw_only` | 0.759 (0.783 / 0.840) | 0.652 (0.535 / 0.525) | 0.825 | -0.021 [-0.139, +0.098] |
+| `es_hybrid_rrf_nofloor` | 0.842 (0.856 / **0.928**) | 0.746 (0.674 / 0.645) | 0.841 | +0.073 [-0.029, +0.181] |
+| `es_hybrid_cc_a0.5` | 0.848 (**0.866** / 0.923) | 0.770 (0.698 / **0.760**) | 0.841 | +0.098 [-0.005, +0.207] |
+| **`es_hybrid_cc_rel70_max`** | 0.848 (0.859 / 0.921) | **0.778** (**0.721** / 0.692) | 0.829 | **+0.105 [+0.015, +0.204] `*`** |
+
+- **장점:** **`es_hybrid_cc_rel70_max`가 `blind59 (strict)`에서 MRR `+0.105*` (`0.673 → 0.778`), Hit@1 `+20.9%p` (`51.2% → 72.1%`)로 이번 전체 실험 중 유일하게 통계적으로 유의한 개선을 입증했다.** Nori의 조사·어미 제거와 합성어 분해가 자연어 질의에서 정밀한 후보를 올리고 `e5-small` HNSW와 CC로 결합할 때 시너지가 컸다. `golden167`도 MRR은 대등(`0.848` vs `0.854`)하면서 R@10(`0.921` vs `0.887`)이 앞섰다.
+- **단점:** Docker 설치와 상시 `1.19 GiB` 메모리가 필요하고, `es_nori_chunk_only` 단독은 기술 용어(`Next.js`) 및 최소 일치 조건이 있는 자체 `ChunkBM25Index`(`0.808`)보다 `golden167`(`0.760`)에서 낮았다. `fuzziness: AUTO`는 오타 없는 평가셋에서 소폭 잡음만 추가했다(`0.751`).
+- **판정:** ADR 0001에 따라 기본 백엔드는 임베디드 스택을 유지하되, 환경변수(`SEARCH_BACKEND=elasticsearch`, `ELASTICSEARCH_URL`)로 켜고 연결 실패 시 임베디드로 폴백하는 **선택적(Opt-in) `SearchBackend` 어댑터로 도입할 충분한 근거가 확인됐다(Opt-in Go).**
+
+### 4.17 골드셋 구조 감사, `grades` 통합 스키마, `blind59` 정화 및 `no_answer` 평가 (2026-11-27)
+
+`e5-base`와 `ES`가 `blind59 (strict)`에서는 크게 오르면서 `blind59 (lenient)`에서는 오히려 떨어지는 모순을 추적해 골드셋 자체의 풀링 편향을 확인하고 평가 인프라를 보강했다.
+
+**1. 풀링 편향 실증:**
+- `blind59`는 기존 5개 시스템(`ChunkBM25`, `e5-small`, `MiniLM`)의 상위 3개만 모아 라벨링됐고 0점 판정 이력이 보존되지 않았다.
+- `base-fp32-prefix`가 1위로 올리고도 0점 처리된 12건을 실사한 결과, **`b048 → 좋은코드/좋은코드-Base.md`**, **`b027 → sunub/backend/auth/사용자 정보 인증.md`**, **`b046 → resume/for-digital-divide.md`** 등 명백한 정답이 라벨에서 빠져 있었다.
+
+**2. 평가 인프라 업그레이드:**
+- `scripts/eval/lib/goldenSet.ts` + `migrate-golden-set.ts`: 4개 골드셋(226건)에 `grades: Record<string, 0|1|2>` 통합 스키마를 적용(`relevant`/`relevant_lenient` 자동 파생으로 하위 호환 유지). `labels-2026-11-18/`에서 `queries-final.jsonl`의 확정 0점 156건을 복구하고 삭제된 경로 1건(`AI/토스.md`)을 정리해 전 파일 `missing=0`으로 맞췄다.
+- `scripts/eval/lib/metrics.ts` + `compare-algorithms.ts`: `nDCG@10`, `bpref`, `J@5`, `AUROC` 지표 추가.
+- `scripts/eval/extract-unjudged.ts`: 새 시스템의 상위 K개 중 `grades`에 없는 미채점 후보만 추출·검수·`--apply` 병합하는 증분 풀링 파이프라인 구현.
+
+**3. `blind59` 미채점 229쌍 블라인드 정화 결과:**
+- 기존 라벨을 가린 5개 병렬 블라인드 배치로 `baseline_rrf`·`dense_only`·`cc_a0.5` 상위 5위 미채점 229쌍을 채점해 **`grade 2` +18건, `grade 1` +23건, `grade 0` +188건**을 반영했다(기존 38쌍은 700자 발췌 절단 오판을 막기 위해 원문 교차 검증 후 보존).
+- 정화 후 `baseline_rrf`·`dense_only`·`cc_a0.5`의 `J@5`가 `54~67%`에서 **`1.000`**으로 올라갔고, 확정 0점이 채워지며 `bpref`가 정상 작동했다.
+
+| 알고리즘 (`blind59` 정화 후) | strict R@5 / MRR (n=44) | strict nDCG10 / **bpref** | strict SemMRR | lenient MRR / **bpref** (n=58) | J@5 |
+|---|---:|---:|---:|---:|---:|
+| `baseline_rrf` | 0.687 / 0.658 | 0.727 / 0.461 | 0.469 | 0.838 / 0.545 | 1.000 |
+| `dense_only` | 0.674 / 0.647 | 0.664 / 0.503 | 0.538 | 0.825 / 0.418 | 1.000 |
+| **`cc_a0.5`** | **0.737 / 0.678** | **0.765 / 0.520** | **0.575** | **0.869 / 0.587** | 1.000 |
+| `cc_a0.5_rel70_max` | 0.681 / 0.665 | 0.725 / 0.505 | 0.516 | 0.851 / 0.551 | 0.986 |
+
+- 한계: 기존 알고리즘 간 MRR 격차(`+0.020`) 자체는 유지됐고 표본(n=44)상 95% CI는 여전히 0을 포함한다. `golden167`의 `J@5`는 약 31%이며, 향후 `e5-base`나 `ES`를 재비교할 때는 `extract-unjudged.ts`로 해당 시스템의 미채점 후보만 증분 채점한다.
+
+**4. `no_answer` 무응답 거절 분석 (`eval/search/queries-no-answer.jsonl`, 20건):**
+- Vault 전체 grep으로 0회 등장이 검증된 20건과 답이 있는 224건을 비교했다.
+- `e5-small` Dense 1위 유사도: 답 있음 p10/p50/p90 **`0.871 / 0.896 / 0.922`** 대 `no_answer` **`0.842 / 0.872 / 0.878`** (**AUROC `0.897`**).
+- BM25 1위 점수: 답 있음 p10/p50/p90 **`10.74 / 18.12 / 28.34`** 대 `no_answer` 10/20건 0점 (**AUROC `0.935`**).
+- 위 224건 측정에서는 `dense < 0.88 && bm25 == 0` 조건의 **오거절이 `0.0%`**, **`no_answer` 해당 비율이 `50.0%`**였다. 2026-11-27 225건 재측정에서는 답 있음 1건(`b055`)이 조건에 걸렸다. 그래서 운영 코드는 결과를 버리지 않고 `search_status.reason: "low_confidence"`만 표시한다(5장 25번).
+
 ## 5. 진행 순서
 
 1. [x] 질의 30~50개와 정답 문서 작성 (`eval/search/queries.jsonl`, `.gitignore`에 추가)
@@ -589,6 +749,7 @@ npx tsx scripts/eval/search-quality.ts --vault <복사본> --strip-prefix --only
 3. [x] 리랭커 건너뛰기 임계값 스윕 → 리랭커 자체를 제거 (4.5)
 4. [x] 실제 Vault 기준 지연(p50, p95)과 인덱싱 처리량 재측정
 5. [ ] `tests/resume_validation.ts` 삭제 (경로 검증 단위 테스트는 이미 있었고 형제 경로 사례를 추가함)
+6. [ ] 결과 요약을 README의 Retrieval Pipeline 섹션에 반영
 7. [x] 접두사 제거 후 재인덱싱해 수정 효과 측정, 리랭커 제거 (4.5)
 8. [x] 심볼릭 링크를 통한 Vault 밖 쓰기 차단 (4.5)
 9. [x] 청킹 전 base64 data URI 제거 (4.7)
@@ -602,5 +763,9 @@ npx tsx scripts/eval/search-quality.ts --vault <복사본> --strip-prefix --only
 17. [ ] 사용자가 문서를 보지 않고 만든 질의와 다른 Vault에서 재검증 (4.11 한계). 문서를 보지 않고 별도 에이전트가 만든 질의 59개로는 검증했고(4.13), 사람이 만든 질의와 다른 Vault 검증이 남아 있다.
 18. [ ] 조사 판정을 말뭉치 통계로 하는 방식 검토 (4.11 후속 후보)
 19. [x] 임베딩 모델을 multilingual-e5-small로 교체하고 문맥 제거 효과를 확인 (4.13)
-20. [ ] e5-base 등 다른 후보 모델 비교와 질의 지연·메모리 측정 (4.13 한계)
-6. [ ] 결과 요약을 README의 Retrieval Pipeline 섹션에 반영
+20. [x] e5-base(q8·fp32·prefix) 모델 비교와 질의 지연·메모리 측정 (4.16)
+21. [x] 운영 검색 결함 5건 수정 및 회귀 테스트 추가 (4.14)
+22. [x] 검색 알고리즘 17종(Convex Combination, 링크 그래프 1-hop/PPR, BM25F+한글 2-gram) 및 로컬 Docker ES(Nori+HNSW) 비교 (4.15, 4.16)
+23. [x] 골드셋 `grades` 통합 스키마 전환, `nDCG@10`/`bpref`/`J@5`/`no_answer` 평가 추가, `blind59` 미채점 229쌍 정화 (4.17)
+24. [ ] 배포용 `SearchBackend` 추상화 및 선택적(Opt-in) Docker ES(Nori + `cc_rel70_max`) 백엔드 + 자동 폴백 구현 (4.16 Opt-in Go)
+25. [x] `dense < 0.88 && bm25 == 0` 운영 반영 (4.17). 결과를 버리는 컷오프 대신 `search_status.reason: "low_confidence"` 표시만 붙인다. 2026-11-27 재측정에서 답 있음 225건 중 1건(`b055`)이 조건에 걸려 오거절 `0.0%`를 유지하지 못했기 때문이다. `no_answer` 표시율은 50.0%(10/20)다.

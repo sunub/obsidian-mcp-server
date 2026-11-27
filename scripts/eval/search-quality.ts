@@ -156,7 +156,7 @@ const indexer = new Indexer();
 const toRel = (p: string) => relative(vaultPath, p);
 
 async function embedQuery(query: string): Promise<number[]> {
-	return localEmbedder.embed(`search_query: ${query}`);
+	return localEmbedder.embed(query);
 }
 
 async function denseChunks(query: string, n: number, exact: boolean) {
@@ -239,15 +239,21 @@ async function semanticSearch(
 		.filter((r: Chunk | undefined): r is Chunk => r !== undefined);
 }
 
-/** VaultManager.hybridSearch 재현 */
+const KEYWORD_FUSION_MIN_RELATIVE_SCORE = 0.7;
+
 async function hybridSearch(
 	query: string,
 	limit: number,
 	opts: HybridOpts,
 ): Promise<{ docs: string[]; trace: Trace }> {
 	const trace: Trace = { chunkRerank: false, fusedRerank: false };
-	const keyword = indexer.search(query) as Doc[];
 	const semantic = await semanticSearch(query, limit * 3, opts, trace);
+	const keyword = indexer
+		.searchWithChunks(
+			query,
+			semantic.length > 0 ? KEYWORD_FUSION_MIN_RELATIVE_SCORE : 0,
+		)
+		.map((hit: { document: Doc }) => hit.document);
 
 	const scores = new Map<string, Fused>();
 	keyword.forEach((doc, index) => {
