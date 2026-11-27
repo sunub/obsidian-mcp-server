@@ -8,7 +8,7 @@ export const compressionModeSchema = z
 	.enum(["summary", "aggressive", "balanced", "none"])
 	.default("summary")
 	.describe(
-		"Compression strategy for tool output. summary: lightest TOC & document summary only (default), aggressive: smallest output, balanced: moderate size, none: keep as much original content as possible.",
+		"Output size strategy for read. summary: table of contents and first paragraph (default), aggressive: smallest output, balanced: moderate size, none: keep as much original content as possible. Ignored by search.",
 	);
 
 const maxOutputCharsSchema = z
@@ -16,7 +16,7 @@ const maxOutputCharsSchema = z
 	.min(500)
 	.max(12000)
 	.describe(
-		"Optional hard cap for output size in characters. Helps control token cost in long responses.",
+		"Optional cap for read output size in characters. Ignored by search.",
 	);
 
 const quietMode = z
@@ -45,9 +45,7 @@ export const obsidianContentLimit = z
 export const obsidianContentIncludeContent = z
 	.boolean()
 	.default(true)
-	.describe(
-		"Whether to include document content in search results (default: true)",
-	);
+	.describe("Whether list_all includes content previews. Ignored by search.");
 export const obsidianContentIncludeFrontmatter = z
 	.boolean()
 	.default(false)
@@ -60,7 +58,7 @@ export const obsidianContentExcerptLength = z
 	.max(2000)
 	.default(500)
 	.describe(
-		"Length of content excerpt to include in search results (default: 500)",
+		"Maximum content length returned by read. The default depends on compressionMode. Ignored by search.",
 	);
 export const obsidianContentQueryParamsZod = z
 	.object({

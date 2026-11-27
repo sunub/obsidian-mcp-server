@@ -24,8 +24,7 @@ Obsidian에서 "README.md의 시작하기 (빠른 설정)"과 관련된 "npx" �
     "arguments": {
       "action": "search",
       "keyword": "README.md 시작하기 빠른설정 npx 설정",
-      "limit": 5,
-      "includeContent": true
+      "limit": 5
     }
   }
 }

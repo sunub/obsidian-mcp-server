@@ -18,6 +18,7 @@ export interface HybridSearchResult {
 	score: number;
 	document: DocumentIndex;
 	matchedChunks: ChunkMetadata[];
+	keywordText: string | null;
 	finalScore: number;
 }
 

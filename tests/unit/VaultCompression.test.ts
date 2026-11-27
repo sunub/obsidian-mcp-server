@@ -4,14 +4,8 @@ import { z } from "zod";
 import type { DocumentIndex } from "../../src/shared/markdown/types.js";
 import type { EnrichedDocument } from "../../src/shared/vault-manager/types.js";
 import type { VaultManager } from "../../src/shared/vault-manager/VaultManager.js";
-import {
-	READ_DEFAULT_BACKLINK_LIMIT,
-	SEARCH_DEFAULT_EXCERPT,
-} from "../../src/tools/vault/utils/shared.js";
-import {
-	readSpecificFile,
-	searchDocuments,
-} from "../../src/tools/vault/utils.js";
+import { READ_DEFAULT_BACKLINK_LIMIT } from "../../src/tools/vault/utils/shared.js";
+import { readSpecificFile } from "../../src/tools/vault/utils.js";
 
 function firstText(result: CallToolResult): string {
 	const first = result.content?.[0];
@@ -20,28 +14,6 @@ function firstText(result: CallToolResult): string {
 	}
 	return first.text;
 }
-
-const searchPayloadSchema = z.object({
-	compression: z.object({
-		mode: z.enum(["summary", "aggressive", "balanced", "none"]),
-		truncated: z.boolean(),
-	}),
-	documents: z.array(
-		z.object({
-			content_is_truncated: z.boolean(),
-			content: z.union([
-				z.object({
-					full: z.string(),
-					excerpt: z.string(),
-				}),
-				z.object({
-					preview: z.string(),
-					note: z.string(),
-				}),
-			]),
-		}),
-	),
-});
 
 const readPayloadSchema = z.object({
 	compression: z.object({
@@ -84,30 +56,9 @@ function createMockVaultManager() {
 
 	const manager: Pick<
 		VaultManager,
-		| "initialize"
-		| "searchDocuments"
-		| "getAllDocuments"
-		| "getDocumentInfo"
-		| "hybridSearch"
+		"initialize" | "getAllDocuments" | "getDocumentInfo"
 	> = {
 		initialize: vi.fn(async () => {}),
-		searchDocuments: vi.fn(async () => [indexedDoc]),
-		hybridSearch: vi.fn(async () => ({
-			results: [
-				{
-					score: 1.0,
-					document: indexedDoc,
-					matchedChunks: [
-						{
-							filePath: indexedDoc.filePath,
-							content: "A".repeat(4000),
-							mtime: Date.now(),
-						},
-					],
-					finalScore: 1.0,
-				},
-			],
-		})),
 		getAllDocuments: vi.fn(async () => [indexedDoc]),
 		getDocumentInfo: vi.fn(
 			async (
@@ -139,51 +90,6 @@ function createMockVaultManager() {
 }
 
 describe("Vault compression policy", () => {
-	test("search action uses summary compression by default", async () => {
-		const vaultManager = createMockVaultManager();
-
-		const result = await searchDocuments(vaultManager, {
-			action: "search",
-			keyword: "alpha",
-			includeContent: true,
-		});
-
-		expect(result.isError).toBe(false);
-		const payload = searchPayloadSchema.parse(JSON.parse(firstText(result)));
-
-		expect(payload.compression.mode).toBe("summary");
-		expect(payload.documents).toHaveLength(1);
-		expect(payload.documents[0].content_is_truncated).toBe(false);
-		expect(payload.documents[0].content).toMatchObject({
-			preview: "(Content not loaded)",
-		});
-	});
-
-	test("search action includes excerpted content in balanced mode", async () => {
-		const vaultManager = createMockVaultManager();
-
-		const result = await searchDocuments(vaultManager, {
-			action: "search",
-			keyword: "alpha",
-			includeContent: true,
-			compressionMode: "balanced",
-		});
-
-		expect(result.isError).toBe(false);
-		const payload = searchPayloadSchema.parse(JSON.parse(firstText(result)));
-		const firstDocument = payload.documents[0];
-
-		expect(payload.compression.mode).toBe("balanced");
-		expect(payload.compression.truncated).toBe(true);
-		expect(firstDocument.content_is_truncated).toBe(true);
-		expect(firstDocument.content).toHaveProperty("full");
-		if ("full" in firstDocument.content) {
-			expect(firstDocument.content.full.length).toBeLessThanOrEqual(
-				SEARCH_DEFAULT_EXCERPT.balanced + 3,
-			);
-		}
-	});
-
 	test("read action keeps full content when compressionMode is none", async () => {
 		const vaultManager = createMockVaultManager();
 

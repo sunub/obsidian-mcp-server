@@ -16,12 +16,12 @@
 
 공통 입력 필드:
 - `action` (필수): `search` | `read` | `list_all` | `stats`
-- `compressionMode`: `aggressive` | `balanced` | `none`
-- `maxOutputChars`: 출력 크기 제한(500~12000)
+- `compressionMode`: `read`의 출력 크기 방식(`summary` | `aggressive` | `balanced` | `none`)
+- `maxOutputChars`: `read` 출력 크기 제한(500~12000)
 - `quiet`: true일 때 결과 축약 응답
-- `includeContent`: `search`, `list_all` 응답 본문 여부(기본 true)
+- `includeContent`: `list_all` 응답 본문 여부
 - `limit`: 기본값은 액션별 다름
-- `excerptLength`: 검색 미리보기 길이
+- `excerptLength`: `read`가 돌려주는 본문 길이
 - `includeFrontmatter`: frontmatter 포함 여부
 
 ### 2.1 `search`
@@ -34,9 +34,7 @@
 {
   "action": "search",
   "keyword": "ES6",
-  "limit": 5,
-  "includeContent": true,
-  "compressionMode": "balanced"
+  "limit": 5
 }
 ```
 

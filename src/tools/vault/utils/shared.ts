@@ -2,24 +2,6 @@ import type { ObsidianContentQueryParams } from "../params.js";
 
 export type CompressionMode = "summary" | "aggressive" | "balanced" | "none";
 
-export const SEARCH_DEFAULT_LIMIT: Record<
-	Exclude<CompressionMode, "none">,
-	number
-> = {
-	summary: 3,
-	aggressive: 3,
-	balanced: 5,
-};
-
-export const SEARCH_DEFAULT_EXCERPT: Record<
-	Exclude<CompressionMode, "none">,
-	number
-> = {
-	summary: 100,
-	aggressive: 220,
-	balanced: 500,
-};
-
 export const READ_DEFAULT_CONTENT_MAX_CHARS: Record<
 	Exclude<CompressionMode, "none">,
 	number
@@ -39,14 +21,9 @@ export const READ_DEFAULT_BACKLINK_LIMIT: Record<
 };
 
 export const ACTION_DEFAULT_MAX_OUTPUT_CHARS: Record<
-	"search" | "read",
+	"read",
 	Record<Exclude<CompressionMode, "none">, number>
 > = {
-	search: {
-		summary: 800,
-		aggressive: 1800,
-		balanced: 2500,
-	},
 	read: {
 		summary: 1000,
 		aggressive: 2200,

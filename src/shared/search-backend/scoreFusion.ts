@@ -55,6 +55,9 @@ export function fuseRrf({
 			? Math.max(0, ...keywordHits.map((hit) => hit.score)) *
 				KEYWORD_FUSION_MIN_RELATIVE_SCORE
 			: 0;
+	const keywordTexts = new Map(
+		keywordHits.map((hit) => [hit.document.filePath, hit.chunk]),
+	);
 	const fused = new Map<
 		string,
 		{
@@ -109,6 +112,7 @@ export function fuseRrf({
 			score,
 			document,
 			matchedChunks: matchedChunks.length > 0 ? matchedChunks : keywordChunks,
+			keywordText: keywordTexts.get(document.filePath) ?? null,
 			finalScore: score,
 		}));
 }

@@ -35,9 +35,11 @@ export const description = `
   - To discover connections by finding all notes that link to a specific note.
   - When you need to retrieve a list of unfinished tasks (- [ ]) from daily notes or meeting minutes.
 
-  To synthesize information across several notes, search first, then read each note you need.
-
-  Returns the content of the most relevant document(s) in text format. It can also include metadata such as the document's title, tags, and creation date.
+  search returns up to limit matching notes (default 10), best match first,
+  each with its path, title, tags, and a snippet of at most 200 characters when
+  the note body matched. It does not return note bodies: call read with
+  filename set to a returned path. To synthesize information across several
+  notes, search first, then read each note you need.
 
   Requirements: The user's Obsidian Vault path must be correctly configured in an environment variable or a similar setting. For searches, use the exact filename or include core keywords for content-based queries.
 

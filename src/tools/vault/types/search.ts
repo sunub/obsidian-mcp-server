@@ -1,30 +1,11 @@
-import { FrontMatterSchema } from "@shared/markdown/types.js";
 import { searchStatusSchema } from "@shared/searchStatus.js";
 import { z } from "zod";
 
-const DocumentMetadataSchema = FrontMatterSchema;
-const DocumentStatsSchema = z.object({
-	contentLength: z.number(),
-	hasContent: z.boolean(),
-	wordCount: z.number(),
-});
-
-const FullContentSchema = z.object({
-	full: z.string(),
-	excerpt: z.string(),
-});
-
-const PreviewContentSchema = z.object({
-	preview: z.string(),
-	note: z.string(),
-});
-
 export const DocumentSchema = z.object({
-	filename: z.string(),
-	fullPath: z.string(),
-	metadata: DocumentMetadataSchema,
-	stats: DocumentStatsSchema,
-	content: z.union([FullContentSchema, PreviewContentSchema]),
+	path: z.string(),
+	title: z.string().optional(),
+	tags: z.array(z.string()),
+	snippet: z.string().max(200).optional(),
 });
 
 export const SearchSuccessSchema = z
@@ -34,14 +15,12 @@ export const SearchSuccessSchema = z
 			.describe(
 				"The search query used for vector DB and inverted index search",
 			),
-		found: z.number().describe("The number of matching documents found"),
 		search_status: searchStatusSchema,
-		total_in_vault: z
-			.number()
-			.describe("The total number of documents in the vault"),
+		found: z.number().describe("The number of returned documents"),
 		documents: z
 			.array(DocumentSchema)
-			.describe("The list of matched documents"),
+			.describe("The matched documents, best match first"),
+		hint: z.string().optional().describe("How to read a returned document"),
 	})
 	.describe(
 		"Schema for successful search results. The search process first attempts a semantic vector DB lookup, and falls back to/merges with inverted index search if needed.",
@@ -81,10 +60,6 @@ export const SearchResultSchema = z
 		"Search result schema. The search process prioritizes vector DB semantic search, falling back to/complementing with the inverted index search when no exact match is found or key details are missing.",
 	);
 
-export type DocumentMetadata = z.infer<typeof DocumentMetadataSchema>;
-export type DocumentStats = z.infer<typeof DocumentStatsSchema>;
-export type FullContent = z.infer<typeof FullContentSchema>;
-export type PreviewContent = z.infer<typeof PreviewContentSchema>;
 export type Document = z.infer<typeof DocumentSchema>;
 export type SearchSuccess = z.infer<typeof SearchSuccessSchema>;
 export type SearchNotFound = z.infer<typeof SearchNotFoundSchema>;

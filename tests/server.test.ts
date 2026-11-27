@@ -4,7 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CompatibilityCallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { type ZodSchema, z } from "zod";
+import type { ZodSchema, z } from "zod";
 import state from "../src/config";
 import createMcpServer from "../src/server";
 import { ServerLifecycle } from "../src/shared/lifecycle/ServerLifecycle";
@@ -15,10 +15,7 @@ import {
 	listAllDocumentsDataSchema,
 } from "../src/tools/vault/types/list_all.ts";
 import { readSpecificFileDocumentData } from "../src/tools/vault/types/read_specific";
-import {
-	DocumentSchema,
-	SearchSuccessSchema,
-} from "../src/tools/vault/types/search";
+import { SearchSuccessSchema } from "../src/tools/vault/types/search";
 import demo_data from "./assets/demo_data";
 
 const TEST_VAULT_PATH = path.join(process.cwd(), "test-vault");
@@ -179,21 +176,13 @@ describe("Obsidian MCP Server E2E Tests", () => {
 				arguments: { action: "search", keyword: query },
 			});
 
-			const SearchResultSchema = SearchSuccessSchema.extend({
-				documents: z.array(
-					DocumentSchema.extend({
-						metadata: FrontMatterSchema.extend({
-							title: z.string(),
-							tags: z.array(z.string()),
-						}),
-					}),
-				),
-			});
-
-			const data = await parseAndValidateResponse(response, SearchResultSchema);
+			const data = await parseAndValidateResponse(
+				response,
+				SearchSuccessSchema,
+			);
 
 			expect(data.found).toBeGreaterThan(0);
-			expect(data.documents[0].filename).toBe(`${query}.md`);
+			expect(data.documents[0].path).toBe(`${query}.md`);
 		}, 15000);
 	});
 });
