@@ -17,7 +17,6 @@ import {
 	readSpecificFile,
 	searchDocuments,
 	statsAllDocuments,
-	triggerIndexing,
 } from "./utils.js";
 
 export const name = "vault";
@@ -36,7 +35,6 @@ export const description = `
   - When looking for answers to questions based on your saved records, such as "What was the project deadline?"
   - To discover connections by finding all notes that link to a specific note.
   - When you need to retrieve a list of unfinished tasks (- [ ]) from daily notes or meeting minutes.
-  - Use "index_vault_to_vectordb" to manually trigger a full re-indexing of the vault for the vector database.
 
   Returns the content of the most relevant document(s) in text format. It can also include metadata such as the document's title, tags, and creation date.
 
@@ -118,14 +116,10 @@ export const execute = async (
 				result = await collectContext(vaultManager, params);
 				break;
 
-			case "index_vault_to_vectordb":
-				result = await triggerIndexing();
-				break;
-
 			default:
 				return createToolError(
 					`Unknown action: ${params.action}`,
-					"Valid actions are: search, read, list_all, stats, collect_context, index_vault_to_vectordb",
+					"Valid actions are: search, read, list_all, stats, collect_context",
 				);
 		}
 

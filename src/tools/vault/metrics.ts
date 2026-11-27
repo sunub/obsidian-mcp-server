@@ -2,13 +2,7 @@ import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-type VaultAction =
-	| "search"
-	| "read"
-	| "list_all"
-	| "stats"
-	| "collect_context"
-	| "index_vault_to_vectordb";
+type VaultAction = "search" | "read" | "list_all" | "stats" | "collect_context";
 
 type CompressionSummary = {
 	mode: "aggressive" | "balanced" | "none";

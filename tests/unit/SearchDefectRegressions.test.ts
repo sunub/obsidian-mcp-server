@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import state from "../../src/config";
+import { reindex } from "../../src/reindex";
 import { ChunkBM25Index } from "../../src/shared/indexing/keyword-search/index";
 import { ragIndexer } from "../../src/shared/indexing/RAGIndexer";
 import {
@@ -14,7 +15,6 @@ import { localEmbedder } from "../../src/shared/local-ai/Embedder";
 import { localModelManager } from "../../src/shared/local-ai/LocalModelManager";
 import { localReranker } from "../../src/shared/local-ai/LocalReranker";
 import { VaultManager } from "../../src/shared/vault-manager/VaultManager";
-import { triggerIndexing } from "../../src/tools/vault/utils/actions/index_rag";
 
 const tempDirs: string[] = [];
 const originalVaultPath = state.vaultPath;
@@ -139,11 +139,14 @@ describe("Production search defect regressions", () => {
 		expect(warnSpy).toHaveBeenCalled();
 	});
 
-	test("triggerIndexing migrates schema, indexes all files, and builds vector index in order", async () => {
+	test("reindex migrates schema, indexes all files, and builds vector index in order", async () => {
 		const dir = await createTempVault();
-		state.vaultPath = dir;
 		const calls: string[] = [];
 
+		vi.spyOn(localEmbedder, "checkModelPresence").mockResolvedValue(true);
+		vi.spyOn(localModelManager, "holdModels").mockImplementation((task) =>
+			task(),
+		);
 		vi.spyOn(vectorDB, "checkAndMigrateIfNeeded").mockImplementation(
 			async () => {
 				calls.push("migrate");
@@ -152,12 +155,14 @@ describe("Production search defect regressions", () => {
 		);
 		vi.spyOn(ragIndexer, "indexAll").mockImplementation(async () => {
 			calls.push("indexAll");
+			return 0;
 		});
 		vi.spyOn(vectorDB, "createVectorIndex").mockImplementation(async () => {
 			calls.push("createIndex");
 		});
+		vi.spyOn(ragIndexer, "shutdown").mockResolvedValue(undefined);
 
-		await triggerIndexing();
+		await reindex({ vaultPath: dir });
 
 		expect(calls).toEqual(["migrate", "indexAll", "createIndex"]);
 	});

@@ -37,11 +37,11 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 	        This server provides access to Obsidian vault documents and related tools.
 	        
 	        Available tools:
-	        - vault: Search, read, list, and index documents in the vault.
+	        - vault: Search, read, list, and inspect stats for documents in the vault.
 	          * action="search": Unified hybrid search (Keyword + Semantic + Reranking). Automatically falls back to keyword search if local models are missing.
 	          * action="read": Read a specific document's content and metadata.
 	          * action="list_all": List all documents in the vault.
-	          * action="index_vault_to_vectordb": Manually trigger a full vault re-indexing for semantic search.
+	          * action="stats": Inspect vault document count, indexing progress, and local model readiness.
 	        - write_property: Write frontmatter properties to a markdown file.
 	        - tidy_plan: Build a vault tidy plan (attachments, duplicates, untitled notes, empty folders) and return a preview. Changes no files.
 	        - plan_apply: Apply only the plan operations the user approved, keeping every link pointing at the same file.

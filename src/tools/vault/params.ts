@@ -24,18 +24,10 @@ const quietMode = z
 	.default(true)
 	.describe("If true, suppresses non-error output messages. Default is false.");
 
-// input properties schema
 export const obsidianContentActions = z
-	.enum([
-		"search",
-		"read",
-		"list_all",
-		"stats",
-		"collect_context",
-		"index_vault_to_vectordb",
-	])
+	.enum(["search", "read", "list_all", "stats", "collect_context"])
 	.describe(
-		"The action to perform: search documents, read specific file, list all content, get stats, collect search results with excerpts in batches, or trigger indexing",
+		"The action to perform: search documents, read specific file, list all content, get stats, or collect search results with excerpts in batches",
 	);
 export const obsidianContentKeyword = z
 	.string()

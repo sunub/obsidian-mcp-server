@@ -46,10 +46,26 @@ function alertEmbedderState(
 
 async function main() {
 	ensureAppDataDirs();
-	if (process.argv.slice(2).some((arg) => arg === "setup")) {
+	const args = process.argv.slice(2);
+	if (args.includes("setup")) {
 		const { setup } = await import("./setup.js");
 		const success = await setup({ force: true });
 		process.exit(success ? 0 : 1);
+	}
+
+	if (args.includes("reindex")) {
+		const options = getOptions();
+		if (!options) {
+			console.error(
+				chalk.red("올바르지 않은 설정으로 인해 재색인을 시작할 수 없습니다."),
+			);
+			process.exit(1);
+		}
+		const force = args.includes("--force") || args.includes("-f");
+		const { reindex } = await import("./reindex.js");
+		const result = await reindex({ vaultPath: options.vaultPath, force });
+		await localModelManager.shutdown();
+		process.exit(result.success ? 0 : 1);
 	}
 
 	const options = getOptions();
