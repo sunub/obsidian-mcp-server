@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// input properties
 const obsidianCssClassesProperty = z
 	.array(z.string())
 	.describe("List of CSS classes associated with the document");
@@ -39,9 +38,9 @@ const obsidianPropertySchema = z
 		category: obsidianCategoryProperty.optional(),
 		completed: obsidianCompletedProperty.optional(),
 	})
+	.passthrough()
 	.describe("Schema for Obsidian frontmatter properties");
 
-// input schema
 export const obsidianPropertyParamsSchema = z
 	.object({
 		filePath: z

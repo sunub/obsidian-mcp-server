@@ -27,7 +27,7 @@ export const description = `
   - filePath (string, required): The path to the target markdown file to which properties will be added or updated.
   Example: "my-first-post.md"
   
-  - properties (object, required): A JSON object containing the key-value pairs to be written to the file's frontmatter. If a property with the same key already exists in the file, it will be overwritten with the new value.
+  - properties (object, required): A JSON object containing the key-value pairs to be written to the file's frontmatter. Any key is accepted. If a property with the same key already exists in the file, it will be overwritten with the new value; other existing properties are kept.
   
   Example:
   
