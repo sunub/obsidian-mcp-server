@@ -22,7 +22,7 @@ disable-model-invocation: true
    - 로컬 개발 플러그인(`${CLAUDE_PLUGIN_ROOT}/../build/index.js`가 존재하는 경우):
      `node "${CLAUDE_PLUGIN_ROOT}/../build/index.js" reindex` (옵션이 있으면 `--force` 추가)
    - 배포 패키지 환경:
-     `npx -y @sunub/obsidian-mcp-server reindex` (옵션이 있으면 `--force` 추가)
+     `npx -y @sunub/obsidian-mcp-server@latest reindex` (옵션이 있으면 `--force` 추가)
 4. 실행 결과를 보고한다.
    - 로컬 임베딩 모델이 없어 실패하면 `npx @sunub/obsidian-mcp-server setup` 실행을 안내한다.
    - 성공하면 색인 모드와 처리된 문서 수를 요약해 알린다.
