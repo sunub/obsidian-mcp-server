@@ -103,7 +103,7 @@ MCP 서버의 Vault 검색/읽기 도구에는 `VAULT_DIR_PATH`가 핵심 설정
 
 - `VAULT_DIR_PATH`가 없거나 잘못되면 Vault 관련 도구가 동작하지 않습니다.
 - semantic search와 reranking을 쓰려면 `setup`으로 로컬 모델을 설치해야 합니다.
-- `collect_context`는 긴 주제 정리와 메모리 패킷 생성에 적합하고, 단건 조회는 `search`나 `read`가 더 단순합니다.
+- `collect_context`는 긴 주제의 검색 결과를 배치로 이어 받을 때 쓰고, 단건 조회는 `search`나 `read`가 더 단순합니다.
 - 쓰기 계열 도구는 Vault 바깥 경로에 쓰지 않도록 차단합니다.
 
 ## 참고 문서

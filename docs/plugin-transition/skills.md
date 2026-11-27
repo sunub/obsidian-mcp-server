@@ -16,8 +16,9 @@ Skill은 **LLM의 추론, 사용자 규칙, 출력 형식, 승인 절차**를 �
   - 사용자가 승인한 `approvedOpIds`·`renames`만 `plan_apply`에 전달
   - 결과 보고(`rejected` 사유, `runId` 및 되돌리기 안내) 및 `plan_undo` 시 `conflicts` 안내
   - 셸 명령(`mv`, `rm` 등) 금지
-- 추가 필요한 정리 작업:
-  - `src/tools/tidy/index.ts`(L30-38)의 `How to use the result` 지시문과 `plan_apply`/`plan_undo` description의 절차 문구를 걷어내 Skill과 중복·드리프트가 생기지 않게 합니다.
+- 정리 완료:
+  - `src/tools/tidy/index.ts`, `src/tools/plan/apply.ts`, `src/tools/plan/undo.ts`의 `description`에서 중복된 대화 절차 문구를 제거하고 입출력 계약과 부작용만 남겼습니다.
+- 남은 확장 작업:
   - 2단계(주제별 재구성 & 허브 노트)가 추가되면 하위 폴더 구조 제안 기준을 이 Skill 또는 별도 `vault-reorganize` Skill로 확장합니다.
 
 ---

@@ -1,15 +1,5 @@
 # obsidian-mcp-server
 
-Obsidian vault용 MCP 서버와 Codex 플러그인. TypeScript(ESM), Vitest, Biome.
-
-## 명령어
-
-- `npm run build`: `tsc` + `tsc-alias`. 타입 검사를 겸한다.
-- `npm test`: Vitest. 단일 파일은 `npx vitest run tests/unit/<name>.test.ts`.
-- `npm run check`: Biome format, lint, import 정렬을 한 번에 적용한다.
-
-import alias는 `@/*`(src), `@shared/*`이다.
-
 ## 코드 규칙
 
 ### 코드에 주석을 쓰지 않는다
@@ -39,3 +29,8 @@ import alias는 `@/*`(src), `@shared/*`이다.
 - shared에 추가한 코드는 순환이 생기지 않았는지 `npm run build`로 확인한다.
 
 기존 코드의 도구 간 직접 import는 이 규칙 이전에 만들어졌다. 건드리는 파일에서만 규칙에 맞게 고치고, 규칙 때문에 관련 없는 파일을 대규모로 바꾸지 않는다.
+
+<teaching_guidelines>
+<rule>The user is constantly learning new systems and domains. Whenever introducing a core term that the user is likely unfamiliar with, briefly explain it in 1-2 sentences and move on.</rule>
+<format>Use the prefix "💡" for these explanations. (e.g., 💡 [Term]: [1-2 sentences explanation])</format>
+</teaching_guidelines>

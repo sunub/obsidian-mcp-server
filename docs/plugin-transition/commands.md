@@ -1,20 +1,22 @@
 # Command로 제공해야 하는 부분
 
-위치: `plugin/commands/` (현재 빈 디렉터리)
+위치: `plugin/commands/` (구현 완료: `tidy.md`, `undo.md`, `status.md`, `reindex.md`)
 
-Skill은 자연어 요청을 보고 모델이 자동으로 선택합니다. 반면 **파괴적 변경의 시작, 명시적 컨텍스트 로딩, 즉시 복구, 무거운 운영 작업**은 사용자의 의도가 분명할 때만 실행돼야 하므로 명시적 슬래시 커맨드(`plugin/commands/*.md`)로 진입점을 제공합니다.
+Skill은 자연어 요청을 보고 모델이 자동으로 선택합니다. 반면 **파괴적 변경의 시작, 명시적 컨텍스트 로딩, 즉시 복구, 무거운 운영 작업**은 사용자의 의도가 분명할 때만 실행돼야 하므로 명시적 슬래시 커맨드(`plugin/commands/*.md`, `disable-model-invocation: true`)로 진입점을 제공합니다.
+
+플러그인 `name`이 `vault-tidy`이므로 Claude Code에서는 `/vault-tidy:<파일명>` 네임스페이스로 등록됩니다.
 
 ---
 
 ## 1. 커맨드 목록 요약
 
-| 커맨드 | 인자 | 연결 대상 (Skill / MCP) | 목적 |
-|---|---|---|---|
-| `/vault-tidy` | `[scope]` | `vault-tidy` Skill → `tidy_plan`, `plan_apply` | Vault 전체 또는 특정 최상위 폴더 정돈 시작 |
-| `/vault-undo` | `[runId]` | `plan_undo` (+ 최근 `runId` 확인) | 정돈 실행 결과를 즉시 원상 복구하는 안전 탈출구 |
-| `/vault-context` (보류) | `<topic>` | `vault` `search`, `read` | 주제별 근거 수집. `collect_context` 존폐 결정 후 재검토 |
-| `/vault-status` | 없음 | `vault_stats` (+ 로컬 모델 상태 확인) | Vault 문서 수, 인덱스·로컬 모델 건강도 점검 |
-| `/vault-reindex` | `[--force]` | CLI `reindex` 또는 비동기 재색인 경로 | 전체 벡터 인덱스 재구축 (운영성 무거운 작업 분리) |
+| 커맨드 | 파일 | 인자 | 연결 대상 (Skill / MCP / CLI) | 목적 |
+|---|---|---|---|---|
+| `/vault-tidy:tidy` | `plugin/commands/tidy.md` | `[scope]` | `vault-tidy` Skill → `tidy_plan`, `plan_apply` | Vault 전체 또는 특정 최상위 폴더 정돈 시작 |
+| `/vault-tidy:undo` | `plugin/commands/undo.md` | `[runId]` | `plan_undo` (+ 최근 `runId` 확인) | 정돈 실행 결과를 즉시 원상 복구하는 안전 탈출구 |
+| `/vault-context` (보류) | — | `<topic>` | `vault` `search`, `read` | 주제별 근거 수집. `collect_context` 존폐 결정 후 재검토 |
+| `/vault-tidy:status` | `plugin/commands/status.md` | 없음 | `vault(action="stats")` (로컬 모델 상태 포함) | Vault 문서 수, 인덱스·로컬 모델 건강도 점검 |
+| `/vault-tidy:reindex` | `plugin/commands/reindex.md` | `[--force]` | CLI `obsidian-mcp-server reindex` | 전체/증분 벡터 인덱스 재구축 (MCP 동기 액션 제거 완료) |
 
 선택 확장(3단계 이후): `/vault-frontmatter <path>` — 특정 노트/초안에 frontmatter 생성·정리를 명시적으로 시작.
 

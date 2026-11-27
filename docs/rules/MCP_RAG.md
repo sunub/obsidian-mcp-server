@@ -26,4 +26,4 @@ Implement the context pipeline following this sequence:
 3. **Embedding & Storage:** Vectorize the chunk plus its local context hints, then store it in the local retrieval backend with source metadata.
 4. **Hybrid Retrieval:** Combine keyword search and semantic search so exact terms and meaning-based matches can both surface candidate material.
 5. **Fusion & Reranking:** Use rank fusion and local reranking to improve context selection accuracy before content is shown to the agent.
-6. **Compression & Injection:** Return only the selected excerpts, evidence snippets, source references, and memory packet needed for the agent task.
+6. **Compression & Injection:** Return only the selected excerpts, matched snippets, and source references needed for the agent task. Interpretation and summarization belong to the agent, not the tool.
