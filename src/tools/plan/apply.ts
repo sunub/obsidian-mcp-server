@@ -22,21 +22,15 @@ export const annotations: ToolAnnotations = {
 };
 
 export const description = `
-  Executes the operations of a saved tidy plan (from tidy_plan) that the user
-  approved: moves files, sends files to the vault's .trash folder, removes
-  empty folders, and rewrites every link so it keeps pointing at the same file.
+  Applies selected operations (approvedOpIds) and note renames (renames:
+  [{ path, title }]) from a saved tidy_plan (planId): moves files, moves
+  trashed files to .trash, removes empty folders, and rewrites vault links.
+  Report ops are ignored.
 
-  Pass only the op ids the user explicitly approved in the tidy_plan preview.
-  Never pass ids the user did not see or approve. Report ops are never run.
-
-  renames: titles the user accepted for needsTitle notes, as { path, title }.
-
-  When the client supports it, the user is asked to confirm the changes before
-  anything runs. A result with cancelled: true means nothing changed: do not
-  retry unless the user asks.
-
-  The result lists applied and rejected op ids (with reasons). Use its runId
-  with plan_undo to revert the whole run.
+  Requests client confirmation before executing when supported; returns
+  cancelled: true if declined with no files changed. Returns applied and
+  rejected op ids, rewritten link count, removed folders, and a runId for
+  plan_undo.
 `;
 
 const EMPTY_RESULT: ApplyResult = {

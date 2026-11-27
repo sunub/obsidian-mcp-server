@@ -21,25 +21,16 @@ export const annotations: ToolAnnotations = {
 };
 
 export const description = `
-  Scans the Obsidian vault and builds a tidy plan: duplicate files, empty
+  Scans the Obsidian vault and builds a tidy plan for duplicate files, empty
   untitled notes, scattered attachments, and empty folders.
 
-  This tool does not change any vault file. It only saves the plan (under the
-  hidden .vault-tidy folder) and returns a preview.
-
-  How to use the result:
-  1. Show the preview to the user, grouped by tier:
-     - bulk: low risk, the user can approve the whole group at once.
-     - per_item: the user must choose each item separately.
-     - report: informational only, nothing is executed.
-  2. Pass only the op ids the user approved to plan_apply, together with planId.
-  3. Entries in needsTitle are untitled notes with content. Read each note,
-     propose a title, and pass the accepted ones to plan_apply as
-     renames: [{ path, title }].
+  Does not modify any vault file. Saves the plan under .vault-tidy and returns
+  a preview with planId, tiered operations (bulk, per_item, report), and
+  needsTitle entries.
 
   Optional inputs: scope limits the plan to one top-level folder, planners
-  selects which checks run, attachmentsFolderName sets the attachments folder
-  name (default "attachments").
+  selects which checks run, and attachmentsFolderName sets the attachments
+  folder name (default "attachments").
 `;
 
 export const register = (server: McpServer, deps: VaultToolDeps) => {

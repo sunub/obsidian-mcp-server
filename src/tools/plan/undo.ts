@@ -17,12 +17,11 @@ export const annotations: ToolAnnotations = {
 };
 
 export const description = `
-  Reverts a plan_apply run using its runId: restores moved and trashed files,
+  Reverts a plan_apply run by runId: restores moved and trashed files,
   restores rewritten note contents, and recreates removed folders.
 
-  Entries changed by the user after the run are skipped and listed in
-  conflicts instead of being overwritten. Show conflicts to the user.
-  A run can be undone only once.
+  Entries modified after the run are skipped and returned in conflicts instead
+  of being overwritten. Each run can be undone only once.
 `;
 
 export const executeUndo = async (
