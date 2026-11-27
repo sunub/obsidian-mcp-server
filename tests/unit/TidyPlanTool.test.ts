@@ -163,13 +163,13 @@ describe("tidy_plan register", () => {
 		});
 	});
 
-	test("설명문은 승인 절차와 이름 변경 흐름을 안내한다", () => {
+	test("설명문은 파일 미변경과 입출력 계약만 담고 Skill 절차를 중복하지 않는다", () => {
 		const { config } = registered();
 
 		expect(config.description).toMatch(/does not (change|modify)/i);
-		expect(config.description).toContain("plan_apply");
+		expect(config.description).toContain("planId");
 		expect(config.description).toContain("needsTitle");
-		expect(config.description).toContain("renames");
+		expect(config.description).not.toContain("How to use the result");
 	});
 
 	test("핸들러는 등록 때 받은 deps로 실행한다", async () => {
