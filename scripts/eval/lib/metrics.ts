@@ -1,8 +1,3 @@
-/**
- * 검색 품질 지표와 지연 통계.
- * 문서 단위로 채점한다: ranked는 Vault 기준 상대 경로 목록(중복 없음, 순위순).
- */
-
 export function recallAtK(
 	ranked: string[],
 	relevant: string[],
@@ -14,7 +9,6 @@ export function recallAtK(
 	return hits / relevant.length;
 }
 
-/** 상위 k개 안에 정답이 하나라도 있으면 1 */
 export function hitAtK(
 	ranked: string[],
 	relevant: string[],
@@ -24,7 +18,6 @@ export function hitAtK(
 	return ranked.slice(0, k).some((d) => rel.has(d)) ? 1 : 0;
 }
 
-/** 첫 정답 순위의 역수. 상위 k개 안에 없으면 0 */
 export function reciprocalRankAtK(
 	ranked: string[],
 	relevant: string[],
@@ -35,12 +28,104 @@ export function reciprocalRankAtK(
 	return index === -1 ? 0 : 1 / (index + 1);
 }
 
+export function ndcgAtK(
+	ranked: string[],
+	grades: Record<string, number>,
+	k: number,
+): number {
+	const idealGrades = Object.values(grades)
+		.filter((g) => g > 0)
+		.sort((a, b) => b - a)
+		.slice(0, k);
+	if (idealGrades.length === 0) return 0;
+
+	const gain = (grade: number) => (grade > 0 ? 2 ** grade - 1 : 0);
+	const idcg = idealGrades.reduce(
+		(sum, g, i) => sum + gain(g) / Math.log2(i + 2),
+		0,
+	);
+	if (idcg === 0) return 0;
+
+	const dcg = ranked
+		.slice(0, k)
+		.reduce(
+			(sum, doc, i) => sum + gain(grades[doc] ?? 0) / Math.log2(i + 2),
+			0,
+		);
+	return dcg / idcg;
+}
+
+export function bpref(
+	ranked: string[],
+	grades: Record<string, number>,
+	minRelevantGrade = 2,
+): number {
+	const relevant = new Set<string>();
+	const nonRelevant = new Set<string>();
+
+	for (const [doc, grade] of Object.entries(grades)) {
+		if (grade >= minRelevantGrade) {
+			relevant.add(doc);
+		} else {
+			nonRelevant.add(doc);
+		}
+	}
+
+	if (relevant.size === 0) return 0;
+	if (nonRelevant.size === 0) {
+		let found = 0;
+		for (const doc of ranked) {
+			if (relevant.has(doc)) found++;
+		}
+		return found / relevant.size;
+	}
+
+	const denom = Math.min(relevant.size, nonRelevant.size);
+	let nonRelAbove = 0;
+	let sum = 0;
+	const seenRelevant = new Set<string>();
+
+	for (const doc of ranked) {
+		if (relevant.has(doc) && !seenRelevant.has(doc)) {
+			seenRelevant.add(doc);
+			const penalized = Math.min(nonRelAbove, denom);
+			sum += 1 - penalized / denom;
+		} else if (nonRelevant.has(doc)) {
+			nonRelAbove++;
+		}
+	}
+
+	return sum / relevant.size;
+}
+
+export function judgedAtK(
+	ranked: string[],
+	grades: Record<string, number>,
+	k: number,
+): number {
+	const top = ranked.slice(0, k);
+	if (top.length === 0) return 1;
+	const judgedCount = top.filter((doc) => Object.hasOwn(grades, doc)).length;
+	return judgedCount / top.length;
+}
+
+export function auroc(positives: number[], negatives: number[]): number {
+	if (positives.length === 0 || negatives.length === 0) return Number.NaN;
+	let wins = 0;
+	for (const p of positives) {
+		for (const n of negatives) {
+			if (p > n) wins += 1;
+			else if (p === n) wins += 0.5;
+		}
+	}
+	return wins / (positives.length * negatives.length);
+}
+
 export function mean(values: number[]): number {
 	if (values.length === 0) return Number.NaN;
 	return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
-/** 선형 보간 백분위수 (p: 0~100) */
 export function percentile(values: number[], p: number): number {
 	if (values.length === 0) return Number.NaN;
 	const sorted = [...values].sort((a, b) => a - b);
@@ -52,7 +137,6 @@ export function percentile(values: number[], p: number): number {
 	return loValue + (hiValue - loValue) * (rank - lo);
 }
 
-/** 재현 가능한 난수 (mulberry32) */
 export function seededRandom(seed: number): () => number {
 	let a = seed >>> 0;
 	return () => {
@@ -64,10 +148,6 @@ export function seededRandom(seed: number): () => number {
 	};
 }
 
-/**
- * 짝지은 부트스트랩: 같은 질의에서 두 구성의 점수 차이(b - a)의 평균과 95% 신뢰구간.
- * 질의 수가 적으므로 차이가 신뢰구간 안에서 0을 포함하면 "차이 없음"으로 읽는다.
- */
 export function pairedBootstrap(
 	a: number[],
 	b: number[],
