@@ -1,58 +1,8 @@
 import path from "node:path";
-
-const MUTATING_COMMANDS = new Set([
-	"mv",
-	"rm",
-	"cp",
-	"rsync",
-	"unlink",
-	"rmdir",
-	"trash",
-]);
+import { changesVault } from "./vault-rules.mjs";
 
 const BLOCK_REASON =
-	"Vault 파일은 tidy_plan과 plan_apply로 옮기거나 지우세요. 링크가 깨지지 않게 하기 위해서입니다.";
-
-const normalizeForCompare = (value) => value.normalize("NFC").toLowerCase();
-
-const isInside = (target, vaultRoot) => {
-	const relative = path.relative(
-		normalizeForCompare(vaultRoot),
-		normalizeForCompare(target),
-	);
-	return (
-		relative === "" ||
-		(!relative.startsWith("..") && !path.isAbsolute(relative))
-	);
-};
-
-const splitSegments = (command) => command.split(/&&|\|\||;|\|/);
-
-const tokenize = (segment) => {
-	const tokens = [];
-	const pattern = /"([^"]*)"|'([^']*)'|(\S+)/g;
-	for (const match of segment.matchAll(pattern)) {
-		tokens.push(match[1] ?? match[2] ?? match[3]);
-	}
-	return tokens;
-};
-
-const touchesVault = (command, initialCwd, vaultRoot) => {
-	let cwd = initialCwd;
-	for (const segment of splitSegments(command)) {
-		const [name, ...args] = tokenize(segment);
-		if (name === "cd" && args.length > 0) {
-			cwd = path.resolve(cwd, args[0]);
-			continue;
-		}
-		if (!MUTATING_COMMANDS.has(name)) continue;
-		const operands = args.filter((arg) => !arg.startsWith("-"));
-		if (operands.some((arg) => isInside(path.resolve(cwd, arg), vaultRoot))) {
-			return true;
-		}
-	}
-	return false;
-};
+	"Vault 파일은 셸로 옮기거나 지우거나 덮어쓰지 마세요. 이동과 삭제는 tidy_plan과 plan_apply를 쓰세요. 링크가 깨지지 않게 하기 위해서입니다.";
 
 const readStdin = async () => {
 	const chunks = [];
@@ -69,7 +19,12 @@ const main = async () => {
 	if (typeof command !== "string") return;
 
 	const cwd = input.cwd ?? process.cwd();
-	if (!touchesVault(command, cwd, path.resolve(vaultRoot))) return;
+	const blocked = changesVault(command, {
+		cwd,
+		vaultRoot: path.resolve(vaultRoot),
+		env: { ...process.env, PWD: cwd },
+	});
+	if (!blocked) return;
 
 	process.stdout.write(
 		JSON.stringify({
