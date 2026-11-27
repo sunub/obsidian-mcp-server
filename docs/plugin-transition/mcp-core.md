@@ -20,13 +20,12 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 - 적용: 임의 key-value를 받아 병합·덮어쓰기합니다. 알려진 속성(`tags`, `title`, `completed` 등)은 타입을 검증합니다. 노트 유형별 스키마는 `vault-frontmatter` Skill이 관리합니다.
 - 개선할 점:
   - 3단계 `vault-frontmatter` Skill이 기존 태그·속성을 일관되게 재사용할 수 있도록 **Vault 내 기존 태그·속성 목록을 읽는 읽기 전용 도구**(예: `vault_list_properties`) 추가가 필요합니다.
-  - `src/tools/write_property/index.ts`(L142-145)의 `shorthandDescription`은 분리된 CLI 잔재이므로 제거합니다.
 
 ---
 
 ## 2. 분해 및 축소가 필요한 `vault` 도구 (`src/tools/vault/`)
 
-현재 `vault` 도구 하나가 `obsidianContentActions` 6개와 파라미터 16개를 한 스키마에 묶고 있습니다(`src/tools/vault/params.ts`). 액션별로 성격이 달라 분해가 필요합니다.
+현재 `vault` 도구 하나가 `obsidianContentActions` 5개와 파라미터 15개를 한 스키마에 묶고 있습니다(`src/tools/vault/params.ts`). 액션별로 성격이 달라 분해가 필요합니다.
 
 | 현재 action | 처분 | 변경 후 역할 |
 |---|---|---|
@@ -37,22 +36,23 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 | `stats` | **독립 MCP 도구 유지** (`vault_stats`) | Vault 문서 수, 인덱스 상태, 로컬 모델 준비 상태를 구조화된 JSON으로 반환 (`/vault-status` Command 백엔드) |
 | `index_vault_to_vectordb` | **제거함** | 전체 색인은 타임아웃 위험이 크고 AI가 임의 호출하면 안 되는 운영 작업이라 CLI 서브커맨드(`obsidian-mcp-server reindex`)로 옮김 |
 
-### `vault` 내부에서 제거할 레거시 패턴
-- **`<system_directive>` 텍스트 주입 제거 (적용, 미커밋)**: `search`와 `collect_context`는 `search_status` 필드(`src/shared/searchStatus.ts`)로 검색 상태를 반환합니다.
-- **`shorthandDescription` 제거**: `vault/index.ts`(L137-140)의 CLI 잔재.
+### `vault` 내부에서 제거한 레거시 패턴
+- `<system_directive>` 텍스트 주입을 없앴습니다. `search`와 `collect_context`는 `search_status` 필드(`src/shared/searchStatus.ts`)로 검색 상태를 반환합니다.
+- 분리된 CLI의 잔재인 `shorthandDescription`을 없앴습니다.
 
 ---
 
 ## 3. `src/server.ts` 및 런타임 인프라 정리
 
 - **유지할 것**:
-  - `McpServer` 생성과 `ServerLifecycle.runToolCall` 래핑(`src/server.ts` L59-69).
+  - `McpServer` 생성과 `ServerLifecycle.runToolCall` 래핑.
+- **정리 완료**:
+  - 서버 `instructions`는 다루는 범위(`VAULT_DIR_PATH`)와 최소 정체성만 알립니다. 도구별 사용법은 도구 설명과 Skill/Command가 맡습니다.
 - **고쳐야 할 것**:
-  - **오래된 `instructions` 축소(`src/server.ts` L36-55)**: `stats`·`collect_context` 설명이 누락돼 있고. 도구별 사용 절차는 Skill/Command로 옮기고, 서버 `instructions`는 `VAULT_DIR_PATH` 범위와 최소 정체성만 남깁니다.
-  - **도구 등록 DI 통일(`src/server.ts` L71-78)**: 전역 `state` 싱글턴을 쓰는 `tools`(`vault`, `write_property`)와 `VaultToolDeps`를 주입받는 `toolsWithDeps`(`tidy_plan`, `plan_apply`, `plan_undo`)의 이원화를 없애고 전부 `VaultToolDeps` 기반으로 통일합니다.
+  - **도구 등록 DI 통일(`src/server.ts`)**: 전역 `state` 싱글턴을 쓰는 `tools`(`vault`, `write_property`)와 `VaultToolDeps`를 주입받는 `toolsWithDeps`(`tidy_plan`, `plan_apply`, `plan_undo`)의 이원화를 없애고 전부 `VaultToolDeps` 기반으로 통일합니다. `src/shared/`의 `VectorDB`, `getVaultManager`도 전역 `state`를 읽습니다.
 - **기동·감시 비용 점검(`src/index.ts`, `src/shared/vault-manager/VaultWatcher.ts`)**:
   - 현재 서버 시작 시 정리 기능만 쓰려 해도 로컬 모델 체크와 `chokidar` 기반 `VaultWatcher`를 무조건 기동합니다.
-  - `plan_apply`로 대량 파일을 이동할 때 `chokidar`가 파일마다 `unlink`/`add` 이벤트를 쏟아내며 `RAGIndexer` 부하가 튈 수 있어, 일괄 변경 시 디바운스 또는 배치 동기화 검토가 필요합니다.
+  - `plan_apply`로 대량 파일을 이동하면 파일마다 `unlink`/`add` 이벤트가 생깁니다. 색인 큐가 같은 파일의 요청을 합쳐 순서대로 처리하므로, 부하를 측정해 문제가 확인되면 배치 동기화를 검토합니다.
 
 ---
 

@@ -19,7 +19,7 @@
 
 ## 2. 플러그인 패키징 및 배포 설정 (`plugin/`, `package.json`)
 
-1. **`0.4.0` 배포 (필요)**: npm의 `0.3.31`에는 `tidy_plan`, `plan_apply`, `plan_undo`, `reindex`가 없어 배포용 `plugin/.mcp.json`(`@latest`)이 동작하지 않습니다. `v0.4.0` 태그를 push하면 `.github/workflows/ci.yml`이 배포합니다.
+1. **배포**: `v*` 태그를 push하면 `.github/workflows/ci.yml`이 npm에 배포합니다. 배포용 `plugin/.mcp.json`은 `@latest`를 실행합니다.
 2. **로컬 개발 설정**: `plugin/.mcp.json`을 로컬 빌드 경로로 바꾼 변경은 커밋하지 않습니다.
 3. **npm 배포물과 플러그인 배포 경계 (결정 필요)**: `package.json`의 `"files": ["build"]`에는 `plugin/`이 포함되지 않습니다.
    - **Option A**: npm에는 MCP 서버(`build/`)만 배포하고, 플러그인은 GitHub 저장소 또는 마켓플레이스 경로로 설치합니다. 마켓플레이스로 가려면 `marketplace.json`을 추가해야 합니다.
@@ -37,8 +37,9 @@
 
 ---
 
-## 4. 워킹트리 및 코드 잔여물 정리 목록
+## 4. 남은 잔여물
 
-- **구버전 설정 파일**: 루트 `mcp-servers.json` (이미 제거된 `LLM_API_URL`, `LLM_CHAT_MODEL` 환경변수 포함)
-- **CLI 분리 후 코드 잔재**: `src/tools/vault/index.ts`, `src/tools/write_property/index.ts`의 `shorthandDescription`
-- **로컬 작업 잔여물**: `.claude/worktrees/sharp-cerf-0b7718/` (과거 worktree 잔존 여부 확인 후 정리)
+- **`mcp-servers.json`** (git이 추적하지 않음): 이미 제거한 `LLM_API_URL`, `LLM_CHAT_MODEL` 환경변수를 담고 있습니다.
+- **`ecosystem.config.cjs`**: `llama-server`를 띄우는 pm2 설정입니다. 저장소에서 참조하는 곳이 없으며, 개인 용도로 쓰는지 확인한 뒤 제거합니다.
+- **`Dockerfile`**: git이 추적하지 않는 `package-lock.json`을 복사하므로 새로 받은 저장소에서는 빌드가 실패할 것으로 보입니다(실행해 확인하지 않음). 고치거나 제거할지 정합니다.
+- **`.claude/worktrees/sharp-cerf-0b7718/`**: 등록된 worktree이며 커밋하지 않은 변경(`biome.json`, `src/utils/Indexer.ts`, `tests/unit/Indexer.test.ts`)이 있습니다. 내용을 확인하기 전에는 지우지 않습니다.

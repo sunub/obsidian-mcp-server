@@ -33,26 +33,8 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 				logging: {},
 				tools: { listChanged: false },
 			},
-			instructions: `
-	        This server provides access to Obsidian vault documents and related tools.
-	        
-	        Available tools:
-	        - vault: Search, read, list, and inspect stats for documents in the vault.
-	          * action="search": Unified hybrid search (Keyword + Semantic). Automatically falls back to keyword search if local models are missing.
-	          * action="read": Read a specific document's content and metadata.
-	          * action="list_all": List all documents in the vault.
-	          * action="stats": Inspect vault document count, indexing progress, and local model readiness.
-	        - write_property: Write frontmatter properties to a markdown file.
-	        - tidy_plan: Build a vault tidy plan (attachments, duplicates, untitled notes, empty folders) and return a preview. Changes no files.
-	        - plan_apply: Apply only the plan operations the user approved, keeping every link pointing at the same file.
-	        - plan_undo: Revert a plan_apply run by its runId.
-	        
-	        Environment requirements:
-	        - VAULT_DIR_PATH: Path to your Obsidian vault directory.
-	        
-	        Local Search Optimization:
-	        - To enable high-performance local hybrid search, run 'npx @sunub/obsidian-mcp-server setup' once.
-	      `,
+			instructions:
+				"Search, read, and tidy the Obsidian vault at VAULT_DIR_PATH, and write frontmatter properties to its notes.",
 		},
 	);
 

@@ -1,7 +1,3 @@
-/**
- * search-quality.ts 결과 JSON을 사람이 읽는 Markdown 요약으로 만든다.
- *   npx tsx scripts/eval/report.ts eval/search/results/search-<stamp>.json [eval/indexing/results/indexing-<stamp>.json ...]
- */
 import { readFile, writeFile } from "node:fs/promises";
 
 const [searchFile, ...indexingFiles] = process.argv.slice(2);
@@ -18,8 +14,6 @@ type Summary = {
 	hit1: number;
 	p50: number;
 	p95: number;
-	fusedRerankRate: number | null;
-	chunkRerankRate: number | null;
 };
 type CI = { meanDiff: number; ciLow: number; ciHigh: number };
 
@@ -37,22 +31,22 @@ lines.push(`# 검색 품질 평가 결과 (${env.date.slice(0, 10)})`, "");
 lines.push(
 	`- 환경: ${env.platform}, ${env.cpu}, ${env.cores}코어, ${env.memoryGB}GB, Node ${env.node}`,
 	`- Vault: 문서 ${env.documents}개, 청크 ${env.chunks}개, 벡터 인덱스 ${env.vectorIndexes.join(", ") || "없음"}`,
-	`- 모델: 임베딩 ${env.embedder}, 리랭커 ${env.reranker}${env.stripPrefix ? " (실험: search_query/search_document 접두사 제거)" : ""}`,
+	`- 모델: 임베딩 ${env.embedder}${env.stripPrefix ? " (실험: search_query/search_document 접두사 제거)" : ""}`,
 	`- 평가셋: 질의 ${s.queries.total}개 (${Object.entries(s.queries.byType)
 		.map(([k, v]) => `${k} ${v}`)
 		.join(
 			", ",
-		)}), 결과 수 ${env.limit}, 지연은 warm 상태에서 질의당 ${env.reps}회(리랭커 구성은 ${env.rerankReps ?? env.reps}회) 측정. 임계값 스윕(E@t)은 리랭커 결과를 캐시해 품질만 계산`,
+		)}), 결과 수 ${env.limit}, 지연은 warm 상태에서 질의당 ${env.reps}회 측정`,
 	"",
 	"## 구성별 품질과 지연",
 	"",
-	"| 구성 | 설명 | Recall@5 | Recall@10 | MRR@10 | Hit@1 | p50 ms | p95 ms | 리랭커 실행률 |",
-	"|---|---|---:|---:|---:|---:|---:|---:|---:|",
+	"| 구성 | 설명 | Recall@5 | Recall@10 | MRR@10 | Hit@1 | p50 ms | p95 ms |",
+	"|---|---|---:|---:|---:|---:|---:|---:|",
 );
 for (const c of s.configs) {
 	const a: Summary = s.summary[c.name].all;
 	lines.push(
-		`| ${c.name} | ${c.description} | ${f3(a.recall5)} | ${f3(a.recall10)} | ${f3(a.mrr10)} | ${f3(a.hit1)} | ${f0(a.p50)} | ${f0(a.p95)} | ${pct(a.fusedRerankRate)} |`,
+		`| ${c.name} | ${c.description} | ${f3(a.recall5)} | ${f3(a.recall10)} | ${f3(a.mrr10)} | ${f3(a.hit1)} | ${f0(a.p50)} | ${f0(a.p95)} |`,
 	);
 }
 

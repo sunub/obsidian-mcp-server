@@ -139,12 +139,14 @@ E와 D의 품질 차이가 무시할 만하면 건너뛰기 규칙은 검증된 
 
 ## 4. 측정 결과 (2026-09-27, 수정 전)
 
+`0.4.0`에서 리랭커를 제거해, 리랭커가 들어간 구성과 `--rerank-cache` 옵션은 현재 코드로 재현할 수 없다. 현재 스크립트에서는 이 옵션을 뺀다.
+
 재현 방법: 실제 Vault의 Markdown 391개를 복사한 Vault에서 측정했다(원본 Vault의 벡터 캐시는 건드리지 않았다). 환경은 Apple Silicon 18코어, 48GB, Node 24, 임베딩 `Xenova/paraphrase-multilingual-MiniLM-L12-v2`, 리랭커 `Xenova/bge-reranker-base`이다. 원자료는 `eval/*/results/`에 있다(개인 Vault 내용이 들어가므로 커밋하지 않음).
 
 ```bash
 npx tsc && npx tsc-alias
 npx tsx scripts/eval/indexing-benchmark.ts --vault <복사본> --synthetic 10000 --rag
-npx tsx scripts/eval/search-quality.ts --vault <복사본> --rerank-cache eval/search/results/rerank-cache.json
+npx tsx scripts/eval/search-quality.ts --vault <복사본>
 npx tsx scripts/eval/report.ts eval/search/results/search-<시각>.json eval/indexing/results/*.json
 ```
 
