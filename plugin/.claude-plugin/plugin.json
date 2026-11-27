@@ -1,5 +1,5 @@
 {
 	"name": "vault-tidy",
-	"version": "0.3.31",
+	"version": "0.4.0",
 	"description": "Obsidian Vault의 이미지, 중복, 무제 노트, 빈 폴더를 링크를 지키며 정리한다"
 }
