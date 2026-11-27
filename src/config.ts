@@ -13,7 +13,7 @@ const vaultPathSchema = z
 	.string()
 	.min(1, "Vault path는 비어 있을 수 없습니다.")
 	.trim()
-	.transform((val) => resolve(val)) // 입력받은 경로를 절대 경로로 변환
+	.transform((val) => resolve(val))
 	.refine((val) => existsSync(val), {
 		message: "파일 시스템에 해당 경로가 존재하지 않습니다.",
 	})

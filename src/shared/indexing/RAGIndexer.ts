@@ -151,7 +151,7 @@ export class RAGIndexer {
 			if (records.length > 0) {
 				await vectorDB.upsertChunks(records);
 			}
-			// 청크 생성 여부와 상관없이 파일 메타데이터(수정 시각)는 항상 업데이트
+
 			await vectorDB.updateFileMeta(filePath, mtime);
 		} catch (error) {
 			console.error(`\nError processing file for RAG: ${filePath}`, error);
@@ -175,24 +175,26 @@ export class RAGIndexer {
 		}
 	}
 
-	async indexAll(vaultPath: string, signal?: AbortSignal): Promise<void> {
+	async indexFiles(
+		markdownFiles: string[],
+		signal?: AbortSignal,
+	): Promise<number> {
+		if (markdownFiles.length === 0) {
+			return 0;
+		}
+
 		this._isIndexing = true;
 		this.chukingWorkerPool.init();
 
 		try {
 			throwIfAborted(signal);
-			const walker = new DirectoryWalker();
-			const filePaths = await walker.walk(vaultPath, this.ioSemaphore);
-			const markdownFiles = filePaths.filter(
-				(f) => f.endsWith(".md") || f.endsWith(".mdx"),
-			);
-
 			this.setSpinner(markdownFiles.length);
 
-			const BATCH_SIZE = 50; // 50개 파일마다 DB에 기록하고 메모리 비움
+			const BATCH_SIZE = 50;
 			let currentBatch: VectorRecord[] = [];
 			let currentMeta: { filePath: string; mtime: string }[] = [];
 			const fileSemaphore = new Semaphore(8);
+			let indexedCount = 0;
 
 			for (let i = 0; i < markdownFiles.length; i += BATCH_SIZE) {
 				throwIfAborted(signal);
@@ -209,8 +211,11 @@ export class RAGIndexer {
 									signal,
 								},
 							);
-							if (result && result.records.length > 0) {
-								currentBatch.push(...result.records);
+							if (result) {
+								indexedCount++;
+								if (result.records.length > 0) {
+									currentBatch.push(...result.records);
+								}
 								currentMeta.push({ filePath, mtime: result.mtime });
 							}
 						} finally {
@@ -219,19 +224,31 @@ export class RAGIndexer {
 					}),
 				);
 
-				// 현재 배치를 DB에 기록하고 메모리 해제
 				if (currentBatch.length > 0) {
 					await vectorDB.upsertChunks(currentBatch);
-					await vectorDB.updateFileMetaBatch(currentMeta);
-					// 배열 초기화로 가비지 컬렉션 유도
 					currentBatch = [];
+				}
+				if (currentMeta.length > 0) {
+					await vectorDB.updateFileMetaBatch(currentMeta);
 					currentMeta = [];
 				}
 			}
+
+			return indexedCount;
 		} finally {
 			this._isIndexing = false;
 			await this.chukingWorkerPool.terminateAll();
 		}
+	}
+
+	async indexAll(vaultPath: string, signal?: AbortSignal): Promise<number> {
+		throwIfAborted(signal);
+		const walker = new DirectoryWalker();
+		const filePaths = await walker.walk(vaultPath, this.ioSemaphore);
+		const markdownFiles = filePaths.filter(
+			(f) => f.endsWith(".md") || f.endsWith(".mdx"),
+		);
+		return this.indexFiles(markdownFiles, signal);
 	}
 
 	async shutdown(): Promise<void> {

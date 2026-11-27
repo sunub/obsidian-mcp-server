@@ -22,9 +22,9 @@ export class DirectoryWalker {
 		} finally {
 			ioSemaphore.release();
 		}
+
 		try {
 			const tasks = entries.map(async (entry) => {
-				// Ignore dotfiles, .obsidian, and node_modules
 				if (
 					entry.name.startsWith(".") ||
 					entry.name === "node_modules" ||
@@ -35,7 +35,6 @@ export class DirectoryWalker {
 
 				const fullPath = join(dirPath, entry.name);
 				if (entry.isDirectory()) {
-					// 하위 디렉토리 재귀 탐색
 					return this.walk(fullPath, ioSemaphore);
 				} else if (entry.isFile()) {
 					const ext = extname(entry.name).toLowerCase();

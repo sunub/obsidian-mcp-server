@@ -11,7 +11,6 @@ export const INDEX_VERSION = 11;
 
 const VECTOR_DIM = 384;
 
-/** IVF-PQ 파티션 수. 인덱스 생성과 검색(nprobes)이 같은 공식을 쓴다. */
 function partitionCountFor(rowCount: number): number {
 	return Math.max(2, Math.floor(Math.sqrt(rowCount)));
 }
@@ -183,6 +182,29 @@ export class VectorDB {
 			debugLogger.info(`[VectorDB] Index is up-to-date (v${INDEX_VERSION}).`);
 
 			return false;
+		} finally {
+			this.writeSemaphore.release();
+		}
+	}
+
+	async resetIndex(): Promise<void> {
+		await this.writeSemaphore.acquire();
+		try {
+			const db = await this.connect();
+			const tableNames = await db.tableNames();
+			const tablesToDrop = [
+				this.tableName,
+				this.metaTableName,
+				this.fileMetaTableName,
+			];
+			for (const tableName of tablesToDrop) {
+				if (tableNames.includes(tableName)) {
+					await db.dropTable(tableName);
+				}
+			}
+			await this.writeMetadata(db);
+			this.db = null;
+			this.connectedDbPath = null;
 		} finally {
 			this.writeSemaphore.release();
 		}
