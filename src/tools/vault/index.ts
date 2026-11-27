@@ -12,7 +12,6 @@ import {
 	obsidianContentQueryParamsZod,
 } from "./params.js";
 import {
-	collectContext,
 	listAllDocuments,
 	readSpecificFile,
 	searchDocuments,
@@ -36,7 +35,11 @@ export const description = `
   - To discover connections by finding all notes that link to a specific note.
   - When you need to retrieve a list of unfinished tasks (- [ ]) from daily notes or meeting minutes.
 
-  Returns the content of the most relevant document(s) in text format. It can also include metadata such as the document's title, tags, and creation date.
+  search returns up to limit matching notes (default 10), best match first,
+  each with its path, title, tags, and a snippet of at most 200 characters when
+  the note body matched. It does not return note bodies: call read with
+  filename set to a returned path. To synthesize information across several
+  notes, search first, then read each note you need.
 
   Requirements: The user's Obsidian Vault path must be correctly configured in an environment variable or a similar setting. For searches, use the exact filename or include core keywords for content-based queries.
 
@@ -112,14 +115,10 @@ export const execute = async (
 				result = await statsAllDocuments(vaultManager);
 				break;
 
-			case "collect_context":
-				result = await collectContext(vaultManager, params);
-				break;
-
 			default:
 				return createToolError(
 					`Unknown action: ${params.action}`,
-					"Valid actions are: search, read, list_all, stats, collect_context",
+					"Valid actions are: search, read, list_all, stats",
 				);
 		}
 
@@ -132,11 +131,6 @@ export const execute = async (
 	}
 };
 
-export const shorthandDescription = {
-	ko: "키워드나 제목을 기반으로 설정된 Obsidian Vault 내의 Markdown 문서(.md, .mdx)를 검색하고 조회합니다. 특정 노트 확인, 정보 요약, 백링크 탐색, 미완료 할 일 추출에 사용되며 문서의 본문과 메타데이터를 반환합니다.",
-	en: "Retrieves Obsidian vault Markdown files by keyword or title to extract content, metadata, links, and unfinished tasks.",
-};
-
 export default {
 	name,
 	description,
@@ -144,5 +138,4 @@ export default {
 	inputSchema: obsidianContentQueryParamsZod,
 	execute,
 	register,
-	shorthandDescription,
 };

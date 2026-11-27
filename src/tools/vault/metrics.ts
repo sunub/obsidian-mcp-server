@@ -2,7 +2,7 @@ import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-type VaultAction = "search" | "read" | "list_all" | "stats" | "collect_context";
+type VaultAction = "search" | "read" | "list_all" | "stats";
 
 type CompressionSummary = {
 	mode: "aggressive" | "balanced" | "none";
@@ -23,7 +23,6 @@ export type VaultResponseMetric = {
 	output_chars: number;
 	source_chars: number;
 	max_output_chars: number | null;
-	cache_hit?: boolean;
 };
 
 type JsonObject = Record<string, unknown>;
@@ -99,10 +98,6 @@ function inferDocCount(action: VaultAction, payload: JsonObject): number {
 		return (payload["documents"] as unknown[]).length;
 	}
 
-	if (typeof payload["documents_count"] === "number") {
-		return Math.max(0, Math.floor(payload["documents_count"] as number));
-	}
-
 	if (action === "search" && typeof payload["found"] === "number") {
 		return Math.max(0, Math.floor(payload["found"] as number));
 	}
@@ -117,17 +112,6 @@ function inferDocCount(action: VaultAction, payload: JsonObject): number {
 	}
 
 	return 0;
-}
-
-function parseCacheHit(payload: JsonObject): boolean | undefined {
-	const cache = payload["cache"];
-	if (!isJsonObject(cache)) {
-		return undefined;
-	}
-	if (typeof cache["hit"] !== "boolean") {
-		return undefined;
-	}
-	return cache["hit"] as boolean;
 }
 
 export function buildVaultResponseMetric(
@@ -158,7 +142,6 @@ export function buildVaultResponseMetric(
 		output_chars: compression.output_chars,
 		source_chars: compression.source_chars,
 		max_output_chars: compression.max_output_chars,
-		cache_hit: parseCacheHit(payload),
 	};
 }
 
@@ -179,7 +162,5 @@ export async function recordVaultResponseMetric(
 	try {
 		await mkdir(dirname(logPath), { recursive: true });
 		await appendFile(logPath, `${JSON.stringify(metric)}\n`, "utf8");
-	} catch {
-		// Metrics logging should never fail tool execution.
-	}
+	} catch {}
 }

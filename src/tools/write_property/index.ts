@@ -139,11 +139,6 @@ export const execute = async (
 	}
 };
 
-const shorthandDescription = {
-	ko: "지정된 마크다운 파일의 프론트매터 속성을 제공된 JSON 데이터로 추가하거나 업데이트(덮어쓰기)합니다.",
-	en: "Adds or overwrites Markdown frontmatter properties using provided JSON.",
-};
-
 export default {
 	name,
 	description,
@@ -151,5 +146,4 @@ export default {
 	inputSchema: obsidianPropertyParamsSchema.shape,
 	execute,
 	register,
-	shorthandDescription,
 };

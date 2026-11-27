@@ -2,24 +2,6 @@ import type { ObsidianContentQueryParams } from "../params.js";
 
 export type CompressionMode = "summary" | "aggressive" | "balanced" | "none";
 
-export const SEARCH_DEFAULT_LIMIT: Record<
-	Exclude<CompressionMode, "none">,
-	number
-> = {
-	summary: 3,
-	aggressive: 3,
-	balanced: 5,
-};
-
-export const SEARCH_DEFAULT_EXCERPT: Record<
-	Exclude<CompressionMode, "none">,
-	number
-> = {
-	summary: 100,
-	aggressive: 220,
-	balanced: 500,
-};
-
 export const READ_DEFAULT_CONTENT_MAX_CHARS: Record<
 	Exclude<CompressionMode, "none">,
 	number
@@ -39,23 +21,13 @@ export const READ_DEFAULT_BACKLINK_LIMIT: Record<
 };
 
 export const ACTION_DEFAULT_MAX_OUTPUT_CHARS: Record<
-	"search" | "read" | "collect_context",
+	"read",
 	Record<Exclude<CompressionMode, "none">, number>
 > = {
-	search: {
-		summary: 800,
-		aggressive: 1800,
-		balanced: 2500,
-	},
 	read: {
 		summary: 1000,
 		aggressive: 2200,
 		balanced: 4000,
-	},
-	collect_context: {
-		summary: 1200,
-		aggressive: 2800,
-		balanced: 5200,
 	},
 };
 
@@ -105,26 +77,4 @@ export function finalizePayloadWithCompression<
 
 export function jsonCharLength(data: unknown): number {
 	return JSON.stringify(data).length;
-}
-
-export function trimWithEllipsis(value: string, maxLength: number): string {
-	if (value.length <= maxLength) {
-		return value;
-	}
-	return `${value.substring(0, maxLength)}...`;
-}
-
-export function normalizeWhitespace(value: string): string {
-	return value.replace(/\s+/g, " ").trim();
-}
-
-export function stripFrontmatterBlock(content: string): string {
-	if (!content.startsWith("---")) {
-		return content;
-	}
-	const end = content.indexOf("\n---", 3);
-	if (end === -1) {
-		return content;
-	}
-	return content.substring(end + 4).trimStart();
 }

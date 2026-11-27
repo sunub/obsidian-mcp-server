@@ -8,14 +8,14 @@
 - `VAULT_DIR_PATH` 미설정 시 vault 도구/쓰기 도구가 실패합니다.
 - Vault 내 상대경로/절대경로를 지원하며, 쓰기 작업은 Vault 경계 바깥을 차단합니다.
 - Vault 경계 밖 쓰기는 `VaultPathError`로 처리됩니다.
-- `vault` 액션은 `compressionMode` 기본값이 `balanced`입니다.
+- `read`의 `compressionMode` 기본값은 `summary`입니다.
 - 잘못된 `action` 값은 가장 흔한 실패 원인입니다.
 
 ## 공통: `vault` 입력 파라미터
 
-- `action` (필수): `search | read | list_all | stats | collect_context`
-- `quiet` (기본값: `true`), `compressionMode` (기본값: `balanced`)
-- `maxOutputChars` (기본값: 액션별 상한)
+- `action` (필수): `search | read | list_all | stats`
+- `quiet`, `compressionMode` (`read`, 기본값: `summary`)
+- `maxOutputChars` (`read`)
 
 `quiet: true`는 `search`, `list_all`에서 축약 응답을 반환합니다.
 
@@ -35,14 +35,11 @@
 키워드 검색과 의미 기반 검색을 결합한 하이브리드 후보 탐색을 수행합니다. 로컬 임베딩 모델이 준비되지 않은 경우 키워드 검색으로 폴백합니다.
 
 - 필수: `keyword`
-- 선택: `includeContent`(기본 `true`), `includeFrontmatter`(기본 `false`, 현재 응답에서 실질 반영은 없음), `limit`, `excerptLength`
-- 기본 제약:
-  - `balanced`: `limit=5`, `excerptLength=500`
-  - `aggressive`: `limit=3`, `excerptLength=220`
-  - `none`: 전체 매치, 제한 없음
-- `quiet: true`면 `{ found, filenames }` 축약 응답
-- 기본 응답: `{ query, found, matched_total, total_in_vault, documents, compression }`
-- 각 문서 `documents[i].content`는 `includeContent=true`일 때 `full`, `excerpt`가 포함되고, false일 때 `preview`/`note`로 반환됩니다.
+- 선택: `limit`(기본 10), `quiet`
+- `compressionMode`, `maxOutputChars`, `includeContent`, `excerptLength`는 `search`에 영향을 주지 않습니다.
+- 일치하는 문서를 `limit`건까지 순위 순서대로 모두 반환합니다. 응답 크기 때문에 문서를 빼지 않습니다.
+- 각 문서는 `path`(Vault 기준 상대 경로), `title`, `tags`, `snippet`(최대 200자)을 담습니다. 본문에서 맞은 곳이 없으면 `snippet`이 없습니다.
+- 본문은 `read`의 `filename`에 `path`를 넣어 읽습니다.
 
 예시:
 
@@ -50,10 +47,7 @@
 {
   "action": "search",
   "keyword": "project",
-  "limit": 5,
-  "includeContent": true,
-  "excerptLength": 260,
-  "compressionMode": "balanced"
+  "limit": 5
 }
 ```
 
@@ -113,45 +107,6 @@ Vault 문서 목록을 반환합니다.
 }
 ```
 
-### `collect_context`
-
-주제/전체 범위에서 문서를 추려 장기 메모리 패킷을 생성합니다.
-
-- 필수: `scope=topic`이면 `topic`
-- 선택: `topic`, `maxDocs`(기본 20), `maxCharsPerDoc`(기본 1800), `continuationToken`, `scope`
-- 배치 처리로 `batch.continuation_token`을 반환해 이어 호출 가능
-- 토큰은 `base64url` 인코딩 형식
-- 기본적으로 최근 조회 결과를 캐시하며(최대 200개), `cache`에 키/해시/히트 여부를 포함
-- 결과는 응답으로만 돌려주며 Vault에 파일을 쓰지 않음. 이전의 메모 저장 파라미터와 저장본을 읽는 액션은 제거되어, 보내면 검증 오류로 거부됨
-
-주요 응답 필드:
-- `action`, `scope`, `topic`, `matched_total`, `total_in_vault`
-- `documents` (`rank`, `score`, `matched_snippets`, `excerpt` 포함), `search_status`
-- `batch` (`has_more`, `continuation_token` 포함)
-- `compression`
-
-예시:
-
-```json
-{
-  "action": "collect_context",
-  "scope": "topic",
-  "topic": "next.js",
-  "maxDocs": 12,
-  "maxCharsPerDoc": 900,
-  "compressionMode": "balanced"
-}
-```
-
-배치 이어 호출:
-
-```json
-{
-  "action": "collect_context",
-  "continuationToken": "<batch.continuation_token>"
-}
-```
-
 ## Frontmatter 기반 도구
 
 ### `write_property`
@@ -180,4 +135,4 @@ Vault 문서 목록을 반환합니다.
 ## 실사용 포인트
 
 - `vault` 액션은 단일 툴에 묶여 있으므로 `action` 문자열이 가장 자주 실패 원인입니다.
-- `collect_context`는 큰 vault에서 `maxDocs`를 작게 시작해 배치로 확장하는 게 비용 효율적입니다.
+- 여러 노트를 종합할 때는 `search` 후 필요한 노트를 `read`합니다.

@@ -47,6 +47,7 @@ export class EmbeddedSearchBackend implements SearchBackend {
 						score: 1.0,
 						document: hit.document,
 						matchedChunks: keywordChunksOf(hit),
+						keywordText: hit.chunk,
 						finalScore: 1.0,
 					})),
 				searchStatus: {

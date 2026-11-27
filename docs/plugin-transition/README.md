@@ -2,7 +2,7 @@
 
 이 디렉터리는 `obsidian-mcp-server`를 단일 MCP 서버에서 **MCP + Skill + Command + Hook** 구조의 플러그인(`vault-tidy`)으로 전환하면서 도출한 현재 상태 진단과 기능 재배치 기준을 주제별로 분리해 정리한 문서 모음입니다.
 
-기준 시점: 2026-11-26 (1단계 `tidy_plan`·`plan_apply`·`plan_undo` 구현 완료 이후)
+기준 시점: 2026-11-27 (`0.4.0` 배포 이후)
 
 ## 1. 왜 전환하는가
 
@@ -18,7 +18,7 @@
 |---|---|---|
 | **MCP Tool** | 파일 스캔, 해시/경계 검증, 링크 재작성, 저널 기반 `undo`, 로컬 검색 인덱스, frontmatter 안전한 쓰기 | 같은 입력에 항상 같은 결과를 보장해야 하는 결정론적 실행과 상태 관리 |
 | **Skill** | 정리 절차, 승인 표 형식, 무제 노트 제목 규칙, frontmatter 스키마, 검색 결과 해석 | LLM 추론과 사용자 규칙이 개입하는 영역. 자연어 의도에 따라 활성화 |
-| **Command** | `/vault-tidy`, `/vault-undo`, `/vault-status`, `/vault-reindex` (`/vault-context`는 보류) | 대규모 변경, 즉시 복구, 무거운 운영 작업의 의도적 진입점 |
+| **Command** | `/vault-tidy:tidy`, `/vault-tidy:undo`, `/vault-tidy:status`, `/vault-tidy:reindex` (`/vault-context`는 보류) | 대규모 변경, 즉시 복구, 무거운 운영 작업의 의도적 진입점 |
 | **Hook** | Vault 경로에 대한 직접 파일 조작 차단 | 프롬프트 지시만으로 막을 수 없는 에이전트의 우회 실행을 시스템 레벨에서 차단 |
 
 ## 3. 분리된 문서 목록
@@ -30,6 +30,6 @@
 
 ## 4. 권장 진행 순서
 
-1. **1단계 플러그인 마감**: 커맨드, Hook 보강, `${VAULT_DIR_PATH}` 검증은 끝났습니다. `0.4.0` 배포와 로컬 `plugin/.mcp.json` 복구가 남았습니다
-2. **MCP/Skill 경계 정리**: `src/server.ts` 경량화, 도구 `description` 중복 절차 제거, `collect_context` 존폐 결정([검토 기록](../collect-context-review.md)), `vault` 모놀리스 분해
+1. **1단계 플러그인 마감**: 커맨드, Hook 보강, `${VAULT_DIR_PATH}` 검증, `0.4.0` 배포를 끝냈습니다. 커맨드를 대화형 세션에서 실행해 확인한 기록은 없습니다
+2. **MCP/Skill 경계 정리**: `vault` 모놀리스 분해, 의존성 주입 통일. `collect_context`는 제거했고 `search`의 이어 받기는 정하지 않았습니다([검토 기록](../collect-context-review.md))
 3. **2·3단계 진입**: `vault-frontmatter` Skill + 속성 조회 도구 구현

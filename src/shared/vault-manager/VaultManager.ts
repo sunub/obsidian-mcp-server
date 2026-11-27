@@ -331,6 +331,10 @@ export class VaultManager {
 		return enrichedDoc;
 	}
 
+	public toRelativePath(filePath: string): string {
+		return relative(this.vaultPath, filePath);
+	}
+
 	public async writeDocument(
 		fullPath: string,
 		frontmatter: Record<string, unknown>,

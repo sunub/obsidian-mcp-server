@@ -92,6 +92,21 @@ describe("fuseRrf", () => {
 		expect(results[0]?.matchedChunks.map((c) => c.chunkIndex)).toEqual([0, 1]);
 	});
 
+	test("순위에서 빠진 키워드 일치도 벡터로 찾은 문서의 키워드 본문으로 남긴다", () => {
+		const results = fuseRrf({
+			keywordHits: [keywordHit("top.md", 10), keywordHit("low.md", 1)],
+			denseHits: [denseHit("low.md"), denseHit("dense.md")],
+			resolveDocument: documentOf,
+			limit: 10,
+		});
+		const textOf = (filePath: string) =>
+			results.find((result) => result.document.filePath === filePath)
+				?.keywordText;
+
+		expect(textOf("low.md")).toBe("low.md keyword body");
+		expect(textOf("dense.md")).toBeNull();
+	});
+
 	test("벡터 청크가 없는 키워드 문서는 키워드 청크를 채운다", () => {
 		const [result] = fuseRrf({
 			keywordHits: [keywordHit("a.md", 3)],

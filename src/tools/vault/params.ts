@@ -8,7 +8,7 @@ export const compressionModeSchema = z
 	.enum(["summary", "aggressive", "balanced", "none"])
 	.default("summary")
 	.describe(
-		"Compression strategy for tool output. summary: lightest TOC & document summary only (default), aggressive: smallest output, balanced: moderate size, none: keep as much original content as possible.",
+		"Output size strategy for read. summary: table of contents and first paragraph (default), aggressive: smallest output, balanced: moderate size, none: keep as much original content as possible. Ignored by search.",
 	);
 
 const maxOutputCharsSchema = z
@@ -16,7 +16,7 @@ const maxOutputCharsSchema = z
 	.min(500)
 	.max(12000)
 	.describe(
-		"Optional hard cap for output size in characters. Helps control token cost in long responses.",
+		"Optional cap for read output size in characters. Ignored by search.",
 	);
 
 const quietMode = z
@@ -25,9 +25,9 @@ const quietMode = z
 	.describe("If true, suppresses non-error output messages. Default is false.");
 
 export const obsidianContentActions = z
-	.enum(["search", "read", "list_all", "stats", "collect_context"])
+	.enum(["search", "read", "list_all", "stats"])
 	.describe(
-		"The action to perform: search documents, read specific file, list all content, get stats, or collect search results with excerpts in batches",
+		"The action to perform: search documents, read specific file, list all content, or get stats",
 	);
 export const obsidianContentKeyword = z
 	.string()
@@ -45,9 +45,7 @@ export const obsidianContentLimit = z
 export const obsidianContentIncludeContent = z
 	.boolean()
 	.default(true)
-	.describe(
-		"Whether to include document content in search results (default: true)",
-	);
+	.describe("Whether list_all includes content previews. Ignored by search.");
 export const obsidianContentIncludeFrontmatter = z
 	.boolean()
 	.default(false)
@@ -60,42 +58,8 @@ export const obsidianContentExcerptLength = z
 	.max(2000)
 	.default(500)
 	.describe(
-		"Length of content excerpt to include in search results (default: 500)",
+		"Maximum content length returned by read. The default depends on compressionMode. Ignored by search.",
 	);
-export const obsidianContentTopic = z
-	.string()
-	.min(1)
-	.describe("Topic to search for (collect_context action)");
-export const obsidianContentScope = z
-	.enum(["topic", "all"])
-	.default("topic")
-	.describe(
-		"Scope for collect_context. topic: collect docs relevant to topic, all: collect from the entire vault.",
-	);
-export const obsidianContentMaxDocs = z
-	.number()
-	.int()
-	.min(1)
-	.max(100)
-	.default(20)
-	.describe("Maximum number of documents to process for collect_context");
-export const obsidianContentMaxCharsPerDoc = z
-	.number()
-	.int()
-	.min(200)
-	.max(8000)
-	.default(1800)
-	.describe(
-		"Maximum number of characters extracted per document for collect_context",
-	);
-export const obsidianContentContinuationToken = z
-	.string()
-	.min(1)
-	.describe(
-		"Continuation token to resume a previous collect_context batch operation",
-	);
-
-// input schema
 export const obsidianContentQueryParamsZod = z
 	.object({
 		action: obsidianContentActions,
@@ -105,11 +69,6 @@ export const obsidianContentQueryParamsZod = z
 		includeContent: obsidianContentIncludeContent.optional(),
 		includeFrontmatter: obsidianContentIncludeFrontmatter.optional(),
 		excerptLength: obsidianContentExcerptLength.optional(),
-		topic: obsidianContentTopic.optional(),
-		scope: obsidianContentScope.optional(),
-		maxDocs: obsidianContentMaxDocs.optional(),
-		maxCharsPerDoc: obsidianContentMaxCharsPerDoc.optional(),
-		continuationToken: obsidianContentContinuationToken.optional(),
 		compressionMode: compressionModeSchema.optional(),
 		maxOutputChars: maxOutputCharsSchema.optional(),
 		quiet: quietMode.optional(),
