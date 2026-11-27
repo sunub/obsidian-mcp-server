@@ -11,6 +11,7 @@ import {
 	pathKey,
 	savePlan,
 	scanVault,
+	shortOpId,
 	type TidyOptions,
 	topFolderOf,
 	type VaultSnapshot,
@@ -157,11 +158,14 @@ export async function buildTidyPlan(
 
 	const inScope = (paths: string[]) =>
 		scope === null || paths.every((p) => isInScope(p, scope));
-	const ops = output.ops.filter((op) => inScope(scopePaths(op)));
+	const planId = newPlanId();
+	const ops = output.ops
+		.filter((op) => inScope(scopePaths(op)))
+		.map((op, index) => ({ ...op, id: shortOpId(planId, index) }));
 	const needsTitle = output.needsTitle.filter((n) => inScope([n.path]));
 
 	const plan: ChangePlan = {
-		planId: newPlanId(),
+		planId,
 		createdAt: new Date().toISOString(),
 		source: "tidy",
 		scope,

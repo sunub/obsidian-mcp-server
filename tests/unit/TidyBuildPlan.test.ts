@@ -189,9 +189,7 @@ describe("buildTidyPlan: fixture 전체 계획", () => {
 		]);
 		const all = await buildTidyPlan(root, DEFAULT_TIDY_OPTIONS);
 
-		expect(reversed.plan.ops.map((op) => op.id)).toEqual(
-			all.plan.ops.map((op) => op.id),
-		);
+		expect(reversed.plan.ops.map(shapeOf)).toEqual(all.plan.ops.map(shapeOf));
 	});
 
 	test("지정한 플래너만 실행한다", async () => {
@@ -201,9 +199,12 @@ describe("buildTidyPlan: fixture 전체 계획", () => {
 			"emptyFolders",
 		]);
 
+		expect(plan.ops.map(shapeOf)).toEqual(
+			expect.arrayContaining([removeFolder("AI/무제")]),
+		);
 		expect(
 			plan.ops.every(
-				(op) => op.type === "removeEmptyFolder" || op.id.includes("empty-top"),
+				(op) => op.type === "removeEmptyFolder" || op.type === "report",
 			),
 		).toBe(true);
 		expect(plan.needsTitle).toEqual([]);
@@ -297,14 +298,14 @@ describe("buildTidyPlan: 저장과 미리보기", () => {
 		).toBe(plan.ops.length);
 		expect(preview.needsTitle).toEqual(plan.needsTitle);
 		expect(preview.bulk).toContainEqual({
-			id: "move:database.png",
+			id: expect.any(String),
 			type: "move",
 			path: "database.png",
 			to: "attachments/database.png",
 			reason: expect.any(String),
 		});
 		expect(preview.per_item).toContainEqual({
-			id: "trash:스터디/HTTP.md",
+			id: expect.any(String),
 			type: "trash",
 			path: "스터디/HTTP.md",
 			redirectTo: "스터디/1주차/HTTP.md",
@@ -313,6 +314,20 @@ describe("buildTidyPlan: 저장과 미리보기", () => {
 		for (const view of preview.report) {
 			expect(view.paths?.[0]).toBe(view.path);
 		}
+	});
+
+	test("연산 ID는 계획마다 다른 접두사와 순번으로 짧게 붙는다", async () => {
+		const root = await copyFixture();
+
+		const first = await buildTidyPlan(root, DEFAULT_TIDY_OPTIONS);
+		const second = await buildTidyPlan(root, DEFAULT_TIDY_OPTIONS);
+
+		const suffix = first.plan.planId.slice(-4);
+		expect(first.plan.ops.map((op) => op.id)).toEqual(
+			first.plan.ops.map((_, index) => `${suffix}-${index + 1}`),
+		);
+		const secondIds = new Set(second.plan.ops.map((op) => op.id));
+		expect(first.plan.ops.filter((op) => secondIds.has(op.id))).toEqual([]);
 	});
 
 	test("영향받는 링크 수는 옮기거나 지우는 파일을 가리키는 ref 수다", async () => {

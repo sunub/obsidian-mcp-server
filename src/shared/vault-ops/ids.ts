@@ -19,6 +19,10 @@ function timestampedId(): string {
 	return `${stamp}-${random}`;
 }
 
+export function shortOpId(planId: string, index: number): string {
+	return `${planId.slice(-4)}-${index + 1}`;
+}
+
 export function newPlanId(): string {
 	return timestampedId();
 }

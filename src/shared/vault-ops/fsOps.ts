@@ -29,20 +29,15 @@ export async function hashOfFile(target: string): Promise<string | null> {
 export async function createFolders(
 	root: string,
 	relativeFolder: string,
-	onCreate: (createdPath: string) => Promise<void>,
+	beforeCreate: (path: string) => Promise<void>,
 ): Promise<void> {
 	if (relativeFolder === "" || relativeFolder === ".") return;
 	const segments = relativeFolder.split("/");
 	for (let depth = 1; depth <= segments.length; depth++) {
 		const prefix = segments.slice(0, depth).join("/");
-		const created = await fs
-			.mkdir(absolute(root, prefix))
-			.then(() => true)
-			.catch((error: NodeJS.ErrnoException) => {
-				if (error.code === "EEXIST") return false;
-				throw error;
-			});
-		if (created) await onCreate(prefix);
+		if (await pathExists(absolute(root, prefix))) continue;
+		await beforeCreate(prefix);
+		await fs.mkdir(absolute(root, prefix));
 	}
 }
 
@@ -65,17 +60,17 @@ export async function isRemovableTree(target: string): Promise<boolean> {
 export async function removeTree(
 	root: string,
 	relativeFolder: string,
-	onRemove: (removedPath: string) => Promise<void>,
+	beforeRemove: (path: string) => Promise<void>,
 ): Promise<void> {
 	const target = absolute(root, relativeFolder);
 	const entries = await fs.readdir(target, { withFileTypes: true });
 	for (const entry of entries) {
 		const child = `${relativeFolder}/${entry.name}`;
-		if (entry.isDirectory()) await removeTree(root, child, onRemove);
+		if (entry.isDirectory()) await removeTree(root, child, beforeRemove);
 		else await fs.unlink(absolute(root, child));
 	}
+	await beforeRemove(relativeFolder);
 	await fs.rmdir(target);
-	await onRemove(relativeFolder);
 }
 
 export async function uniqueTrashName(

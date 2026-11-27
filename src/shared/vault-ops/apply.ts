@@ -79,6 +79,27 @@ function renameOps(
 	return { ops, rejected };
 }
 
+function unrunnableApprovals(
+	plan: ChangePlan,
+	approved: Set<string>,
+	renames: { ops: MoveOp[]; rejected: Rejection[] },
+): Rejection[] {
+	const typeById = new Map(plan.ops.map((op) => [op.id, op.type]));
+	const renameIds = new Set([
+		...renames.ops.map((op) => op.id),
+		...renames.rejected.map((r) => r.opId),
+	]);
+	return [...approved].flatMap((opId) => {
+		if (renameIds.has(opId)) return [];
+		const type = typeById.get(opId);
+		if (type === undefined) return [{ opId, reason: "계획에 없는 연산" }];
+		if (type === "report") {
+			return [{ opId, reason: "보고 전용 항목은 실행할 수 없음" }];
+		}
+		return [];
+	});
+}
+
 function canonicalizer(snapshot: VaultSnapshot): (op: PlanOp) => PlanOp {
 	const files = new Map(snapshot.files.map((f) => [pathKey(f.path), f.path]));
 	const folders = new Map(snapshot.folders.map((f) => [pathKey(f), f]));
@@ -124,13 +145,13 @@ async function moveFiles(
 		);
 	}
 	for (const op of moves) {
-		await fs.rename(absolute(root, op.from), absolute(root, op.to));
 		await record({
 			kind: "move",
 			from: op.from,
 			to: op.to,
 			hash: hashes.get(op.from) ?? "",
 		});
+		await fs.rename(absolute(root, op.from), absolute(root, op.to));
 	}
 }
 
@@ -146,13 +167,13 @@ async function trashFiles(
 	for (const op of trashes) {
 		const name = await uniqueTrashName(trashDir, posix.basename(op.path));
 		const to = `${TRASH_DIR}/${name}`;
-		await fs.rename(absolute(root, op.path), absolute(root, to));
 		await record({
 			kind: "trash",
 			from: op.path,
 			to,
 			hash: hashes.get(op.path) ?? "",
 		});
+		await fs.rename(absolute(root, op.path), absolute(root, to));
 	}
 }
 
@@ -213,17 +234,17 @@ async function execute(
 	await moveFiles(root, moveOps, hashes, record);
 	await trashFiles(root, trashOps, hashes, record);
 	for (const rewrite of rewrites) {
-		await fs.writeFile(
-			absolute(root, rewrite.notePathAfter),
-			rewrite.after,
-			"utf-8",
-		);
 		await record({
 			kind: "rewrite",
 			path: rewrite.notePathAfter,
 			before: rewrite.before,
 			afterHash: sha256(Buffer.from(rewrite.after, "utf-8")),
 		});
+		await fs.writeFile(
+			absolute(root, rewrite.notePathAfter),
+			rewrite.after,
+			"utf-8",
+		);
 	}
 
 	const emptiedByRun = [...moves.keys(), ...trashed.keys()].flatMap(
@@ -288,6 +309,7 @@ export async function applyPlan(
 		});
 	}
 	const rejected = [
+		...unrunnableApprovals(plan, approved, renames),
 		...renames.rejected,
 		...validation.rejected,
 		...outcome.rejected,
@@ -318,12 +340,16 @@ async function undoEntry(
 	switch (entry.kind) {
 		case "rewrite": {
 			const hash = await hashOfFile(absolute(root, entry.path));
+			if (hash === sha256(entry.before)) return false;
 			if (hash !== entry.afterHash) return conflict(entry.path);
 			await fs.writeFile(absolute(root, entry.path), entry.before, "utf-8");
 			return true;
 		}
 		case "move":
 		case "trash": {
+			const fromHash = await hashOfFile(absolute(root, entry.from));
+			const toExists = await pathExists(absolute(root, entry.to));
+			if (!toExists && fromHash === entry.hash) return false;
 			const hash = await hashOfFile(absolute(root, entry.to));
 			const fromIsFree = !(await pathExists(absolute(root, entry.from)));
 			if (hash !== entry.hash || !fromIsFree) return conflict(entry.to);
@@ -342,6 +368,7 @@ async function undoEntry(
 			return true;
 		}
 		case "removeFolder":
+			if (await pathExists(absolute(root, entry.path))) return false;
 			await fs.mkdir(absolute(root, entry.path), { recursive: true });
 			return true;
 	}

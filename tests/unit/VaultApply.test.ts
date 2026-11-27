@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
-import { applyPlan } from "../../src/shared/vault-ops/apply.js";
+import { applyPlan, undoRun } from "../../src/shared/vault-ops/apply.js";
 import { pathKey } from "../../src/shared/vault-ops/ids.js";
 import { readJournal } from "../../src/shared/vault-ops/journal.js";
 import { buildLinkGraph } from "../../src/shared/vault-ops/links.js";
@@ -186,6 +186,64 @@ describe("applyPlan: 승인과 거부", () => {
 		expect(await exists(root, "스터디/빈폴더")).toBe(true);
 	});
 
+	test("계획에 없는 ID는 rejected로 알리고 나머지는 실행한다", async () => {
+		const root = await copyFixture();
+		await savedFixturePlan(root);
+
+		const result = await applyPlan(root, {
+			planId: PLAN_ID,
+			approvedOpIds: ["move:없는파일.png", "move:database.png", "1", "1"],
+			renames: [],
+		});
+
+		expect(result.applied).toEqual(["move:database.png"]);
+		expect(result.rejected).toEqual([
+			{ opId: "move:없는파일.png", reason: "계획에 없는 연산" },
+			{ opId: "1", reason: "계획에 없는 연산" },
+		]);
+	});
+
+	test("보고 전용 항목을 승인하면 rejected로 알린다", async () => {
+		const root = await copyFixture();
+		await savedFixturePlan(root, [
+			{
+				id: "report:attachments:orphan.png",
+				type: "report",
+				paths: ["orphan.png"],
+				tier: "report",
+				reason: "test",
+			},
+		]);
+
+		const result = await applyPlan(root, {
+			planId: PLAN_ID,
+			approvedOpIds: ["report:attachments:orphan.png"],
+			renames: [],
+		});
+
+		expect(result.applied).toEqual([]);
+		expect(result.rejected).toEqual([
+			{
+				opId: "report:attachments:orphan.png",
+				reason: "보고 전용 항목은 실행할 수 없음",
+			},
+		]);
+	});
+
+	test("renames로 함께 요청한 이름 변경 ID는 거부하지 않는다", async () => {
+		const root = await copyFixture();
+		await savedFixturePlan(root);
+
+		const result = await applyPlan(root, {
+			planId: PLAN_ID,
+			approvedOpIds: [`rename:${UNTITLED_NOTE}`],
+			renames: [{ path: UNTITLED_NOTE, title: "정리" }],
+		});
+
+		expect(result.rejected).toEqual([]);
+		expect(result.applied).toEqual([`rename:${UNTITLED_NOTE}`]);
+	});
+
 	test("계획이 없으면 오류", async () => {
 		const root = await copyFixture();
 		await expect(
@@ -301,10 +359,13 @@ describe("applyPlan: 실행 기록", () => {
 				to: "AI/정리/LLM.md",
 			}),
 		);
-		expect(journal?.entries).not.toContainEqual(
-			expect.objectContaining({ kind: "move", from: "AI/RAG.md" }),
-		);
 		expect(journal?.undoneAt).toBeNull();
+
+		const undone = await undoRun(root, journal?.runId ?? "");
+		expect(undone.conflicts).toEqual([]);
+		expect(await exists(root, "AI/LLM.md")).toBe(true);
+		expect(await exists(root, "AI/RAG.md")).toBe(true);
+		expect(await exists(root, "AI/정리")).toBe(false);
 	});
 
 	test("실행 기록에 변경 전 내용과 변경 후 해시가 남는다", async () => {
