@@ -37,7 +37,7 @@ Skill은 **LLM의 추론, 사용자 규칙, 출력 형식, 승인 절차**를 �
 
 ## 3. `vault-context` (보류)
 
-`collect_context`의 규칙 기반 요약을 대신할 Skill로 계획했습니다. 해당 요약은 제거했고, `collect_context`를 남길지는 정하지 않았습니다([검토 기록](../collect-context-review.md)).
+`collect_context`의 규칙 기반 요약을 대신할 Skill로 계획했습니다. `collect_context`는 제거했습니다([검토 기록](../collect-context-review.md)).
 
 - 지금은 별도 Skill을 만들지 않습니다. 호스트 LLM이 `search`와 `read`의 결과를 읽고 직접 종합합니다.
 - 출처 표시나 근거 수집 절차가 반복해서 필요해지면 그때 다시 검토합니다.

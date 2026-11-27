@@ -12,7 +12,6 @@ import {
 	obsidianContentQueryParamsZod,
 } from "./params.js";
 import {
-	collectContext,
 	listAllDocuments,
 	readSpecificFile,
 	searchDocuments,
@@ -35,6 +34,8 @@ export const description = `
   - When looking for answers to questions based on your saved records, such as "What was the project deadline?"
   - To discover connections by finding all notes that link to a specific note.
   - When you need to retrieve a list of unfinished tasks (- [ ]) from daily notes or meeting minutes.
+
+  To synthesize information across several notes, search first, then read each note you need.
 
   Returns the content of the most relevant document(s) in text format. It can also include metadata such as the document's title, tags, and creation date.
 
@@ -112,14 +113,10 @@ export const execute = async (
 				result = await statsAllDocuments(vaultManager);
 				break;
 
-			case "collect_context":
-				result = await collectContext(vaultManager, params);
-				break;
-
 			default:
 				return createToolError(
 					`Unknown action: ${params.action}`,
-					"Valid actions are: search, read, list_all, stats, collect_context",
+					"Valid actions are: search, read, list_all, stats",
 				);
 		}
 

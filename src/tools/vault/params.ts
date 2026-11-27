@@ -25,9 +25,9 @@ const quietMode = z
 	.describe("If true, suppresses non-error output messages. Default is false.");
 
 export const obsidianContentActions = z
-	.enum(["search", "read", "list_all", "stats", "collect_context"])
+	.enum(["search", "read", "list_all", "stats"])
 	.describe(
-		"The action to perform: search documents, read specific file, list all content, get stats, or collect search results with excerpts in batches",
+		"The action to perform: search documents, read specific file, list all content, or get stats",
 	);
 export const obsidianContentKeyword = z
 	.string()
@@ -62,40 +62,6 @@ export const obsidianContentExcerptLength = z
 	.describe(
 		"Length of content excerpt to include in search results (default: 500)",
 	);
-export const obsidianContentTopic = z
-	.string()
-	.min(1)
-	.describe("Topic to search for (collect_context action)");
-export const obsidianContentScope = z
-	.enum(["topic", "all"])
-	.default("topic")
-	.describe(
-		"Scope for collect_context. topic: collect docs relevant to topic, all: collect from the entire vault.",
-	);
-export const obsidianContentMaxDocs = z
-	.number()
-	.int()
-	.min(1)
-	.max(100)
-	.default(20)
-	.describe("Maximum number of documents to process for collect_context");
-export const obsidianContentMaxCharsPerDoc = z
-	.number()
-	.int()
-	.min(200)
-	.max(8000)
-	.default(1800)
-	.describe(
-		"Maximum number of characters extracted per document for collect_context",
-	);
-export const obsidianContentContinuationToken = z
-	.string()
-	.min(1)
-	.describe(
-		"Continuation token to resume a previous collect_context batch operation",
-	);
-
-// input schema
 export const obsidianContentQueryParamsZod = z
 	.object({
 		action: obsidianContentActions,
@@ -105,11 +71,6 @@ export const obsidianContentQueryParamsZod = z
 		includeContent: obsidianContentIncludeContent.optional(),
 		includeFrontmatter: obsidianContentIncludeFrontmatter.optional(),
 		excerptLength: obsidianContentExcerptLength.optional(),
-		topic: obsidianContentTopic.optional(),
-		scope: obsidianContentScope.optional(),
-		maxDocs: obsidianContentMaxDocs.optional(),
-		maxCharsPerDoc: obsidianContentMaxCharsPerDoc.optional(),
-		continuationToken: obsidianContentContinuationToken.optional(),
 		compressionMode: compressionModeSchema.optional(),
 		maxOutputChars: maxOutputCharsSchema.optional(),
 		quiet: quietMode.optional(),

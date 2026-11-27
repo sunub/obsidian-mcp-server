@@ -56,28 +56,6 @@ describe("Vault response metrics", () => {
 		expect(metric?.mode).toBe("none");
 	});
 
-	test("extracts cache_hit for collect_context action", () => {
-		const result = createTextResult({
-			action: "collect_context",
-			documents: [{ filename: "resume.md" }],
-			cache: { hit: true },
-			compression: {
-				mode: "aggressive",
-				source_chars: 1300,
-				output_chars: 700,
-				estimated_tokens: 234,
-				max_output_chars: 2800,
-				truncated: true,
-				expand_hint: "hint",
-			},
-		});
-
-		const metric = buildVaultResponseMetric("collect_context", result);
-		expect(metric).not.toBeNull();
-		expect(metric?.doc_count).toBe(1);
-		expect(metric?.cache_hit).toBe(true);
-	});
-
 	test("returns null when compression metadata does not exist", () => {
 		const result = createTextResult({
 			vault_overview: { total_documents: 10 },

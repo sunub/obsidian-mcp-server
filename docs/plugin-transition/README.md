@@ -31,5 +31,5 @@
 ## 4. 권장 진행 순서
 
 1. **1단계 플러그인 마감**: 커맨드, Hook 보강, `${VAULT_DIR_PATH}` 검증, `0.4.0` 배포를 끝냈습니다. 커맨드를 대화형 세션에서 실행해 확인한 기록은 없습니다
-2. **MCP/Skill 경계 정리**: `collect_context` 존폐 결정([검토 기록](../collect-context-review.md)), `vault` 모놀리스 분해, 의존성 주입 통일
+2. **MCP/Skill 경계 정리**: `vault` 모놀리스 분해, 의존성 주입 통일. `collect_context`는 제거했고 `search`의 이어 받기는 정하지 않았습니다([검토 기록](../collect-context-review.md))
 3. **2·3단계 진입**: `vault-frontmatter` Skill + 속성 조회 도구 구현

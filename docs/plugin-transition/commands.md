@@ -14,7 +14,7 @@ Skill은 자연어 요청을 보고 모델이 자동으로 선택합니다. 반�
 |---|---|---|---|---|
 | `/vault-tidy:tidy` | `plugin/commands/tidy.md` | `[scope]` | `vault-tidy` Skill → `tidy_plan`, `plan_apply` | Vault 전체 또는 특정 최상위 폴더 정돈 시작 |
 | `/vault-tidy:undo` | `plugin/commands/undo.md` | `[runId]` | `plan_undo` (+ 최근 `runId` 확인) | 정돈 실행 결과를 즉시 원상 복구하는 안전 탈출구 |
-| `/vault-context` (보류) | — | `<topic>` | `vault` `search`, `read` | 주제별 근거 수집. `collect_context` 존폐 결정 후 재검토 |
+| `/vault-context` (보류) | — | `<topic>` | `vault` `search`, `read` | 주제별 근거 수집. 필요성이 확인되면 검토 |
 | `/vault-tidy:status` | `plugin/commands/status.md` | 없음 | `vault(action="stats")` (로컬 모델 상태 포함) | Vault 문서 수, 인덱스·로컬 모델 건강도 점검 |
 | `/vault-tidy:reindex` | `plugin/commands/reindex.md` | `[--force]` | CLI `obsidian-mcp-server reindex` | 전체/증분 벡터 인덱스 재구축 (MCP 동기 액션 제거 완료) |
 
@@ -40,7 +40,7 @@ Skill은 자연어 요청을 보고 모델이 자동으로 선택합니다. 반�
 
 ### 2.3 `/vault-context <topic>` (보류)
 - `docs/rules/MCP_RAG.md`의 **Explicit Context Trigger** 원칙을 따르는 진입점 후보입니다.
-- `collect_context`에 의존하지 않습니다. 만들게 되면 `search`로 후보를 찾고 필요한 노트를 `read`합니다.
+- 만들게 되면 `search`로 후보를 찾고 필요한 노트를 `read`합니다.
 - 일반 대화로 충분한지 먼저 확인한 뒤 추가합니다([검토 기록](../collect-context-review.md)).
 
 ### 2.4 `/vault-tidy:status`

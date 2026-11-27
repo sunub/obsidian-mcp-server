@@ -25,7 +25,6 @@ Elasticsearch 같은 검색 엔진도 retrieval backend로 사용할 수 있는 
   - `read`: 특정 노트 본문과 메타데이터 조회
   - `list_all`: Vault 문서 목록 조회
   - `stats`: Vault 및 인덱스 상태 조회
-  - `collect_context`: 주제로 검색한 문서의 순위, 점수, 일치 조각, 발췌를 배치로 반환
 - `write_property`: frontmatter 쓰기
 - `tidy_plan`: 첨부 파일, 중복, 무제 노트, 빈 폴더를 정리하는 계획과 미리보기 생성(파일은 바꾸지 않음)
 - `plan_apply`: 사용자가 승인한 연산만 실행하고 링크가 같은 파일을 가리키도록 재작성
@@ -128,14 +127,13 @@ MCP 서버의 Vault 검색/읽기 도구에는 `VAULT_DIR_PATH`가 핵심 설정
 
 - `VAULT_DIR_PATH`가 없거나 잘못되면 Vault 관련 도구가 동작하지 않습니다.
 - semantic search를 쓰려면 `setup`으로 로컬 모델을 설치해야 합니다.
-- `collect_context`는 긴 주제의 검색 결과를 배치로 이어 받을 때 쓰고, 단건 조회는 `search`나 `read`가 더 단순합니다.
+- 여러 노트를 종합할 때는 `search`로 후보를 찾고 필요한 노트를 `read`합니다.
 - 쓰기 계열 도구는 Vault 바깥 경로에 쓰지 않도록 차단합니다.
 
 ## 참고 문서
 
 - [Tool Reference](docs/tool-reference.md)
 - [Tool Usage Guide](docs/tools-usage-guide.md)
-- [collect_context Guide](docs/collect-context-guide.md)
 
 ## 라이선스
 

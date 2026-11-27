@@ -10,7 +10,6 @@ import createMcpServer from "../src/server";
 import { ServerLifecycle } from "../src/shared/lifecycle/ServerLifecycle";
 import { localEmbedder } from "../src/shared/local-ai/Embedder";
 import { FrontMatterSchema } from "../src/shared/markdown/types";
-import { collectContextResponseDataSchema } from "../src/tools/vault/types/collect_context";
 import {
 	type ListAllDocumentsData,
 	listAllDocumentsDataSchema,
@@ -171,21 +170,6 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 			expect(data.vault_overview.total_documents).toBe(demo_data.length);
 			expect(data.documents.length).toBe(demo_data.length);
-		});
-
-		test("vault: collect_context - 시맨틱 컨텍스트를 추출한다", async () => {
-			const response = await mcpClient.callTool({
-				name: "vault",
-				arguments: { action: "collect_context", scope: "all", maxDocs: 2 },
-			});
-
-			const data = await parseAndValidateResponse(
-				response,
-				collectContextResponseDataSchema,
-			);
-
-			expect(data.documents.length).toBeGreaterThan(0);
-			expect(data.documents[0]?.rank).toBeNull();
 		});
 
 		test("vault: search - 키워드 기반 검색이 작동한다", async () => {

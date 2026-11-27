@@ -12,10 +12,10 @@
 
 ## 2. vault: 액션 기반 공용 인터페이스
 
-`vault`는 내부적으로 `action` 하나를 받아 아래 6개 동작 중 하나를 실행합니다.
+`vault`는 내부적으로 `action` 하나를 받아 아래 4개 동작 중 하나를 실행합니다.
 
 공통 입력 필드:
-- `action` (필수): `search` | `read` | `list_all` | `stats` | `collect_context`
+- `action` (필수): `search` | `read` | `list_all` | `stats`
 - `compressionMode`: `aggressive` | `balanced` | `none`
 - `maxOutputChars`: 출력 크기 제한(500~12000)
 - `quiet`: true일 때 결과 축약 응답
@@ -61,7 +61,7 @@
 
 권장 쓰임:
 - `search` 후보를 확정해 세부 검증이 필요할 때
-- `collect_context`에 들어가기 전에 원문 맥락 확인
+- 여러 노트를 종합하기 전에 원문 맥락 확인
 
 ### 2.3 `list_all`
 
@@ -98,30 +98,6 @@
 - 파이프라인 실행 전 문서량 점검
 - 인덱스 상태와 검색 성능 파악
 
-### 2.5 `collect_context`
-
-목적: 주제로 검색한 문서의 순위, 점수, 일치 조각, 발췌를 배치 단위로 반환. 해석과 요약은 Agent가 한다.
-
-요청 예시:
-
-```json
-{
-  "action": "collect_context",
-  "scope": "topic",
-  "topic": "ES6",
-  "maxDocs": 12,
-  "maxCharsPerDoc": 900,
-  "compressionMode": "balanced"
-}
-```
-
-운영 포인트:
-- `scope=topic`이면 `topic`이 필수
-- `has_more=true`면 `continuationToken`으로 이어서 호출
-- 결과는 응답으로만 돌려주며 Vault에 노트를 쓰지 않음
-
-상세 동작 원리, 템플릿, 이어받기 예시는 `docs/collect-context-guide.md`를 참고하세요.
-
 ## 3. write_property
 
 목적: 실제 frontmatter 반영.
@@ -151,14 +127,10 @@
 
 ### 패턴 A: 탐색-확인-요약
 1) `vault/search`
-2) `vault/read`
-3) `vault/collect_context`
+2) 필요한 노트를 `vault/read`
+3) Agent가 읽은 내용을 정리
 
-### 패턴 B: 컨텍스트 정리
-1) `vault/collect_context`
-2) 반환된 `documents`를 읽고 Agent가 필요한 내용을 정리
-
-### 패턴 C: 메타데이터 자동화
+### 패턴 B: 메타데이터 자동화
 1) `vault/read`로 문서를 읽고 속성을 작성
 2) `write_property`로 저장
 
@@ -166,6 +138,5 @@
 
 - `VAULT_DIR_PATH`가 먼저 유효해야 모든 도구가 동작
 - `vault`의 `action`은 필수이며 잘못된 값은 즉시 에러
-- `collect_context`는 긴 조회/요약에 최적, 1회성 조회는 `search`/`read`
 - `quiet`를 많이 켜면 답변이 간결해져 후속 파싱이 쉬움
 - 저장 동작(`write_property`)은 vault 외부 경로 쓰기를 차단

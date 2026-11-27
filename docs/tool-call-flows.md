@@ -55,55 +55,11 @@ docs/tool-reference.md의 `vault` 액션 설명 부분을 읽어줘.
 }
 ```
 
-### 예시 3: 장기 컨텍스트 생성
-
-자연어:
-
-```text
-next.js 주제로 장기 컨텍스트를 만들어줘.
-```
-
-내부 호출:
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "vault",
-    "arguments": {
-      "action": "collect_context",
-      "scope": "topic",
-      "topic": "next.js",
-      "maxDocs": 8,
-      "maxCharsPerDoc": 900,
-      "compressionMode": "balanced"
-    }
-  }
-}
-```
-
-### 예시 4: 연속 조회
-
-`collect_context` 응답에서 `batch.continuation_token`이 내려오면 이어서 호출합니다.
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "vault",
-    "arguments": {
-      "action": "collect_context",
-      "continuationToken": "<batch.continuation_token>"
-    }
-  }
-}
-```
-
 ## 2) `vault` 이외 도구 호출
 
 `write_property`는 `name`을 직접 지정해 호출합니다.
 
-### 예시 6: frontmatter 적용
+### 예시 3: frontmatter 적용
 
 ```json
 {
@@ -126,4 +82,3 @@ next.js 주제로 장기 컨텍스트를 만들어줘.
 ## 3) 사용 시 참고
 
 - `quiet` 기본값은 보수적으로 동작해 응답이 요약될 수 있습니다.
-- `collect_context`는 대규모 Vault에서 `maxDocs`를 작게 시작하고 점진적으로 확대하면 안전합니다.

@@ -2,8 +2,8 @@
 
 - 기준일: 2026-11-26
 - 대상: `vault` 도구의 `collect_context` 액션 (`src/tools/vault/utils/actions/collect_context.ts`)
-- 상태: **존폐 미결정.** 권장안은 제거 후 `search`에 이어 받기를 추가하는 것
-- 코드 상태: 아래 "적용한 변경"은 작업 트리에만 있고 커밋하지 않았다. 줄 번호는 이 상태를 기준으로 한다.
+- 상태: **제거함 (2026-11-27).** `search`에 이어 받기를 추가할지는 정하지 않았다.
+- 아래 내용은 제거 전에 한 검토의 기록이다. 코드 줄 번호와 파일은 현재 저장소에 없다.
 
 ## 1. 검토 배경
 
@@ -114,5 +114,4 @@
 
 ## 6. 관련 문서
 
-- [collect-context-guide.md](./collect-context-guide.md): 현재 동작 안내. 제거를 결정하면 함께 삭제한다.
 - [plugin-transition/mcp-core.md](./plugin-transition/mcp-core.md): `vault` 액션별 처분 계획

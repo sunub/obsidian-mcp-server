@@ -21,7 +21,7 @@
 
 ```mermaid
 flowchart TD
-    Tool["vault tool (search / collect_context)"] --> VM["VaultManager"]
+    Tool["vault tool (search)"] --> VM["VaultManager"]
     VM --> Meta["Indexer (documentMap + backlinkIndex + ChunkBM25Index)"]
     VM --> Emb["EmbeddedSearchBackend"]
     Emb --> BM25["Indexer.searchWithChunks"]
