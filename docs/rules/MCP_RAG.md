@@ -13,7 +13,7 @@
 Strictly adhere to the following constraints for the RAG architecture.
 
 * **Vector DB:** Do not use external storage (e.g., AWS S3). The current default retrieval backend uses local file-system storage with LanceDB.
-* **Embedding & Reranking:** Prefer local models loaded through `@huggingface/transformers` so semantic search and reranking can run without an external AI API server.
+* **Embedding:** Prefer local models loaded through `@huggingface/transformers` so semantic search can run without an external AI API server.
 * **Search Alternatives:** Do not frame Elasticsearch or other engines as impossible. They are valid retrieval backend alternatives, but adopting separately operated services or search engines does not fit the project's default local-only MCP package experience.
 * **Environment:** Strictly use TypeScript within a Node.js environment.
 
@@ -25,5 +25,5 @@ Implement the context pipeline following this sequence:
 2. **Local Context Hints:** Preserve lightweight document context such as title, section heading, outline, tags, and source path with each chunk.
 3. **Embedding & Storage:** Vectorize the chunk plus its local context hints, then store it in the local retrieval backend with source metadata.
 4. **Hybrid Retrieval:** Combine keyword search and semantic search so exact terms and meaning-based matches can both surface candidate material.
-5. **Fusion & Reranking:** Use rank fusion and local reranking to improve context selection accuracy before content is shown to the agent.
+5. **Fusion:** Use rank fusion to improve context selection accuracy before content is shown to the agent.
 6. **Compression & Injection:** Return only the selected excerpts, matched snippets, and source references needed for the agent task. Interpretation and summarization belong to the agent, not the tool.

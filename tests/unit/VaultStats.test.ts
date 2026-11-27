@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { localEmbedder } from "../../src/shared/local-ai/Embedder.js";
-import { localReranker } from "../../src/shared/local-ai/LocalReranker.js";
 import { SEARCH_SETUP_COMMAND } from "../../src/shared/searchStatus.js";
 import type { VaultManager } from "../../src/shared/vault-manager/VaultManager.js";
 import { obsidianContentQueryParamsZod } from "../../src/tools/vault/params.js";
@@ -28,9 +27,8 @@ afterEach(() => {
 });
 
 describe("vault stats action and removed MCP reindex action", () => {
-	test("includes localModels and omits setupCommand when both models are ready", async () => {
+	test("includes localModels and omits setupCommand when the local model is ready", async () => {
 		vi.spyOn(localEmbedder, "checkModelPresence").mockResolvedValue(true);
-		vi.spyOn(localReranker, "checkModelPresence").mockResolvedValue(true);
 
 		const result = await statsAllDocuments(createFakeVaultManager());
 		expect(result.isError).toBe(false);
@@ -40,14 +38,12 @@ describe("vault stats action and removed MCP reindex action", () => {
 		expect(payload.totalFiles).toBe(12);
 		expect(payload.localModels).toEqual({
 			embedderReady: true,
-			rerankerReady: true,
 		});
 		expect(payload.setupCommand).toBeUndefined();
 	});
 
-	test("includes setupCommand when either local model is missing", async () => {
+	test("includes setupCommand when the local model is missing", async () => {
 		vi.spyOn(localEmbedder, "checkModelPresence").mockResolvedValue(false);
-		vi.spyOn(localReranker, "checkModelPresence").mockResolvedValue(true);
 
 		const result = await statsAllDocuments(createFakeVaultManager());
 		const text = (result.content[0] as { text: string }).text;
@@ -55,7 +51,6 @@ describe("vault stats action and removed MCP reindex action", () => {
 
 		expect(payload.localModels).toEqual({
 			embedderReady: false,
-			rerankerReady: true,
 		});
 		expect(payload.setupCommand).toBe(SEARCH_SETUP_COMMAND);
 	});

@@ -31,12 +31,6 @@ export async function setup(options = { force: false }) {
 
 	const models = [
 		{
-			name: "Xenova/bge-reranker-base",
-			type: "text-classification",
-			label: "BGE Reranker (Base)",
-			desc: "Improves search relevance by re-ordering results.",
-		},
-		{
 			name: "Xenova/multilingual-e5-small",
 			type: "feature-extraction",
 			label: "Multilingual E5 Small",
@@ -68,9 +62,6 @@ export async function setup(options = { force: false }) {
 	console.log(chalk.blue.bold("\n📦 Installation Details:"));
 	console.log(
 		`${chalk.yellow("▶")} ${chalk.bold("Model Path:")} ${chalk.cyan(MODELS_DIR)}`,
-	);
-	console.log(
-		`${chalk.yellow("▶")} ${chalk.bold("Download Size:")} Approx. ${chalk.green("300MB")}`,
 	);
 	console.log(
 		`${chalk.yellow("▶")} ${chalk.bold("Uninstallation:")} ${chalk.white(`rm -rf ${APP_DATA_DIR}`)}`,

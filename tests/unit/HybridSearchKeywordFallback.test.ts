@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { localEmbedder } from "../../src/shared/local-ai/Embedder";
 import { localModelManager } from "../../src/shared/local-ai/LocalModelManager";
-import { localReranker } from "../../src/shared/local-ai/LocalReranker";
 import { VaultManager } from "../../src/shared/vault-manager/VaultManager";
 
 let tempDir: string | null = null;
@@ -32,7 +31,6 @@ describe("VaultManager keyword fallback", () => {
 	test("semantic 검색이 비어 있으면 키워드 결과를 점수 하한 없이 모두 돌려준다", async () => {
 		tempDir = await writeVault();
 		vi.spyOn(localEmbedder, "checkModelPresence").mockResolvedValue(true);
-		vi.spyOn(localReranker, "checkModelPresence").mockResolvedValue(true);
 		vi.spyOn(localModelManager, "withEmbedder").mockImplementation(
 			async (_softDeadlineMs, callback) => callback(false),
 		);
@@ -47,7 +45,6 @@ describe("VaultManager keyword fallback", () => {
 	test("로컬 모델이 없으면 검색할 때마다 같은 상태를 알려준다", async () => {
 		tempDir = await writeVault();
 		vi.spyOn(localEmbedder, "checkModelPresence").mockResolvedValue(false);
-		vi.spyOn(localReranker, "checkModelPresence").mockResolvedValue(false);
 
 		const manager = new VaultManager(tempDir);
 		const first = await manager.hybridSearch("serverless", 10);

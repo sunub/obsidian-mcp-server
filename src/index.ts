@@ -3,7 +3,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { ServerLifecycle } from "@shared/lifecycle/ServerLifecycle.js";
 import { localEmbedder } from "@shared/local-ai/Embedder.js";
 import { localModelManager } from "@shared/local-ai/LocalModelManager.js";
-import { localReranker } from "@shared/local-ai/LocalReranker.js";
 import { ensureAppDataDirs } from "@shared/paths/appData.js";
 import { vaultWatcher } from "@shared/vault-manager/VaultWatcher.js";
 import chalk from "chalk";
@@ -17,7 +16,6 @@ import createMcpServer from "./server.js";
 function alertEmbedderState(
 	options: ObsidianMcpConfig,
 	embedderReady: boolean,
-	rerankerReady: boolean,
 ) {
 	console.error(chalk.cyan.bold("\n🚀 Obsidian MCP Server Startup"));
 	console.error(chalk.dim("----------------------------------"));
@@ -26,9 +24,6 @@ function alertEmbedderState(
 	);
 	console.error(
 		`${chalk.bold("• Local Embedder:")} ${embedderReady ? chalk.green("✅ Ready") : chalk.yellow("⚠️ Missing")}`,
-	);
-	console.error(
-		`${chalk.bold("• Local Reranker:")} ${rerankerReady ? chalk.green("✅ Ready") : chalk.yellow("⚠️ Missing")}`,
 	);
 
 	if (embedderReady) {
@@ -78,12 +73,9 @@ async function main() {
 
 	setLocalLLMEnvSetting();
 
-	const [embedderReady, rerankerReady] = await Promise.all([
-		localEmbedder.checkModelPresence(),
-		localReranker.checkModelPresence(),
-	]);
+	const embedderReady = await localEmbedder.checkModelPresence();
 
-	alertEmbedderState(options, embedderReady, rerankerReady);
+	alertEmbedderState(options, embedderReady);
 
 	const lifecycle = new ServerLifecycle();
 	const server = createMcpServer(lifecycle);

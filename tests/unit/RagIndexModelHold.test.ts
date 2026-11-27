@@ -8,7 +8,6 @@ import {
 	LocalModelManager,
 	localModelManager,
 } from "../../src/shared/local-ai/LocalModelManager";
-import { localReranker } from "../../src/shared/local-ai/LocalReranker";
 import { VaultManager } from "../../src/shared/vault-manager/VaultManager";
 
 const tempDirs: string[] = [];
@@ -33,7 +32,6 @@ describe("model disposal and background indexing", () => {
 		const disposeSpy = vi
 			.spyOn(localEmbedder, "dispose")
 			.mockResolvedValue(undefined);
-		vi.spyOn(localReranker, "dispose").mockResolvedValue(undefined);
 		let finishIndexing: () => void = () => {};
 		const processSpy = vi.spyOn(ragIndexer, "processFile").mockImplementation(
 			() =>
@@ -69,12 +67,7 @@ describe("model disposal and background indexing", () => {
 					};
 				}),
 		};
-		const reranker = {
-			checkModelPresence: async () => true,
-			init: async () => {},
-			dispose: async () => {},
-		};
-		const manager = new LocalModelManager({ embedder, reranker });
+		const manager = new LocalModelManager({ embedder });
 
 		manager.beginToolCall();
 		const disposal = manager.endToolCall();
