@@ -1,105 +1,14 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { describe, expect, test, vi } from "vitest";
-import { localModelManager } from "../../src/shared/local-ai/LocalModelManager.js";
-import type { DocumentIndex } from "../../src/shared/markdown/types.js";
-import type { EnrichedDocument } from "../../src/shared/vault-manager/types.js";
-import type { VaultManager } from "../../src/shared/vault-manager/VaultManager.js";
-import { readSpecificFile } from "../../src/tools/vault/utils.js";
+import { describe, expect, test } from "vitest";
+import { obsidianContentQueryParamsZod } from "../../src/tools/vault/params.js";
 
-vi.mock("../../src/shared/local-ai/LocalReranker.js", () => {
-	return {
-		localReranker: {
-			rerank: vi.fn(async (query: string, documents: string[]) => {
-				return documents
-					.map((doc) => ({
-						document: doc,
-						score: doc.includes(query) ? 0.99 : 0.1,
-					}))
-					.sort((a, b) => b.score - a.score);
-			}),
-		},
-	};
-});
-
-function firstText(result: CallToolResult): string {
-	const first = result.content?.[0];
-	if (!first || first.type !== "text") {
-		throw new Error("Expected text content in tool result");
-	}
-	return first.text;
-}
-
-function createMockVaultManager(content: string) {
-	const indexedDoc: DocumentIndex = {
-		filePath: "/vault/beta.md",
-		frontmatter: { title: "Beta", tags: ["test"] },
-		contentLength: content.length,
-		imageLinks: [],
-		documentLinks: [],
-	};
-
-	const enrichedDoc: EnrichedDocument = {
-		...indexedDoc,
-		content,
-		stats: {
-			wordCount: 100,
-			lineCount: 10,
-			characterCount: content.length,
-			contentLength: content.length,
-			hasContent: true,
-		},
-		backlinks: [],
-	};
-
-	const manager = {
-		initialize: vi.fn(async () => {}),
-		getDocumentInfo: vi.fn(
-			async (filename: string): Promise<EnrichedDocument | null> => {
-				if (filename !== "/vault/beta.md" && filename !== "beta.md") {
-					return null;
-				}
-				return enrichedDoc;
-			},
-		),
-	};
-
-	return manager as unknown as VaultManager;
-}
-
-describe("Vault read action with query filtering", () => {
-	test("filters paragraphs using localReranker and preserves original order", async () => {
-		const documentContent = [
-			"This is paragraph one about apple.",
-			"This is paragraph two about banana.",
-			"This is paragraph three about orange.",
-			"This is paragraph four about apple again.",
-		].join("\n\n");
-
-		const vaultManager = createMockVaultManager(documentContent);
-		vi.spyOn(localModelManager, "withReranker").mockImplementation(
-			async (_softDeadlineMs, callback) => callback(true),
-		);
-
-		const result = await readSpecificFile(vaultManager, {
+describe("Vault read parameters", () => {
+	test("rejects the removed query parameter", () => {
+		const parsed = obsidianContentQueryParamsZod.safeParse({
 			action: "read",
-			filename: "/vault/beta.md",
+			filename: "beta.md",
 			query: "apple",
-			compressionMode: "balanced",
 		});
 
-		expect(result.isError).toBe(false);
-		const payload = JSON.parse(firstText(result));
-
-		expect(payload.content).toContain("This is paragraph one about apple.");
-		expect(payload.content).toContain(
-			"This is paragraph four about apple again.",
-		);
-		expect(payload.content).not.toContain(
-			"This is paragraph three about orange.",
-		);
-
-		const indexOne = payload.content.indexOf("paragraph one");
-		const indexFour = payload.content.indexOf("paragraph four");
-		expect(indexOne).toBeLessThan(indexFour);
+		expect(parsed.success).toBe(false);
 	});
 });

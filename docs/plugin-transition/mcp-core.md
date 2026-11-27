@@ -31,7 +31,7 @@ MCP 서버는 **항상 동일하게 동작해야 하는 결정론적 손발과 �
 | 현재 action | 처분 | 변경 후 역할 |
 |---|---|---|
 | `search` | **독립 MCP 도구 유지** (`vault_search`) | 로컬 BM25(`Indexer`) + LanceDB 벡터 검색 + RRF 융합. 호스트 도구(`Grep`)가 대체 불가 |
-| `read` | **축소 유지** (`vault_read`) | 단순 원문 읽기는 호스트 `Read`와 중복. 파일명 해석, frontmatter 파싱, **backlinks 조회**, 긴 문서의 `query` 기반 단락 필터링(`read.ts` L93-106)에 집중 |
+| `read` | **축소 유지** (`vault_read`) | 단순 원문 읽기는 호스트 `Read`와 중복. 파일명 해석, frontmatter 파싱, **backlinks 조회**에 집중 |
 | `collect_context` | **미결정 (제거 권장)** | 규칙 기반 요약은 제거했습니다. 검색과 발췌가 `search`, `read`와 겹쳐, 제거하고 `search`에 이어 받기를 추가하는 안을 권장합니다. 근거: [검토 기록](../collect-context-review.md) |
 | `list_all` | **재정의 또는 통합** | 단순 경로 나열은 호스트 `Glob`과 중복. frontmatter 메타데이터(`tags`, `category`, `completed`) 필터링 목록으로 특화하거나 `vault_scan` 계열로 통합 |
 | `stats` | **독립 MCP 도구 유지** (`vault_stats`) | Vault 문서 수, 인덱스 상태, 로컬 모델 준비 상태를 구조화된 JSON으로 반환 (`/vault-status` Command 백엔드) |

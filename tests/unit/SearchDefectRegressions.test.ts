@@ -13,7 +13,6 @@ import {
 } from "../../src/shared/indexing/VectorDB";
 import { localEmbedder } from "../../src/shared/local-ai/Embedder";
 import { localModelManager } from "../../src/shared/local-ai/LocalModelManager";
-import { localReranker } from "../../src/shared/local-ai/LocalReranker";
 import { VaultManager } from "../../src/shared/vault-manager/VaultManager";
 
 const tempDirs: string[] = [];
@@ -37,7 +36,7 @@ async function createTempVault(): Promise<string> {
 }
 
 describe("Production search defect regressions", () => {
-	test("hybridSearch stays enabled when embedder exists even if reranker model is missing", async () => {
+	test("hybridSearch stays enabled when the embedder model exists", async () => {
 		const dir = await createTempVault();
 		const notePath = join(dir, "guide.md");
 		await writeFile(
@@ -47,7 +46,6 @@ describe("Production search defect regressions", () => {
 		);
 
 		vi.spyOn(localEmbedder, "checkModelPresence").mockResolvedValue(true);
-		vi.spyOn(localReranker, "checkModelPresence").mockResolvedValue(false);
 		vi.spyOn(localModelManager, "withEmbedder").mockImplementation(
 			async (_deadline, cb) => cb(true),
 		);

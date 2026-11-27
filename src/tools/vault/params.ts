@@ -32,11 +32,6 @@ export const obsidianContentActions = z
 export const obsidianContentKeyword = z
 	.string()
 	.describe("Keyword to search for in documents (required for search action)");
-export const obsidianContentQuery = z
-	.string()
-	.describe(
-		"Natural language query for filtering content paragraphs using the local reranker (optional for read action)",
-	);
 export const obsidianContentFilename = z
 	.string()
 	.describe("Specific filename to read (required for read action)");
@@ -105,7 +100,6 @@ export const obsidianContentQueryParamsZod = z
 	.object({
 		action: obsidianContentActions,
 		keyword: obsidianContentKeyword.optional(),
-		query: obsidianContentQuery.optional(),
 		filename: obsidianContentFilename.optional(),
 		limit: obsidianContentLimit.optional(),
 		includeContent: obsidianContentIncludeContent.optional(),

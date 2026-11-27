@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { localEmbedder } from "../../src/shared/local-ai/Embedder";
 import { localModelManager } from "../../src/shared/local-ai/LocalModelManager";
-import { localReranker } from "../../src/shared/local-ai/LocalReranker";
 import { VaultManager } from "../../src/shared/vault-manager/VaultManager";
 
 let tempDir: string | null = null;
@@ -26,7 +25,6 @@ describe("VaultManager semantic fallback", () => {
 			"utf-8",
 		);
 		vi.spyOn(localEmbedder, "checkModelPresence").mockResolvedValue(true);
-		vi.spyOn(localReranker, "checkModelPresence").mockResolvedValue(true);
 		vi.spyOn(localModelManager, "withEmbedder").mockImplementation(
 			async (_softDeadlineMs, callback) => callback(false),
 		);

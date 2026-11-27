@@ -38,7 +38,7 @@ export default function createMcpServer(lifecycle: ServerLifecycle): McpServer {
 	        
 	        Available tools:
 	        - vault: Search, read, list, and inspect stats for documents in the vault.
-	          * action="search": Unified hybrid search (Keyword + Semantic + Reranking). Automatically falls back to keyword search if local models are missing.
+	          * action="search": Unified hybrid search (Keyword + Semantic). Automatically falls back to keyword search if local models are missing.
 	          * action="read": Read a specific document's content and metadata.
 	          * action="list_all": List all documents in the vault.
 	          * action="stats": Inspect vault document count, indexing progress, and local model readiness.

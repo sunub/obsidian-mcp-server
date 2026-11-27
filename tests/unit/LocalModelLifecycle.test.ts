@@ -4,7 +4,6 @@ import { LocalModelManager } from "../../src/shared/local-ai/LocalModelManager";
 const mocks = vi.hoisted(() => ({
 	pipeline: vi.fn(),
 	tokenizer: vi.fn(),
-	sequenceModel: vi.fn(),
 }));
 
 vi.mock("@huggingface/transformers", () => ({
@@ -12,9 +11,6 @@ vi.mock("@huggingface/transformers", () => ({
 	pipeline: mocks.pipeline,
 	AutoTokenizer: {
 		from_pretrained: mocks.tokenizer,
-	},
-	AutoModelForSequenceClassification: {
-		from_pretrained: mocks.sequenceModel,
 	},
 }));
 
@@ -29,17 +25,6 @@ describe("local model presence checks", () => {
 		expect(mocks.pipeline).not.toHaveBeenCalled();
 		expect(mocks.tokenizer).not.toHaveBeenCalled();
 	});
-
-	test("reranker checkModelPresence does not initialize transformer model", async () => {
-		const { localReranker } = await import(
-			"../../src/shared/local-ai/LocalReranker"
-		);
-
-		await localReranker.checkModelPresence();
-
-		expect(mocks.tokenizer).not.toHaveBeenCalled();
-		expect(mocks.sequenceModel).not.toHaveBeenCalled();
-	});
 });
 
 describe("LocalModelManager", () => {
@@ -52,11 +37,6 @@ describe("LocalModelManager", () => {
 			embedder: {
 				checkModelPresence: async () => true,
 				init,
-				dispose: vi.fn(),
-			},
-			reranker: {
-				checkModelPresence: async () => false,
-				init: vi.fn(),
 				dispose: vi.fn(),
 			},
 			idleTtlMs: 1000,
@@ -74,15 +54,10 @@ describe("LocalModelManager", () => {
 		vi.useRealTimers();
 	});
 
-	test("withReranker shares concurrent warmup", async () => {
+	test("withEmbedder shares concurrent warmup", async () => {
 		const init = vi.fn(async () => undefined);
 		const manager = new LocalModelManager({
 			embedder: {
-				checkModelPresence: async () => false,
-				init: vi.fn(),
-				dispose: vi.fn(),
-			},
-			reranker: {
 				checkModelPresence: async () => true,
 				init,
 				dispose: vi.fn(),
@@ -90,8 +65,8 @@ describe("LocalModelManager", () => {
 		});
 
 		const [first, second] = await Promise.all([
-			manager.withReranker(100, async (ready) => ready),
-			manager.withReranker(100, async (ready) => ready),
+			manager.withEmbedder(100, async (ready) => ready),
+			manager.withEmbedder(100, async (ready) => ready),
 		]);
 
 		expect(first).toBe(true);
@@ -101,17 +76,11 @@ describe("LocalModelManager", () => {
 
 	test("endToolCall disposes warmed models when the tool call finishes", async () => {
 		const embedderDispose = vi.fn();
-		const rerankerDispose = vi.fn();
 		const manager = new LocalModelManager({
 			embedder: {
 				checkModelPresence: async () => true,
 				init: vi.fn(async () => undefined),
 				dispose: embedderDispose,
-			},
-			reranker: {
-				checkModelPresence: async () => true,
-				init: vi.fn(async () => undefined),
-				dispose: rerankerDispose,
 			},
 			idleTtlMs: 1000,
 		});
@@ -120,17 +89,12 @@ describe("LocalModelManager", () => {
 		await manager.withEmbedder(100, async (ready) => {
 			expect(ready).toBe(true);
 		});
-		await manager.withReranker(100, async (ready) => {
-			expect(ready).toBe(true);
-		});
 
 		expect(embedderDispose).not.toHaveBeenCalled();
-		expect(rerankerDispose).not.toHaveBeenCalled();
 
 		await manager.endToolCall();
 
 		expect(embedderDispose).toHaveBeenCalledTimes(1);
-		expect(rerankerDispose).toHaveBeenCalledTimes(1);
 	});
 
 	test("endToolCall keeps models alive until the last concurrent tool call ends", async () => {
@@ -140,11 +104,6 @@ describe("LocalModelManager", () => {
 				checkModelPresence: async () => true,
 				init: vi.fn(async () => undefined),
 				dispose,
-			},
-			reranker: {
-				checkModelPresence: async () => false,
-				init: vi.fn(),
-				dispose: vi.fn(),
 			},
 		});
 
@@ -171,11 +130,6 @@ describe("LocalModelManager", () => {
 					() => new Promise<void>((resolve) => setTimeout(resolve, 100)),
 				),
 				dispose: embedderDispose,
-			},
-			reranker: {
-				checkModelPresence: async () => false,
-				init: vi.fn(),
-				dispose: vi.fn(),
 			},
 			hardTimeoutMs: 1000,
 		});

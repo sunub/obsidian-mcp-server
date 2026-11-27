@@ -9,7 +9,6 @@ import state from "../src/config";
 import createMcpServer from "../src/server";
 import { ServerLifecycle } from "../src/shared/lifecycle/ServerLifecycle";
 import { localEmbedder } from "../src/shared/local-ai/Embedder";
-import { localReranker } from "../src/shared/local-ai/LocalReranker";
 import { FrontMatterSchema } from "../src/shared/markdown/types";
 import { collectContextResponseDataSchema } from "../src/tools/vault/types/collect_context";
 import {
@@ -116,7 +115,7 @@ describe("Obsidian MCP Server E2E Tests", () => {
 
 		await waitForIndexing(mcpClient, demo_data.length);
 		try {
-			await Promise.all([localEmbedder.init(), localReranker.init()]);
+			await localEmbedder.init();
 		} catch {}
 	});
 

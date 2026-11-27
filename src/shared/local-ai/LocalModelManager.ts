@@ -1,6 +1,5 @@
 import { isAbortError, withTimeout } from "@shared/async/abort.js";
 import { localEmbedder } from "./Embedder.js";
-import { localReranker } from "./LocalReranker.js";
 
 type LocalModelResource = {
 	checkModelPresence: () => Promise<boolean>;
@@ -10,7 +9,6 @@ type LocalModelResource = {
 
 export interface LocalModelManagerOptions {
 	embedder?: LocalModelResource;
-	reranker?: LocalModelResource;
 	idleTtlMs?: number;
 	hardTimeoutMs?: number;
 }
@@ -19,13 +17,10 @@ type WarmState = "idle" | "warming" | "ready" | "degraded";
 
 export class LocalModelManager {
 	private readonly embedder: LocalModelResource;
-	private readonly reranker: LocalModelResource;
 	private readonly idleTtlMs: number;
 	private readonly hardTimeoutMs: number;
 	private embedderWarmup: Promise<boolean> | null = null;
-	private rerankerWarmup: Promise<boolean> | null = null;
 	private embedderState: WarmState = "idle";
-	private rerankerState: WarmState = "idle";
 	private idleTimer: NodeJS.Timeout | null = null;
 	private disposal: Promise<void> | null = null;
 	private lateWarmupCleanupScheduled = false;
@@ -34,7 +29,6 @@ export class LocalModelManager {
 
 	constructor(options: LocalModelManagerOptions = {}) {
 		this.embedder = options.embedder ?? localEmbedder;
-		this.reranker = options.reranker ?? localReranker;
 		this.idleTtlMs = options.idleTtlMs ?? 30 * 1000;
 		this.hardTimeoutMs = options.hardTimeoutMs ?? 10 * 1000;
 	}
@@ -43,16 +37,8 @@ export class LocalModelManager {
 		return this.embedderState === "ready";
 	}
 
-	get isRerankerReady(): boolean {
-		return this.rerankerState === "ready";
-	}
-
 	async hasEmbedderFiles(): Promise<boolean> {
 		return this.embedder.checkModelPresence();
-	}
-
-	async hasRerankerFiles(): Promise<boolean> {
-		return this.reranker.checkModelPresence();
 	}
 
 	async holdModels<T>(task: () => Promise<T>): Promise<T> {
@@ -71,16 +57,7 @@ export class LocalModelManager {
 		fn: (ready: boolean) => Promise<T>,
 	): Promise<T> {
 		return this.holdModels(async () =>
-			fn(await this.waitFor("embedder", softDeadlineMs)),
-		);
-	}
-
-	async withReranker<T>(
-		softDeadlineMs: number,
-		fn: (ready: boolean) => Promise<T>,
-	): Promise<T> {
-		return this.holdModels(async () =>
-			fn(await this.waitFor("reranker", softDeadlineMs)),
+			fn(await this.waitForEmbedder(softDeadlineMs)),
 		);
 	}
 
@@ -113,106 +90,63 @@ export class LocalModelManager {
 		if (this.isShutdown) {
 			return;
 		}
-		const pendingWarmups = [this.embedderWarmup, this.rerankerWarmup].filter(
-			(warmup): warmup is Promise<boolean> => warmup !== null,
-		);
-		const embedderHasPendingWarmup = this.embedderWarmup !== null;
-		const rerankerHasPendingWarmup = this.rerankerWarmup !== null;
-		this.scheduleLateWarmupCleanup(pendingWarmups);
+		const pendingWarmup = this.embedderWarmup;
+		if (pendingWarmup) {
+			this.scheduleLateWarmupCleanup(pendingWarmup);
+		}
 
 		await this.embedder.dispose();
-		await this.reranker.dispose();
-		if (!embedderHasPendingWarmup) {
+		if (!pendingWarmup) {
 			this.embedderWarmup = null;
 		}
-		if (!rerankerHasPendingWarmup) {
-			this.rerankerWarmup = null;
-		}
 		this.embedderState = "idle";
-		this.rerankerState = "idle";
 	}
 
 	async shutdown(): Promise<void> {
 		this.isShutdown = true;
 		this.cancelIdleDispose();
 		await this.embedder.dispose();
-		await this.reranker.dispose();
 		this.embedderWarmup = null;
-		this.rerankerWarmup = null;
 		this.embedderState = "idle";
-		this.rerankerState = "idle";
 	}
 
-	private async waitFor(
-		resource: "embedder" | "reranker",
-		softDeadlineMs: number,
-	): Promise<boolean> {
+	private async waitForEmbedder(softDeadlineMs: number): Promise<boolean> {
 		await this.disposal;
 		if (this.isShutdown) {
 			return false;
 		}
 
-		const warmup = this.ensureWarmup(resource);
+		this.embedderWarmup ??= this.warmEmbedder();
 		try {
-			const ready = await withTimeout(warmup, softDeadlineMs);
-			return ready;
+			return await withTimeout(this.embedderWarmup, softDeadlineMs);
 		} catch {
 			return false;
 		}
 	}
 
-	private ensureWarmup(resource: "embedder" | "reranker"): Promise<boolean> {
-		if (resource === "embedder") {
-			if (!this.embedderWarmup) {
-				this.embedderWarmup = this.warmResource("embedder");
-			}
-			return this.embedderWarmup;
-		}
-
-		if (!this.rerankerWarmup) {
-			this.rerankerWarmup = this.warmResource("reranker");
-		}
-		return this.rerankerWarmup;
-	}
-
-	private async warmResource(
-		resource: "embedder" | "reranker",
-	): Promise<boolean> {
-		const target = resource === "embedder" ? this.embedder : this.reranker;
-		this.setState(resource, "warming");
+	private async warmEmbedder(): Promise<boolean> {
+		this.embedderState = "warming";
 
 		try {
-			if (!(await target.checkModelPresence())) {
-				this.setState(resource, "degraded");
+			if (!(await this.embedder.checkModelPresence())) {
+				this.embedderState = "degraded";
 				return false;
 			}
 
 			await withTimeout(
-				target.init(),
+				this.embedder.init(),
 				this.hardTimeoutMs,
-				`${resource} warmup exceeded ${this.hardTimeoutMs}ms`,
+				`embedder warmup exceeded ${this.hardTimeoutMs}ms`,
 			);
-			this.setState(resource, "ready");
+			this.embedderState = "ready";
 			return true;
 		} catch (error) {
 			if (!isAbortError(error)) {
-				this.setState(resource, "degraded");
+				this.embedderState = "degraded";
 			}
 			return false;
 		} finally {
-			if (resource === "embedder") {
-				this.embedderWarmup = null;
-			} else {
-				this.rerankerWarmup = null;
-			}
-		}
-	}
-
-	private setState(resource: "embedder" | "reranker", state: WarmState): void {
-		if (resource === "embedder") {
-			this.embedderState = state;
-		} else {
-			this.rerankerState = state;
+			this.embedderWarmup = null;
 		}
 	}
 
@@ -223,13 +157,13 @@ export class LocalModelManager {
 		}
 	}
 
-	private scheduleLateWarmupCleanup(pendingWarmups: Promise<boolean>[]): void {
-		if (pendingWarmups.length === 0 || this.lateWarmupCleanupScheduled) {
+	private scheduleLateWarmupCleanup(pendingWarmup: Promise<boolean>): void {
+		if (this.lateWarmupCleanupScheduled) {
 			return;
 		}
 
 		this.lateWarmupCleanupScheduled = true;
-		void Promise.allSettled(pendingWarmups)
+		void Promise.allSettled([pendingWarmup])
 			.then(async () => {
 				this.lateWarmupCleanupScheduled = false;
 				if (this.activeUses === 0 && !this.isShutdown) {

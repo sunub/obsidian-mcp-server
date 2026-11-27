@@ -1,6 +1,4 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { localModelManager } from "@shared/local-ai/LocalModelManager.js";
-import { localReranker } from "@shared/local-ai/LocalReranker.js";
 import { createToolError } from "@shared/mcp/createToolError.js";
 import type { VaultManager } from "@shared/vault-manager/VaultManager.js";
 import type { ObsidianContentQueryParams } from "../../params.js";
@@ -81,43 +79,6 @@ export async function readSpecificFile(
 			compressedContent = `[Table of Contents]\n${headers || "(No headers)"}\n\n[Excerpt]\n${firstParagraph || ""}`;
 		}
 		shouldTruncateContent = true;
-	} else if (params.query?.trim()) {
-		const query = params.query.trim();
-		const paragraphs = doc.content
-			.split(/\n\s*\n/)
-			.map((p) => p.trim())
-			.filter((p) => p.length > 0);
-
-		if (paragraphs.length > 0) {
-			try {
-				await localModelManager.withReranker(3000, async (rerankerReady) => {
-					if (rerankerReady) {
-						const reranked = await localReranker.rerank(query, paragraphs);
-						const topParagraphs = reranked.slice(0, 3).map((r) => r.document);
-						const selectedParagraphs = paragraphs.filter((p) =>
-							topParagraphs.includes(p),
-						);
-						compressedContent = selectedParagraphs.join("\n\n");
-						shouldTruncateContent =
-							paragraphs.length > selectedParagraphs.length;
-					} else {
-						throw new Error("Local reranker is warming");
-					}
-				});
-			} catch {
-				const readContentMaxChars =
-					params.excerptLength ??
-					(mode === "none"
-						? Number.POSITIVE_INFINITY
-						: READ_DEFAULT_CONTENT_MAX_CHARS[
-								mode as Exclude<CompressionMode, "none">
-							]);
-				shouldTruncateContent = sourceContentChars > readContentMaxChars;
-				compressedContent = shouldTruncateContent
-					? `${doc.content.substring(0, readContentMaxChars)}...`
-					: doc.content;
-			}
-		}
 	} else {
 		const readContentMaxChars =
 			params.excerptLength ??
@@ -179,7 +140,7 @@ export async function readSpecificFile(
 		max_output_chars: maxOutputChars,
 		truncated: shouldTruncateContent || truncatedBacklinks || outputCapClamped,
 		expand_hint:
-			"If you need complete raw text, call vault action='read' with compressionMode='none'. However, if the document is long and causes context limit errors, add a 'query' parameter to filter for the most relevant paragraphs.",
+			"If you need complete raw text, call vault action='read' with compressionMode='none'.",
 	});
 
 	return {
